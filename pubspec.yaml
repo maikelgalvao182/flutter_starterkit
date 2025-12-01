@@ -1,0 +1,142 @@
+name: partiu
+description: Partiu - Event Planning & Social App
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.29.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Core
+  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  cloud_firestore: ^6.1.0
+  firebase_messaging: ^16.0.4
+  firebase_storage: ^13.0.4
+  cloud_functions: ^6.0.4
+  firebase_analytics: ^12.0.4
+  firebase_app_check: ^0.4.1
+  firebase_remote_config: ^6.1.1
+  firebase_performance: ^0.11.1+2
+  
+  # Social Login
+  google_sign_in: ^7.1.1
+  sign_in_with_apple: ^7.0.1
+  flutter_facebook_auth: ^7.1.2
+  
+  # UI Components
+  flutter_svg: ^2.2.0
+  dotted_border: ^2.1.0
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  animated_custom_dropdown: ^3.1.1
+  iconsax: ^0.0.8
+  
+  # Utils
+  provider: ^6.1.5+1
+  get_it: ^7.6.4
+  shared_preferences: ^2.5.3
+  connectivity_plus: ^5.0.2
+  device_info_plus: ^10.1.0
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  http: ^1.5.0
+  url_launcher: ^6.3.2
+  equatable: ^2.0.5
+  rxdart: ^0.28.0
+  timeago: ^3.7.1
+  
+  # Localization & Formatting
+  country_code_picker: ^3.4.0
+  flutter_country_selector: ^1.0.18
+  currency_text_input_formatter: ^2.2.3
+  
+  # Media
+  image_picker: ^1.2.0
+  image_cropper: ^11.0.0
+  flutter_image_compress: ^2.4.0
+  share_plus: ^11.1.0
+  
+  # Location
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  google_maps_flutter: ^2.10.0
+  
+  # Calendar
+  table_calendar: ^3.1.2
+  flutter_cupertino_datetime_picker: ^3.0.0
+  
+  # Notifications
+  flutter_local_notifications: ^17.2.3
+  
+  # Reviews
+  in_app_review: ^2.0.10
+  
+  # Cache
+  flutter_cache_manager: ^3.3.2
+  sqflite: ^2.3.3+1
+  
+  # Permissions
+  permission_handler: ^12.0.1
+  
+  # WebSocket
+  socket_io_client: ^3.0.0
+  
+  # Security
+  crypto: ^3.0.6
+  
+  # Monitoring
+  sentry_flutter: ^9.6.0
+  
+  # Subscriptions
+  purchases_flutter: ^8.0.0
+  
+  # UI Icons
+  iconsax_plus: ^1.0.0
+  google_fonts: ^6.2.1
+  
+  # Video/Audio
+  agora_rtc_engine: ^6.5.2
+  flutter_ringtone_player: ^4.0.0+4
+  
+  # Models
+  freezed_annotation: ^2.4.4
+  go_router: ^17.0.0
+  circle_flags: ^5.0.1
+
+dev_dependencies:
+  freezed: ^2.5.7
+  build_runner: ^2.4.13
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^5.0.0
+  very_good_analysis: ^10.0.0
+  flutter_hooks_lint: ^1.4.0
+
+# Flutter configuration
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/svg/
+    - assets/icons/
+    - assets/images/
+    - assets/lang/
+    - assets/images/avatar/
+    - assets/images/background_image.jpg

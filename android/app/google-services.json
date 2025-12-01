@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "13564294004",
+    "project_id": "partiu-479902",
+    "storage_bucket": "partiu-479902.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:13564294004:android:48a6bfd9d8fe371dc0f221",
+        "android_client_info": {
+          "package_name": "com.example.partiu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUkR549yBaSk1MSiPxo_NrKh4sSJrUj4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

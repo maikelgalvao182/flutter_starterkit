@@ -1,0 +1,172 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/features/home/presentation/widgets/auto_updating_badge.dart';
+
+/// Ícones const pré-compilados para otimização
+class _TabIcons {
+  const _TabIcons._();
+
+  static const double _size = 26.0;
+  static const _selectedColor = GlimpseColors.primary;
+  static const _unselectedColor = Colors.grey;
+
+  // Discover icons
+  static const discoverNormal = Icon(IconsaxPlusLinear.discover, size: _size, color: _unselectedColor);
+  static const discoverBold = Icon(IconsaxPlusBold.discover, size: _size, color: _selectedColor);
+
+  // Matches icons
+  static const matchesNormal = Icon(IconsaxPlusLinear.heart, size: _size, color: _unselectedColor);
+  static const matchesBold = Icon(IconsaxPlusBold.heart, size: _size, color: _selectedColor);
+
+  // Ranking icons
+  static const rankingNormal = Icon(IconsaxPlusLinear.cup, size: _size, color: _unselectedColor);
+  static const rankingBold = Icon(IconsaxPlusBold.cup, size: _size, color: _selectedColor);
+
+  // Conversation icons
+  static const conversationNormal = Icon(IconsaxPlusLinear.messages_2, size: _size, color: _unselectedColor);
+  static const conversationBold = Icon(IconsaxPlusBold.messages_2, size: _size, color: _selectedColor);
+
+  // Profile icons
+  static const profileNormal = Icon(IconsaxPlusLinear.user, size: _size, color: _unselectedColor);
+  static const profileBold = Icon(IconsaxPlusBold.user, size: _size, color: _selectedColor);
+}
+
+/// Bottom Navigation Bar personalizado para a tela home
+class HomeBottomNavigationBar extends StatelessWidget {
+  const HomeBottomNavigationBar({
+    required this.currentIndex,
+    required this.onTap,
+    super.key,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  static const double _spacing = 2.0;
+  static const _spacer = SizedBox(height: _spacing);
+
+  static final TextStyle _selectedLabelStyle = GoogleFonts.getFont(
+    FONT_PLUS_JAKARTA_SANS,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: GlimpseColors.primary,
+  );
+
+  static final TextStyle _unselectedLabelStyle = GoogleFonts.getFont(
+    FONT_PLUS_JAKARTA_SANS,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: GlimpseColors.subtitleTextColorLight,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).copyWith(
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+    );
+
+    return Theme(
+      data: theme,
+      child: _BottomNavBarContent(
+        currentIndex: currentIndex,
+        onTap: (index) {
+          HapticFeedback.lightImpact();
+          onTap(index);
+        },
+      ),
+    );
+  }
+}
+
+/// Widget interno do BottomNavigationBar
+class _BottomNavBarContent extends StatelessWidget {
+  const _BottomNavBarContent({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      currentIndex: currentIndex,
+      onTap: onTap,
+      elevation: 0,
+      backgroundColor: Colors.white,
+      selectedItemColor: GlimpseColors.primary,
+      unselectedItemColor: GlimpseColors.subtitleTextColorLight,
+      selectedFontSize: 12,
+      selectedLabelStyle: HomeBottomNavigationBar._selectedLabelStyle,
+      unselectedLabelStyle: HomeBottomNavigationBar._unselectedLabelStyle,
+      iconSize: 26,
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
+      items: [
+        // Aba Descobrir
+        _buildBottomNavigationBarItem(
+          icon: currentIndex == 0 ? _TabIcons.discoverBold : _TabIcons.discoverNormal,
+          label: 'Descobrir',
+          index: 0,
+        ),
+
+        // Aba Matches
+        _buildBottomNavigationBarItem(
+          icon: currentIndex == 1 ? _TabIcons.matchesBold : _TabIcons.matchesNormal,
+          label: 'Matches',
+          index: 1,
+        ),
+
+        // Aba Ranking
+        _buildBottomNavigationBarItem(
+          icon: currentIndex == 2 ? _TabIcons.rankingBold : _TabIcons.rankingNormal,
+          label: 'Ranking',
+          index: 2,
+        ),
+
+        // Aba Conversas (com badge)
+        BottomNavigationBarItem(
+          icon: MessagesBadge(
+            count: 0, // TODO: Implementar contador real
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                currentIndex == 3 ? _TabIcons.conversationBold : _TabIcons.conversationNormal,
+                HomeBottomNavigationBar._spacer,
+              ],
+            ),
+          ),
+          label: 'Conversas',
+        ),
+
+        // Aba Perfil
+        _buildBottomNavigationBarItem(
+          icon: currentIndex == 4 ? _TabIcons.profileBold : _TabIcons.profileNormal,
+          label: 'Perfil',
+          index: 4,
+        ),
+      ],
+    );
+  }
+
+  BottomNavigationBarItem _buildBottomNavigationBarItem({
+    required Widget icon,
+    required String label,
+    required int index,
+  }) {
+    return BottomNavigationBarItem(
+      icon: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [icon, HomeBottomNavigationBar._spacer],
+      ),
+      label: label,
+    );
+  }
+}
