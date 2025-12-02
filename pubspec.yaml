@@ -41,6 +41,8 @@ dependencies:
   cached_network_image: ^3.3.1
   animated_custom_dropdown: ^3.1.1
   iconsax: ^0.0.8
+  flutter_markdown: ^0.7.3
+  markdown: ^7.2.2
   
   # Utils
   provider: ^6.1.5+1

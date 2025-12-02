@@ -26,7 +26,7 @@ class SocketService {
     return 'ws://127.0.0.1:8080'; // ✅ iOS Simulator
   }
   
-  static const String _prodUrl = 'wss://partiu-websocket-13564294004.us-central1.run.app';
+  static const String _prodUrl = 'wss://partiu-websocket-kps2yw5qra-uc.a.run.app';
 
   bool get isConnected => _isConnected;
 
@@ -74,11 +74,11 @@ class SocketService {
       final token = await user.getIdToken();
 
 
-      // Configura Socket.IO forçando WebSocket puro
+      // Configura Socket.IO com polling + websocket (fallback para Cloud Run)
       _socket = IO.io(
         _wsUrl,
         IO.OptionBuilder()
-            .setTransports(['websocket']) // APENAS WebSocket, sem polling
+            .setTransports(['polling', 'websocket']) // Polling primeiro, depois upgrade para WebSocket
             .disableAutoConnect() // Controle manual
             .enableReconnection()
             .setReconnectionDelay(2000)
