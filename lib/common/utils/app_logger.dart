@@ -22,4 +22,8 @@ class AppLogger {
   static void debug(String message) {
     developer.log(message, name: 'partiu.debug');
   }
+
+  static void success(String message) {
+    developer.log(message, name: 'partiu.success');
+  }
 }

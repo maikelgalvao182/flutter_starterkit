@@ -12,6 +12,7 @@ import 'package:partiu/core/services/google_maps_initializer.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
+import 'package:partiu/providers/simple_subscription_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +45,10 @@ void main() async {
         // ConversationsViewModel - gerencia estado das conversas
         ChangeNotifierProvider(
           create: (_) => ConversationsViewModel(),
+        ),
+        // SimpleSubscriptionProvider - gerencia estado de assinaturas VIP
+        ChangeNotifierProvider(
+          create: (_) => SimpleSubscriptionProvider(),
         ),
         // DependencyProvider via Provider para compatibility
         Provider<ServiceLocator>.value(

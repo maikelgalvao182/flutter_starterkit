@@ -1,0 +1,107 @@
+import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// Footer do dialog de assinatura com termos, privacidade e restore
+/// 
+/// Responsabilidades:
+/// - Exibir texto sobre renovação automática
+/// - Links para termos de serviço e privacidade
+/// - Link para restaurar compras
+/// 
+/// Uso:
+/// ```dart
+/// SubscriptionFooter(
+///   onRestore: () async {
+///     await provider.restorePurchases();
+///     if (provider.hasVipAccess) {
+///       showSuccess();
+///       closeDialog();
+///     }
+///   },
+/// )
+/// ```
+class SubscriptionFooter extends StatelessWidget {
+
+  const SubscriptionFooter({
+    required this.onRestore, super.key,
+  });
+  final Future<void> Function() onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 8),
+      child: Text.rich(
+        TextSpan(
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
+          children: [
+            // Texto sobre renovação automática
+            TextSpan(
+              text: i18n.translate('subscription_renews_automatically_at_the_same'),
+            ),
+            TextSpan(
+              text: i18n.translate('price_and_duration'),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            TextSpan(
+              text: i18n.translate('cancel_anytime_in_your_app_store_settings'),
+            ),
+            
+            // Link para termos
+            TextSpan(
+              text: i18n.translate('terms'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => _launchUrl(
+                    'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'),
+            ),
+            
+            // Separador "e"
+            TextSpan(
+              text: i18n.translate('and_separator'),
+            ),
+            
+            // Link para privacidade
+            TextSpan(
+              text: i18n.translate('privacy'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => _launchUrl('https://partiu.app/privacy'),
+            ),
+            
+            // Texto antes do restore
+            TextSpan(
+              text: i18n.translate('have_you_signed_before'),
+            ),
+            
+            // Link para restaurar
+            TextSpan(
+              text: i18n.translate('restore_subscription_link'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+              recognizer: TapGestureRecognizer()..onTap = onRestore,
+            ),
+          ],
+        ),
+        textAlign: TextAlign.start,
+      ),
+    );
+  }
+
+  /// Abre URL em navegador externo
+  Future<void> _launchUrl(String urlString) async {
+    final url = Uri.parse(urlString);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+}
