@@ -46,10 +46,10 @@ dependencies:
   
   # Utils
   provider: ^6.1.5+1
-  get_it: ^7.6.4
+  get_it: ^9.1.1
   shared_preferences: ^2.5.3
-  connectivity_plus: ^5.0.2
-  device_info_plus: ^10.1.0
+  connectivity_plus: ^7.0.0
+  device_info_plus: ^12.3.0
   path_provider: ^2.1.4
   path: ^1.9.0
   http: ^1.5.0
@@ -80,7 +80,7 @@ dependencies:
   flutter_cupertino_datetime_picker: ^3.0.0
   
   # Notifications
-  flutter_local_notifications: ^17.2.3
+  flutter_local_notifications: ^19.5.0
   
   # Reviews
   in_app_review: ^2.0.10
@@ -102,7 +102,7 @@ dependencies:
   sentry_flutter: ^9.6.0
   
   # Subscriptions
-  purchases_flutter: ^8.0.0
+  purchases_flutter: ^9.9.9
   
   # UI Icons
   iconsax_plus: ^1.0.0
