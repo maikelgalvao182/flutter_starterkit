@@ -9,6 +9,7 @@ class ConversationsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: GlimpseEmptyState.conversations(
           text: 'Nenhuma conversa ainda\nImplementar funcionalidade de conversas',

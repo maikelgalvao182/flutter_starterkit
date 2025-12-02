@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
@@ -15,24 +16,24 @@ class _TabIcons {
   static const _unselectedColor = Colors.grey;
 
   // Discover icons
-  static const discoverNormal = Icon(IconsaxPlusLinear.discover, size: _size, color: _unselectedColor);
-  static const discoverBold = Icon(IconsaxPlusBold.discover, size: _size, color: _selectedColor);
+  static const discoverNormal = Icon(Iconsax.map, size: _size, color: _unselectedColor);
+  static const discoverBold = Icon(Iconsax.map, size: _size, color: _selectedColor);
 
   // Matches icons
-  static const matchesNormal = Icon(IconsaxPlusLinear.heart, size: _size, color: _unselectedColor);
-  static const matchesBold = Icon(IconsaxPlusBold.heart, size: _size, color: _selectedColor);
+  static const matchesNormal = Icon(Iconsax.heart, size: _size, color: _unselectedColor);
+  static const matchesBold = Icon(Iconsax.heart5, size: _size, color: _selectedColor);
 
   // Ranking icons
-  static const rankingNormal = Icon(IconsaxPlusLinear.cup, size: _size, color: _unselectedColor);
-  static const rankingBold = Icon(IconsaxPlusBold.cup, size: _size, color: _selectedColor);
+  static const rankingNormal = Icon(Iconsax.cup, size: _size, color: _unselectedColor);
+  static const rankingBold = Icon(Iconsax.cup5, size: _size, color: _selectedColor); // Iconsax might not have bold cup, using same or check for filled
 
   // Conversation icons
-  static const conversationNormal = Icon(IconsaxPlusLinear.messages_2, size: _size, color: _unselectedColor);
-  static const conversationBold = Icon(IconsaxPlusBold.messages_2, size: _size, color: _selectedColor);
+  static const conversationNormal = Icon(Iconsax.message, size: _size, color: _unselectedColor);
+  static const conversationBold = Icon(Iconsax.message5, size: _size, color: _selectedColor);
 
   // Profile icons
-  static const profileNormal = Icon(IconsaxPlusLinear.user, size: _size, color: _unselectedColor);
-  static const profileBold = Icon(IconsaxPlusBold.user, size: _size, color: _selectedColor);
+  static const profileNormal = Icon(IconsaxPlusLinear.profile, size: _size, color: _unselectedColor);
+  static const profileBold = Icon(IconsaxPlusBold.profile, size: _size, color: _selectedColor); // Iconsax user bold might be user_square or similar, or just user
 }
 
 /// Bottom Navigation Bar personalizado para a tela home

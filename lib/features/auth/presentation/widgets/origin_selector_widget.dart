@@ -1,4 +1,5 @@
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -47,6 +48,23 @@ class _OriginSelectorWidgetState extends State<OriginSelectorWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+    
+    final localizedOptions = <String>[
+      'Instagram',
+      'Tiktok',
+      'Reddit',
+      'Youtube',
+      'X',
+      'App Store',
+      'Facebook',
+      'Linkedin',
+      'Google',
+      'Website',
+      i18n.translate('origin_friend_family'),
+      i18n.translate('origin_other'),
+    ];
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -54,13 +72,14 @@ class _OriginSelectorWidgetState extends State<OriginSelectorWidget> {
         const SizedBox(height: 8),
         ...List.generate(_options.length, (index) {
           final option = _options[index];
+          final label = localizedOptions[index];
           final selected = option == _selected;
           final iconName = _mapOriginOptionToIcon(option.toLowerCase());
           
           return Padding(
             padding: EdgeInsets.only(bottom: index < _options.length - 1 ? 14 : 0),
             child: _OriginOptionTile(
-              text: option,
+              text: label,
               selected: selected,
               iconName: iconName,
               onTap: () {
@@ -120,7 +139,7 @@ class _OriginOptionTile extends StatelessWidget {
           color: selected ? Colors.white : GlimpseColors.lightTextField,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? Colors.black : GlimpseColors.lightTextField,
+            color: selected ? GlimpseColors.primary : GlimpseColors.lightTextField,
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -143,7 +162,7 @@ class _OriginOptionTile extends StatelessWidget {
                 )
               else
                 SvgPicture.asset(
-                  'assets/svg/logo/$iconName.svg',
+                  'assets/svg/$iconName.svg',
                   width: 20,
                   height: 20,
                 ),

@@ -1,10 +1,10 @@
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/shared/stores/hybrid_profile_store.dart';
+import 'package:partiu/core/models/user.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 
 class ProfileLocationChip extends StatelessWidget {
@@ -12,39 +12,37 @@ class ProfileLocationChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userId = AppState.currentUserId ?? '';
-    
-    // Show skeleton if user not loaded yet
-    if (userId.isEmpty) {
-      return _buildSkeletonChip();
-    }
-    
-    return ValueListenableBuilder<String?>(
-      valueListenable: HybridProfileStore.instance.getCityNotifier(userId),
-      builder: (context, city, _) {
-        return ValueListenableBuilder<String?>(
-          valueListenable: HybridProfileStore.instance.getStateNotifier(userId),
-          builder: (context, state, _) {
-            // Se ambos estão vazios, mostra skeleton enquanto carrega
-            if ((city == null || city.isEmpty) && (state == null || state.isEmpty)) {
-              return _buildSkeletonChip();
-            }
-            
-            // Constrói o texto da localização
-            final locationText = (city ?? '').isNotEmpty
-                ? ((state ?? '').isNotEmpty ? "${city ?? ''}, ${state ?? ''}" : city ?? '')
-                : ((state ?? '').isNotEmpty ? state ?? '' : '');
-            
-            if (kDebugMode) {
-              print('📍 [ProfileLocationChip] Building chip');
-              print('   City: "$city"');
-              print('   State: "$state"');
-              print('   Final text: "$locationText"');
-            }
-            
-            return _buildChip(locationText);
-          },
-        );
+    return ValueListenableBuilder<User?>(
+      valueListenable: AppState.currentUser,
+      builder: (context, user, _) {
+        // Show skeleton if user not loaded yet
+        if (user == null) {
+          return _buildSkeletonChip();
+        }
+        
+        final city = user.userLocality;
+        final state = user.userState;
+
+        // Se ambos estão vazios, não mostra nada (ou skeleton se estiver carregando?)
+        // Assumindo que se user != null, já carregou.
+        if (city.isEmpty && (state == null || state.isEmpty)) {
+           // Se não tem localização, retorna vazio
+           return const SizedBox.shrink();
+        }
+        
+        // Constrói o texto da localização
+        final locationText = city.isNotEmpty
+            ? ((state ?? '').isNotEmpty ? "$city, ${state ?? ''}" : city)
+            : ((state ?? '').isNotEmpty ? state ?? '' : '');
+        
+        if (kDebugMode) {
+          print('📍 [ProfileLocationChip] Building chip');
+          print('   City: "$city"');
+          print('   State: "$state"');
+          print('   Final text: "$locationText"');
+        }
+        
+        return _buildChip(locationText);
       },
     );
   }
@@ -76,19 +74,16 @@ class ProfileLocationChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SvgPicture.asset(
-            'assets/svg/locationIcon.svg',
-            height: 16,
-            colorFilter: const ColorFilter.mode(
-              GlimpseColors.locationChipText,
-              BlendMode.srcIn,
-            ),
+          const Icon(
+            Iconsax.location,
+            size: 16,
+            color: Colors.black,
           ),
           const SizedBox(width: 5),
           Text(
             locationText,
             style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-              color: GlimpseColors.locationChipText,
+              color: Colors.black,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),

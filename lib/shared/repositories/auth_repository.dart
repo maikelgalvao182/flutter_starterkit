@@ -1,19 +1,82 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/shared/repositories/auth_repository_interface.dart';
 import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/shared/services/auth/social_auth.dart';
+import 'package:partiu/core/models/user.dart' as app_user;
+import 'package:partiu/core/managers/session_manager.dart';
+import 'package:partiu/core/services/image_compress_service.dart';
 
 class AuthRepository implements IAuthRepository {
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+  final ImageCompressService _compressor;
 
   AuthRepository({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+    ImageCompressService? compressor,
   }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-       _firestore = firestore ?? FirebaseFirestore.instance;
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _storage = storage ?? FirebaseStorage.instance,
+       _compressor = compressor ?? const ImageCompressService();
+
+  // Stream para acompanhar mudanças do usuário atual
+  Stream<app_user.User?> get userStream {
+    return _firebaseAuth.authStateChanges().asyncMap((user) async {
+      if (user == null) return null;
+      
+      final doc = await _firestore.collection('Users').doc(user.uid).get();
+      if (!doc.exists || doc.data() == null) return null;
+      
+      return app_user.User.fromDocument(doc.data()!);
+    });
+  }
+
+  // Usuário atual (em memória via SessionManager)
+  app_user.User? get currentUser {
+    return SessionManager.instance.currentUser;
+  }
+
+  /// Busca dados atualizados do usuário diretamente do Firestore
+  /// Use quando precisar garantir dados frescos (ex: tela de edição de perfil)
+  Future<app_user.User?> fetchCurrentUserFromFirestore() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        AppLogger.warning('No authenticated user', tag: 'AUTH_REPOSITORY');
+        return null;
+      }
+
+      final doc = await _firestore.collection('Users').doc(user.uid).get();
+      if (!doc.exists || doc.data() == null) {
+        AppLogger.warning('User document not found', tag: 'AUTH_REPOSITORY');
+        return null;
+      }
+
+      final userData = app_user.User.fromDocument(doc.data()!);
+      
+      // ✅ CRÍTICO: Atualiza SessionManager E AppState com dados frescos
+      // Isso dispara notifyListeners() no AppState.currentUser ValueNotifier
+      // Permitindo que widgets reativos (ProfileTab, ProfileCompletenessRing) atualizem
+      SessionManager.instance.currentUser = userData;
+      
+      return userData;
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Error fetching user from Firestore: $e',
+        tag: 'AUTH_REPOSITORY',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
 
   @override
   Future<void> authUserAccount({
@@ -65,17 +128,18 @@ class AuthRepository implements IAuthRepository {
       final userData = userDoc.data() as Map<String, dynamic>;
       
       // Verifica se o perfil está completo (tem nome e tipo de usuário)
-      final hasFullName = userData['fullName'] != null && (userData['fullName'] as String).isNotEmpty;
-      final hasUserType = userData['userType'] != null && (userData['userType'] as String).isNotEmpty;
+      // Verifica tanto o campo moderno quanto o legado para compatibilidade
+      final hasFullName = (userData['fullName'] != null && (userData['fullName'] as String).isNotEmpty) ||
+                          (userData['user_fullname'] != null && (userData['user_fullname'] as String).isNotEmpty);
       
-      if (!hasFullName || !hasUserType) {
+      if (!hasFullName) {
         AppLogger.info('User profile incomplete - redirecting to signup wizard', tag: 'AUTH_REPOSITORY');
         signUpScreen();
         return;
       }
 
       // Verifica se está bloqueado
-      final isBlocked = userData['isBlocked'] == true;
+      final isBlocked = (userData['status'] ?? userData['user_status']) == 'blocked';
       if (isBlocked) {
         AppLogger.warning('User is blocked', tag: 'AUTH_REPOSITORY');
         blockedScreen();
@@ -212,6 +276,165 @@ class AuthRepository implements IAuthRepository {
     } catch (e) {
       AppLogger.error('Create user unexpected error: $e', tag: 'AUTH_REPOSITORY');
       onError({'code': 'unknown', 'message': e.toString()});
+    }
+  }
+
+  // ==================== PROFILE METHODS ====================
+
+  /// Atualiza dados do perfil do usuário
+  Future<void> updateUserProfile(Map<String, dynamic> data) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      AppLogger.info('Updating user profile: ${user.uid}', tag: 'AUTH_REPOSITORY');
+
+      await _firestore.collection('Users').doc(user.uid).update(data);
+      
+      AppLogger.success('Profile updated successfully', tag: 'AUTH_REPOSITORY');
+    } catch (e) {
+      AppLogger.error('Failed to update profile: $e', tag: 'AUTH_REPOSITORY');
+      rethrow;
+    }
+  }
+
+  /// Faz upload da foto de perfil com compressão automática
+  Future<String> uploadProfilePhoto(File imageFile) async {
+    File? compressedFile;
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      AppLogger.info('Uploading profile photo for: ${user.uid}', tag: 'AUTH_REPOSITORY');
+
+      // ✅ Comprimir imagem antes do upload (1080px, quality 75)
+      compressedFile = await _compressor.compressFileToTempFile(imageFile);
+      
+      // Upload para o Storage usando path que match com as regras de segurança
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ref = _storage.ref().child('users').child(user.uid).child('profile').child('avatar_$timestamp.jpg');
+      
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'userId': user.uid,
+          'uploadTimestamp': timestamp.toString(),
+          'source': 'flutter_app',
+          'compressed': 'true',
+        },
+      );
+      
+      final uploadTask = ref.putFile(compressedFile, metadata);
+      final snapshot = await uploadTask;
+      
+      // Obter URL de download
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      
+      // Atualizar documento do usuário (ambos os campos para compatibilidade)
+      await _firestore.collection('Users').doc(user.uid).update({
+        'profilePhotoUrl': downloadUrl,
+        'photoUrl': downloadUrl,
+      });
+
+      AppLogger.success('Profile photo uploaded successfully', tag: 'AUTH_REPOSITORY');
+      
+      // Limpar arquivo comprimido temporário
+      if (compressedFile.path != imageFile.path && await compressedFile.exists()) {
+        await compressedFile.delete();
+      }
+      
+      return downloadUrl;
+    } catch (e) {
+      AppLogger.error('Failed to upload profile photo: $e', tag: 'AUTH_REPOSITORY');
+      
+      // Limpar arquivo comprimido em caso de erro
+      try {
+        if (compressedFile != null && 
+            compressedFile.path != imageFile.path && 
+            await compressedFile.exists()) {
+          await compressedFile.delete();
+        }
+      } catch (_) {}
+      
+      rethrow;
+    }
+  }
+
+  /// Faz upload de imagem para a galeria
+  Future<void> uploadGalleryImage(File imageFile, int index) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      AppLogger.info('Uploading gallery image $index for: ${user.uid}', tag: 'AUTH_REPOSITORY');
+
+      // Upload para o Storage usando path que match com as regras de segurança
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ref = _storage.ref().child('users').child(user.uid).child('gallery').child('image_${index}_$timestamp.jpg');
+      
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'userId': user.uid,
+          'index': index.toString(),
+          'uploadTimestamp': timestamp.toString(),
+        },
+      );
+      
+      final uploadTask = ref.putFile(imageFile, metadata);
+      final snapshot = await uploadTask;
+      
+      // Obter URL de download
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      
+      // Atualizar array de galeria
+      await _firestore.collection('Users').doc(user.uid).update({
+        'gallery.$index': downloadUrl,
+      });
+
+      AppLogger.success('Gallery image uploaded successfully', tag: 'AUTH_REPOSITORY');
+    } catch (e) {
+      AppLogger.error('Failed to upload gallery image: $e', tag: 'AUTH_REPOSITORY');
+      rethrow;
+    }
+  }
+
+  /// Remove imagem da galeria
+  Future<void> removeGalleryImage(int index) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      AppLogger.info('Removing gallery image $index for: ${user.uid}', tag: 'AUTH_REPOSITORY');
+
+      // Primeiro, obter a URL atual para deletar do Storage
+      final doc = await _firestore.collection('Users').doc(user.uid).get();
+      final data = doc.data();
+      
+      if (data != null && data['gallery'] != null) {
+        final gallery = data['gallery'] as Map<String, dynamic>;
+        final imageUrl = gallery[index.toString()] as String?;
+        
+        if (imageUrl != null) {
+          // Deletar do Storage
+          try {
+            final ref = _storage.refFromURL(imageUrl);
+            await ref.delete();
+          } catch (e) {
+            AppLogger.warning('Failed to delete from storage: $e', tag: 'AUTH_REPOSITORY');
+          }
+        }
+      }
+
+      // Remover do documento
+      await _firestore.collection('Users').doc(user.uid).update({
+        'gallery.$index': FieldValue.delete(),
+      });
+
+      AppLogger.success('Gallery image removed successfully', tag: 'AUTH_REPOSITORY');
+    } catch (e) {
+      AppLogger.error('Failed to remove gallery image: $e', tag: 'AUTH_REPOSITORY');
+      rethrow;
     }
   }
 }

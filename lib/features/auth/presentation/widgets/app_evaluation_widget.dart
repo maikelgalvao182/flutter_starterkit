@@ -350,23 +350,15 @@ class _TestimonialCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       name,
                       style: TextStyles.testimonialName,
                     ),
                     if (category != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 4,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
+                      const SizedBox(height: 2),
                       Text(
                         category,
                         style: TextStyles.testimonialCategory,

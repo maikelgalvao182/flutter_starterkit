@@ -102,7 +102,7 @@ class TextStyles {
 
   /// Categoria em depoimentos (texto secundário após nome)
   static TextStyle get testimonialCategory => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.w500,
     color: Colors.black.withValues(alpha: 0.6),
   );

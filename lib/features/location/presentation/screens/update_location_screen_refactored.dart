@@ -6,17 +6,16 @@ import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/features/location/presentation/viewmodels/update_location_view_model.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:iconsax/iconsax.dart';
 
-/// Tela de atualização de localização - Refatorada seguindo MVVM
+/// Tela de autorização de localização - UI inspirada no design do Nomadtable
 /// 
-/// Este widget é "burro" - apenas exibe UI e delega toda lógica ao ViewModel
+/// Este widget exibe uma tela de permissão sem mapa, enquanto o ViewModel
+/// continua operando no background para obter dados de localização
 class UpdateLocationScreenRefactored extends StatefulWidget {
 
   const UpdateLocationScreenRefactored({
@@ -34,21 +33,11 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
   late AppLocalizations _i18n;
   late UpdateLocationViewModel _viewModel;
   bool _isSaving = false;
-  
-  // Map controller
-  GoogleMapController? _mapController;
-  
-  // Delay map rendering to prevent navigation jank
-  final Future<bool> _mapReadyFuture = Future.delayed(const Duration(milliseconds: 500), () => true);
+  bool _hasStartedTracking = false;
 
   @override
   void initState() {
     super.initState();
-    
-    // Inicia rastreamento após o build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _viewModel.startLocationTracking(_i18n.translate('location_not_available'));
-    });
   }
 
   @override
@@ -58,38 +47,19 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     final serviceLocator = DependencyProvider.of(context).serviceLocator;
     _viewModel = serviceLocator.get<UpdateLocationViewModel>();
     _i18n = AppLocalizations.of(context);
+
+    // Inicia rastreamento após o primeiro build, garantindo que ViewModel e i18n estejam prontos
+    if (!_hasStartedTracking) {
+      _hasStartedTracking = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _viewModel.startLocationTracking(_i18n.translate('location_not_available'));
+      });
+    }
   }
 
   @override
   void dispose() {
-    _mapController?.dispose();
     super.dispose();
-  }
-
-  /// Callback quando o mapa é criado
-  void _onMapCreated(GoogleMapController controller) async {
-    _mapController = controller;
-    
-    // Aplica estilo do mapa se disponível
-    try {
-      final style = await rootBundle.loadString('assets/map_styles/clean.json');
-      // ignore: deprecated_member_use
-      await controller.setMapStyle(style);
-    } catch (_) {
-      // Silently fail if style loading fails
-    }
-    
-    // Move câmera para posição atual se disponível
-    if (_viewModel.currentPosition != null) {
-      controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: _viewModel.currentPosition!,
-            zoom: 15,
-          ),
-        ),
-      );
-    }
   }
 
   /// Processa o salvamento da localização
@@ -210,120 +180,174 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     _i18n = AppLocalizations.of(context);
     
     return Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          centerTitle: false,
-          automaticallyImplyLeading: false,
-          title: Text(
-            _i18n.translate('your_current_location'),
-            style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.white,
-        body: ListenableBuilder(
-          listenable: _viewModel,
-          builder: (context, child) {
-            return Stack(
-              children: [
-                // Google Maps em tela cheia
-                FutureBuilder<bool>(
-                  future: _mapReadyFuture,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(
-                        child: CupertinoActivityIndicator(
-                          color: GlimpseColors.primary,
-                          radius: 14,
-                        ),
-                      );
-                    }
-                    
-                    return GoogleMap(
-                      key: const ValueKey('update-location-map'),
-                      onMapCreated: _onMapCreated,
-                      initialCameraPosition: CameraPosition(
-                        target: _viewModel.currentPosition ?? UpdateLocationViewModel.defaultLocation,
-                        zoom: 15,
-                      ),
-                      markers: _viewModel.markers,
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      mapToolbarEnabled: false,
-                      zoomControlsEnabled: false,
-                      onTap: (LatLng position) {
-                        _viewModel.updatePositionManually(
-                          position,
-                          _i18n.translate('your_current_location'),
-                        );
-                      },
-                    );
-                  },
-                ),
-                
-                // Botão flutuante para centralizar na localização atual
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: FloatingActionButton(
-                    mini: true,
-                    backgroundColor: Colors.white,
-                    onPressed: () {
-                      if (_viewModel.currentPosition != null && _mapController != null) {
-                        _mapController!.animateCamera(
-                          CameraUpdate.newCameraPosition(
-                            CameraPosition(
-                              target: _viewModel.currentPosition!,
-                              zoom: 15,
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          Expanded(
+            child: ListenableBuilder(
+              listenable: _viewModel,
+              builder: (context, child) {
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+                      child: Column(
+                        children: [
+                          // Logo/ícone principal
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: GlimpseColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Iconsax.location,
+                              size: 40,
+                              color: GlimpseColors.primary,
                             ),
                           ),
-                        );
-                      }
-                    },
-                    child: const Icon(
-                      Icons.my_location,
-                      color: GlimpseColors.primary,
-                    ),
-                  ),
-                ),
-                
-                // Botão GET LOCATION na posição padrão (bottom)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: const BoxDecoration(
-                      color: Colors.transparent,
-                    ),
-                    child: SafeArea(
-                      child: GlimpseButton(
-                        text: _i18n.translate('GET_LOCATION'),
-                        onTap: _handleSaveLocation,
-                        isProcessing: _isSaving,
+                          
+                          const SizedBox(height: 40),
+                          
+                          // Título principal
+                          Text(
+                            _i18n.translate('connect_with_nearby_travelers'),
+                            style: GoogleFonts.getFont(
+                              FONT_PLUS_JAKARTA_SANS,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Subtítulo
+                          Text(
+                            _i18n.translate('enable_location_to_discover'),
+                            style: GoogleFonts.getFont(
+                              FONT_PLUS_JAKARTA_SANS,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.grey[600],
+                              height: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Lista de benefícios
+                          _buildBenefitItem(
+                            icon: Iconsax.map_1,
+                            title: _i18n.translate('discover_nearby_activities'),
+                            description: _i18n.translate('find_and_join_spontaneous_meetups'),
+                          ),
+                          
+                          const SizedBox(height: 32),
+                          
+                          _buildBenefitItem(
+                            icon: Iconsax.people,
+                            title: _i18n.translate('appear_to_nearby_travelers'),
+                            description: _i18n.translate('other_travelers_can_see_you'),
+                          ),
+                          
+                          const SizedBox(height: 32),
+                          
+                          _buildBenefitItem(
+                            icon: Iconsax.shield_tick,
+                            title: _i18n.translate('your_privacy_is_protected'),
+                            description: _i18n.translate('exact_location_never_shown'),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+        
+          // Botão fixado na parte inferior com SafeArea
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: GlimpseButton(
+                text: _i18n.translate('enable_and_continue'),
+                onPressed: _handleSaveLocation,
+                isProcessing: _isSaving,
+                width: double.infinity,
+                height: 56,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
+  
+  /// Widget para criar cada item de benefício
+  Widget _buildBenefitItem({
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: GlimpseColors.primaryLight,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 24,
+            color: GlimpseColors.primary,
+          ),
+        ),
+        
+        const SizedBox(width: 16),
+        
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              
+              const SizedBox(height: 4),
+              
+              Text(
+                description,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey[600],
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+
 }

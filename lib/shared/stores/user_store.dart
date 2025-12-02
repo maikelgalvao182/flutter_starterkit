@@ -360,28 +360,42 @@ class UserStore {
   void _updateUser(String userId, Map<String, dynamic> userData) {
     final oldEntry = _users[userId];
 
-    // Extrai dados usando as constantes do partiu
-    final newAvatarUrl = userData['user_photo_link'] as String?;
-    final name = userData['user_fullname'] as String?;
-    final bio = userData['user_bio'] as String?;
-    final gender = userData['user_gender'] as String?;
-    final jobTitle = userData['user_job_title'] as String?;
-    final isVerified = (userData['user_is_verified'] ?? false) as bool;
-    final isOnline = (userData['user_is_online'] ?? false) as bool;
-    
+    // Extrai dados usando as chaves do modelo de cadastro (camelCase)
+    final newAvatarUrl = userData['photoUrl'] as String?;
+    final name = userData['fullName'] as String?;
+    final bio = userData['bio'] as String?;
+    final gender = userData['gender'] as String?;
+    final jobTitle = userData['jobTitle'] as String?;
+
+    // Verificação de booleano
+    dynamic rawVerified = userData['isVerified'];
+    bool isVerified = false;
+    if (rawVerified is bool) {
+      isVerified = rawVerified;
+    } else if (rawVerified is String) {
+      isVerified = rawVerified.toLowerCase() == 'true';
+    }
+
+    // Online status
+    dynamic rawOnline = userData['isOnline'];
+    bool isOnline = false;
+    if (rawOnline is bool) {
+      isOnline = rawOnline;
+    }
+
     // Localização
-    final city = userData['user_locality'] as String?;
-    final state = userData['user_state'] as String?;
-    final country = userData['user_country'] as String?;
+    final city = userData['city'] as String? ?? userData['locality'] as String?;
+    final state = userData['state'] as String?;
+    final country = userData['country'] as String?;
     
-    // Redes sociais (apenas Instagram é usado no wizard)
-    final instagram = userData['user_instagram'] as String?;
+    // Redes sociais
+    final instagram = userData['instagram'] as String?;
 
     // Birthdate e idade
     int? age;
-    final birthDay = userData['user_birth_day'] as int?;
-    final birthMonth = userData['user_birth_month'] as int?;
-    final birthYear = userData['user_birth_year'] as int?;
+    final birthDay = userData['birthDay'] as int?;
+    final birthMonth = userData['birthMonth'] as int?;
+    final birthYear = userData['birthYear'] as int?;
     
     if (birthDay != null && birthMonth != null && birthYear != null) {
       final now = DateTime.now();
@@ -393,6 +407,11 @@ class UserStore {
         age--;
       }
       if (age < 0) age = null;
+    }
+    
+    // Fallback se a idade vier calculada
+    if (age == null && userData['age'] is int) {
+      age = userData['age'] as int;
     }
 
     // ⭐ Avatar: cria provider estável (SEM cache-buster)

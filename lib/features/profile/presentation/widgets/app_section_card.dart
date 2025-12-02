@@ -44,6 +44,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
       ),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -230,7 +231,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
                 child: Icon(
                   icon,
                   size: 20,
-                  color: GlimpseColors.primaryColorLight,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(width: 12),
@@ -242,7 +243,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
                     style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -262,7 +263,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
             scale: 0.85,
             child: CupertinoSwitch(
               value: value,
-              activeTrackColor: GlimpseColors.primaryColorLight,
+              activeTrackColor: GlimpseColors.primary,
               onChanged: onChanged,
             ),
           ),
@@ -310,7 +311,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
                       : Icon(
                           icon,
                           size: 20,
-                          color: iconColor ?? GlimpseColors.primaryColorLight,
+                          color: iconColor ?? Colors.black,
                         ),
                 ),
                 const SizedBox(width: 12),
@@ -319,7 +320,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
                   style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: textColor ?? Theme.of(context).textTheme.bodyLarge?.color,
+                    color: textColor ?? Colors.black,
                   ),
                 ),
               ],

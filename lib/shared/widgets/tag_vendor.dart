@@ -33,7 +33,7 @@ class TagVendor extends StatelessWidget {
         : Colors.transparent;
 
     final txtColor = isSelected
-        ? GlimpseColors.primary
+        ? Colors.black
         : Colors.black87;
 
     return GestureDetector(

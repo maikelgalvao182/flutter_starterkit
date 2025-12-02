@@ -14,36 +14,10 @@ const int IOS_APP_VERSION_NUMBER = 1; // App Store Version Number
 /// FONT FAMILY CONSTANTS
 const String FONT_PLUS_JAKARTA_SANS = 'Plus Jakarta Sans';
 
-//
-// Add Google Maps - API KEY required for Passport feature
-//
-// [OK] CHAVES MOVIDAS PARA FIREBASE (Nov/2025)
-// As chaves do Google Maps agora são carregadas do Firebase Firestore.
-// Localização: AppInfo > GoogleAndroidMaps e AppInfo > GoogleMapsApiKey
-// 
-// IMPORTANTE: Não mais hardcoded no código por segurança.
-// Use GoogleMapsConfigService para acessar as chaves.
-//
-// IMPORTANTE: As chaves devem ter as seguintes APIs habilitadas no Google Cloud Console:
-// - Maps SDK for Android / Maps SDK for iOS
-// - Geolocation API
-// - Geocoding API
-// - Places API (New)
-// - Places API
-// - Identity Toolkit API
-// - Token Service API
-//
-// Firebase Firestore fields para as chaves:
-// GoogleAndroidMaps e GoogleMapsApiKey são acessados via GoogleMapsConfigService
-//
-// Restrições recomendadas:
-// 1) Android: Restringir por package name (com.maikelgalvao.wedconnex) + SHA-1
-// 2) iOS: Restringir por bundle ID (com.maikelgalvao.wedconnex)
-//
-//
-// AGORA.IO VIDEO/AUDIO CALL CREDENTIALS
-//
-const String AGORA_APP_ID = '';
+/// GENDER CONSTANTS
+const String GENDER_MAN = 'Male';
+const String GENDER_WOMAN = 'Female';
+const String GENDER_OTHER = 'Other';
 
 
 /// List of Supported Locales
@@ -70,17 +44,9 @@ const NOTIFY_USERS = 'NOTIFY_USERS';
 ///
 const String C_APP_INFO = 'AppInfo';
 const String C_USERS = 'Users';
-const String C_FLAGGED_USERS = 'FlaggedUsers';
-const String C_CONNECTIONS = 'Connections';
-const String C_CONVERSATIONS = 'Conversations';
-const String C_LIKES = 'Likes';
-const String C_VISITS = 'Visits';
-const String C_MESSAGES = 'Messages';
 const String C_NOTIFICATIONS = 'Notifications';
-const String C_BLOCKED_USERS = 'BlockedUsers';
 
-/// Collection name for wedding announcements
-const String WEDDING_ANNOUNCEMENTS = 'WeddingAnnouncements';
+
 
 /// DATABASE FIELDS FOR AppInfo COLLECTION  ///
 ///
@@ -108,90 +74,9 @@ const String REVENUE_CAT_ANNUAL_PACKAGE = r'$rc_annual';
 // Offerings identifier
 const String REVENUE_CAT_OFFERINGS_ID = 'Subscriptions';
 
-/// DATABASE FIELDS FOR USER COLLECTION  ///
-///
-const String USER_ID = 'user_id';
-const String USER_PROFILE_PHOTO = 'user_photo_link';
-const String USER_FULLNAME = 'user_fullname';
-const String USER_GENDER = 'user_gender';
-const String USER_BIRTH_DAY = 'user_birth_day';
-const String USER_BIRTH_MONTH = 'user_birth_month';
-const String USER_BIRTH_YEAR = 'user_birth_year';
-const String USER_SCHOOL = 'user_school';
-const String USER_JOB_TITLE = 'user_job_title';
-const String USER_BIO = 'user_bio';
-const String USER_PHONE_NUMBER = 'user_phone_number';
-const String USER_EMAIL = 'user_email';
-const String USER_GALLERY = 'user_gallery';
-const String USER_VIDEOS = 'user_videos'; // mapa: video_{i}: { url, thumbnailUrl, createdAt }
-const String USER_COUNTRY = 'user_country';
-const String USER_LOCALITY = 'user_locality';
-const String USER_STATE = 'user_state'; // Novo campo para estado
-const String USER_GEO_POINT = 'user_geo_point';
-const String USER_SETTINGS = 'user_settings';
-const String USER_STATUS = 'user_status';
-const String USER_IS_VERIFIED = 'user_is_verified';
-const String USER_LEVEL = 'user_level';
-const String USER_REG_DATE = 'user_reg_date';
-const String USER_LAST_LOGIN = 'user_last_login';
-const String USER_DEVICE_TOKEN = 'user_device_token';
-const String USER_TOTAL_LIKES = 'user_total_likes';
-const String USER_TOTAL_VISITS = 'profile_visits_count'; // ✅ Migrado de user_total_visits
-const String USER_ROLE = 'user_role';
-// Social fields (novos)
-const String USER_WEBSITE = 'user_website';
-const String USER_INSTAGRAM = 'user_instagram';
-const String USER_TIKTOK = 'user_tiktok';
-const String USER_YOUTUBE = 'user_youtube';
-// New social fields
-const String USER_PINTEREST = 'user_pinterest';
-const String USER_VIMEO = 'user_vimeo';
-// Pricing fields
-const String USER_STARTING_PRICE = 'user_starting_price'; // double
-const String USER_AVERAGE_PRICE = 'user_average_price'; // double
-// Advanced filters for vendors
-const String USER_VENDOR_ADVANCED_FILTERS = 'vendor_advanced_filters'; // Map<String, dynamic>
-const String ROLE_BRIDE = 'bride'; // Role Bride (antiga provider)
-const String ROLE_VENDOR = 'vendor'; // Role Vendor (antigo user comum)
 
 
 
-// === WEDDING PLATFORM FILTER CONSTANTS ===
-// Gêneros para filtros
-const String GENDER_MAN = 'Male';
-const String GENDER_WOMAN = 'Female';
-const String GENDER_OTHER = 'Other';
-const String GENDER_ALL = 'All';
-const String GENDER_NOT_SPECIFIED = 'not_specified';
-
-// NOTE: Service categories are defined in glimpse_variables.dart as:
-// - interestListDisplay (with emojis for UI)
-// - interestListStorage (without emojis for Firestore)
-// Use interestToStorage() and interestToDisplay() helper functions
-
-// Campos específicos do wedding platform
-const String USER_WEDDING_DATE = 'user_wedding_date';
-const String USER_WEDDING_LOCATION = 'user_wedding_location';
-const String USER_BUDGET = 'user_budget';
-const String USER_SERVICES_OFFERED = 'user_services_offered';
-const String USER_OFFERS = 'user_offers';
-const String USER_SERVICE_CATEGORIES = 'user_service_categories';
-
-// User Setting map - fields
-const String USER_MIN_AGE = 'user_min_age';
-const String USER_MAX_AGE = 'user_max_age';
-const String USER_MAX_DISTANCE = 'user_max_distance';
-const String USER_SHOW_ME = 'user_show_me';
-
-
-
-/// DATABASE FIELDS FOR Messages and Conversations COLLECTION ///
-///
-const String MESSAGE_TEXT = 'message_text';
-const String MESSAGE_TYPE = 'message_type';
-const String MESSAGE_IMG_LINK = 'message_img_link';
-const String MESSAGE_READ = 'message_read';
-const String LAST_MESSAGE = 'last_message';
 
 /// DATABASE FIELDS FOR Notifications COLLECTION ///
 ///
@@ -209,30 +94,10 @@ const N_RELATED_ID = 'n_related_id'; // [NEW] ID relacionado ao evento (announce
 ///
 const String NOTIF_TYPE_LIKE = 'like';
 const String NOTIF_TYPE_VISIT = 'visit';
-const String NOTIF_TYPE_MATCH = 'match';
 const String NOTIF_TYPE_MESSAGE = 'message';
-const String NOTIF_TYPE_ALERT = 'alert';
-const String NOTIF_TYPE_APPLICATION_SUBMITTED = 'application_submitted';
-const String NOTIF_TYPE_APPLICATION_ACCEPTED = 'application_accepted';
-const String NOTIF_TYPE_APPLICATION_REJECTED = 'application_rejected';
-const String NOTIF_TYPE_APPLICATION_UPDATED = 'application_updated';
-const String NOTIF_TYPE_NEW_ANNOUNCEMENT = 'new_announcement';
-const String NOTIF_TYPE_ANNOUNCEMENT_UPDATED = 'announcement_updated';
 
-/// DATABASE FIELDS FOR Likes COLLECTION
-///
-const String LIKED_USER_ID = 'liked_user_id';
-const String LIKED_BY_USER_ID = 'liked_by_user_id';
 
-/// DATABASE FIELDS FOR Visits COLLECTION
-///
-const String VISITED_USER_ID = 'visited_user_id';
-const String VISITED_BY_USER_ID = 'visited_by_user_id';
 
-/// DATABASE FIELDS FOR [BlockedUsers] (NEW) COLLECTION
-///
-const String BLOCKED_USER_ID = 'blocked_user_id';
-const String BLOCKED_BY_USER_ID = 'blocked_by_user_id';
 
 /// DATABASE SHARED FIELDS FOR COLLECTION
 ///

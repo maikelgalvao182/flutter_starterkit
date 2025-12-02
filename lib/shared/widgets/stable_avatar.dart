@@ -14,9 +14,10 @@ class StableAvatar extends StatelessWidget {
     required this.userId,
     required this.size,
     super.key,
-    this.borderRadius = const BorderRadius.all(Radius.circular(8)),
+    this.borderRadius = const BorderRadius.all(Radius.circular(999)),
     this.enableNavigation = true,
     this.onTap,
+    this.photoUrl,
   });
 
   final String userId;
@@ -24,6 +25,7 @@ class StableAvatar extends StatelessWidget {
   final BorderRadius borderRadius;
   final bool enableNavigation;
   final VoidCallback? onTap;
+  final String? photoUrl;
 
   static const String _emptyAsset = 'assets/images/empty_avatar.jpg';
   static const AssetImage _emptyImage = AssetImage(_emptyAsset);
@@ -41,7 +43,7 @@ class StableAvatar extends StatelessWidget {
     }
 
     // Verificar cache primeiro para otimização
-    final cachedUrl = AvatarCacheService.instance.getAvatarUrl(userId);
+    final cachedUrl = photoUrl ?? AvatarCacheService.instance.getAvatarUrl(userId);
     
     final store = AvatarStore.instance;
     final notifier = store.getAvatarEntryNotifier(userId);
@@ -110,9 +112,10 @@ class _AvatarShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final clipped = ClipRRect(
-      borderRadius: borderRadius,
+    final clipped = ClipOval(
       child: Container(
+        width: size,
+        height: size,
         color: GlimpseColors.lightTextField,
         child: child,
       ),
@@ -123,7 +126,7 @@ class _AvatarShell extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: borderRadius,
+        customBorder: const CircleBorder(),
         onTap: onTap,
         child: clipped,
       ),

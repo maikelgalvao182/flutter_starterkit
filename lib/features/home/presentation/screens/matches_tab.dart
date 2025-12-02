@@ -9,6 +9,7 @@ class MatchesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: GlimpseEmptyState.standard(
           text: 'Nenhum match ainda\nImplementar funcionalidade de matches',

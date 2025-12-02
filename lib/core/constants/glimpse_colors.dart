@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 /// Constantes de cores utilizadas no aplicativo
 class GlimpseColors {
   // Cores do tema claro
-  static const Color primary = Color(0xFF00AFF0);
-  static const Color primaryLight = Color(0xFFDFF6FF);
+  static const Color primary = Color(0xFF5BAD46);
+  static const Color primaryLight = Color(0xFFEBF6E6);
   static const Color primaryColorLight = Color(0xFF0a0a0a);
   static const Color borderColorLight = Color(0xFFd4d4d4);
   static const Color subtitleTextColorLight = Color(0xFF4D4B4A);
@@ -23,13 +23,13 @@ class GlimpseColors {
   static const Color bgColorLight = Color(0XFFFFFFFF);
 
   // Cor de ação genérica
-  static const Color actionColor = Color(0xFFFF5046);
+  static const Color actionColor = Color(0xFFFF8F39);
 
   // Chips/Tags colors
-  static const Color locationChipBackground = lightTextField; // Fundo claro neutro
-  static const Color locationChipText = Color(0xFF0a0a0a); // Preto
-  static const Color visitsChipBackground = lightTextField; // Fundo claro neutro
-  static const Color visitsChipText = Color(0xFF0a0a0a); // Preto
+  static const Color locationChipBackground = primaryLight;
+  static const Color locationChipText = primary;
+  static const Color visitsChipBackground = primaryLight;
+  static const Color visitsChipText = primary;
 
   // Offer cards colors (mesmas cores dos cards de exibição)
   static const Color offerCardGreen = Color(0xFF4CAF50);

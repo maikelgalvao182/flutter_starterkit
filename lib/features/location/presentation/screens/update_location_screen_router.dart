@@ -1,6 +1,9 @@
 import 'package:partiu/features/location/presentation/screens/update_location_screen_refactored.dart';
 import 'package:flutter/material.dart';
 
+// Export UpdateLocationScreenRefactored to make it available where this router is imported
+export 'package:partiu/features/location/presentation/screens/update_location_screen_refactored.dart';
+
 /// Router for update location screen
 class UpdateLocationScreenRouter extends StatelessWidget {
   const UpdateLocationScreenRouter({

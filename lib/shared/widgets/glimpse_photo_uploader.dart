@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:partiu/common/services/image_crop_service.dart';
 import 'package:partiu/common/services/image_picker_service.dart';
 import 'package:partiu/common/utils/app_logger.dart';
+import 'package:partiu/core/services/image_compress_service.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,11 +36,17 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
   bool _processing = false;
   final ImagePickerService _pickerService = ImagePickerService();
   final ImageCropService _cropService = ImageCropService();
+  final ImageCompressService _compressService = const ImageCompressService();
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[GlimpsePhotoUploader] 🏗️ Building widget - processing: $_processing, hasImage: ${widget.imageFile != null}');
+    
     return GestureDetector(
-      onTap: _processing ? null : () => _showImageSourceDialog(context),
+      onTap: _processing ? null : () {
+        debugPrint('[GlimpsePhotoUploader] 👆 Tapped - showing image source dialog');
+        _showImageSourceDialog(context);
+      },
       child: Container(
         width: widget.size,
         height: widget.size,
@@ -70,21 +75,17 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: GlimpseColors.primaryColorLight,
+                    color: GlimpseColors.primary,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: Colors.white,
                       width: 2,
                     ),
                   ),
-                  child: SvgPicture.asset(
-                    'assets/svg/edit-2.svg',
-                    width: 20,
-                    height: 20,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
-                    ),
+                  child: Icon(
+                    IconsaxPlusBold.edit_2,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ),
@@ -95,6 +96,8 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
   }
 
   Future<void> _showImageSourceDialog(BuildContext context) async {
+    debugPrint('[GlimpsePhotoUploader] 📱 Showing image source dialog');
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -217,7 +220,10 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
 
   Future<void> _getImageFromGallery() async {
     AppLogger.info('[GlimpsePhotoUploader] [GREEN] Starting gallery image picker');
+    debugPrint('[GlimpsePhotoUploader] 🖼️ _getImageFromGallery called');
+    
     try {
+      debugPrint('[GlimpsePhotoUploader] 📸 Calling pickImage service...');
       final xfile = await _pickerService.pickImage(ImageSource.gallery);
       if (xfile == null || !mounted) return;
       
@@ -229,17 +235,45 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
   }
 
   Future<void> _cropAndSelectImage(File imageFile) async {
-    AppLogger.info('[GlimpsePhotoUploader] 🟡 Starting image cropper...');
+    AppLogger.info('[GlimpsePhotoUploader] 🟡 Starting image cropper and compression...');
     var processed = false;
     try {
+      // 1. Primeiro faz o crop para quadrado
       final cropped = await _cropService.cropToSquare(imageFile);
       processed = true;
+      
       if (cropped != null) {
-        widget.onImageSelected(cropped);
+        // 2. Depois comprime a imagem cropada
+        AppLogger.info('[GlimpsePhotoUploader] 🔧 Compressing cropped image...');
+        final compressed = await _compressService.compressFileToTempFile(
+          cropped,
+          minWidth: 800,
+          minHeight: 800,
+          quality: 85,
+        );
+        
+        AppLogger.info('[GlimpsePhotoUploader] ✅ Image processed successfully');
+        widget.onImageSelected(compressed);
       } else {
+        AppLogger.warning('[GlimpsePhotoUploader] Image crop was cancelled');
       }
     } catch (e) {
+      AppLogger.error('[GlimpsePhotoUploader] Error processing image: $e');
       if (!processed) {
+        // Se falhou no crop, pelo menos tenta comprimir a original
+        try {
+          final compressed = await _compressService.compressFileToTempFile(
+            imageFile,
+            minWidth: 800,
+            minHeight: 800,
+            quality: 85,
+          );
+          widget.onImageSelected(compressed);
+        } catch (e2) {
+          AppLogger.error('[GlimpsePhotoUploader] Error compressing fallback image: $e2');
+          // Como último recurso, usa a imagem original
+          widget.onImageSelected(imageFile);
+        }
       }
     }
   }

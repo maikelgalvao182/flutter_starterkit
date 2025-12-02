@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/core/services/auth_state_service.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/features/profile/data/services/profile_completeness_prompt_service.dart';
+import 'package:partiu/core/managers/session_manager.dart';
 
 /// Command para navegação - isola BuildContext do ViewModel
 /// Retorna dados necessários para navegação sem depender de contexto
@@ -49,6 +51,9 @@ class ProfileTabViewModel extends ChangeNotifier {
         _promptService = promptService ?? ProfileCompletenessPromptService.instance {
     // Escuta mudanças no estado do usuário
     _userNotifier.addListener(_onUserChanged);
+    
+    // Tenta restaurar usuário se estiver nulo (ex: após hot reload)
+    _restoreUserIfNeeded();
   }
   // ==================== DEPENDENCIES ====================
   
@@ -64,25 +69,34 @@ class ProfileTabViewModel extends ChangeNotifier {
   String? get currentUserId => currentUser?.userId;
   
   /// Verifica se usuário está autenticado
+  /// Combina Firebase Auth (fonte da verdade) com AppState (cache local)
+  /// para evitar falsos negativos durante inicialização ou hot reload
   bool get isAuthenticated {
-    // Primeira verificação: currentUser local
-    if (currentUser != null && (currentUserId?.isNotEmpty ?? false)) {
-      return true;
-    }
+    // 1. Se Firebase diz que está logado, está logado.
+    if (AuthStateService.instance.isAuthenticated) return true;
     
-    // Segunda verificação: AppState.currentUserId (fallback)
-    final stateUserId = AppState.currentUserId;
-    if (stateUserId != null && stateUserId.isNotEmpty) {
-      return true;
-    }
-    
-    return false;
+    // 2. Se temos um usuário válido no estado/sessão, consideramos logado
+    // Isso cobre o gap entre inicialização do app e restauração do Firebase
+    final user = currentUser;
+    return user != null && user.userId.isNotEmpty;
   }
   
   /// Verifica se dados do usuário estão carregados
   bool get isUserDataLoaded {
     final user = currentUser;
     return user != null && user.userId.isNotEmpty && user.userFullname.isNotEmpty;
+  }
+  
+  /// Tenta restaurar o usuário do SessionManager se o estado estiver vazio
+  void _restoreUserIfNeeded() {
+    if (_userNotifier.value == null) {
+      final sessionUser = SessionManager.instance.currentUser;
+      if (sessionUser != null) {
+        // Atualiza o notifier (que é o AppState.currentUser por padrão)
+        _userNotifier.value = sessionUser;
+        notifyListeners();
+      }
+    }
   }
   
   /// Calcula completeness de forma síncrona e reativa

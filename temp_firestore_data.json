@@ -1,0 +1,10 @@
+{
+  "AppInfo": {
+    "GoogleAndroidMaps": {
+      "Api_key": "AIzaSyAYourAndroidKeyHere"
+    },
+    "GoogleMapsApiKey": {
+      "Api_key": "AIzaSyAYouriOSKeyHere"
+    }
+  }
+}

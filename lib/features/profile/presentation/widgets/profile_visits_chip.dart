@@ -5,7 +5,7 @@ import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/features/profile/data/services/vip_access_service.dart';
 import 'package:partiu/features/profile/data/services/visits_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 
@@ -48,13 +48,10 @@ class ProfileVisitsChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset(
-              'assets/svg/eye-show-pass.svg',
-              height: 16,
-              colorFilter: const ColorFilter.mode(
-                GlimpseColors.visitsChipText,
-                BlendMode.srcIn,
-              ),
+            const Icon(
+              Iconsax.eye,
+              size: 16,
+              color: Colors.black,
             ),
             const SizedBox(width: 6),
             Builder(
@@ -63,7 +60,7 @@ class ProfileVisitsChip extends StatelessWidget {
                 return Text(
                   i18n.translate('profile_visits') ?? 'Visitas',
                   style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                    color: GlimpseColors.visitsChipText,
+                    color: Colors.black,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -79,7 +76,7 @@ class ProfileVisitsChip extends StatelessWidget {
                 return Text(
                   visits.toString(),
                   style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                    color: GlimpseColors.visitsChipText,
+                    color: Colors.black,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),

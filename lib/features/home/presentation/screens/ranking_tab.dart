@@ -9,6 +9,7 @@ class RankingTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: GlimpseEmptyState.standard(
           text: 'Ranking ainda não disponível\nImplementar funcionalidade de ranking',

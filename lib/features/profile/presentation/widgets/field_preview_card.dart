@@ -1,0 +1,158 @@
+import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/features/profile/presentation/models/personal_field_type.dart';
+import 'package:partiu/features/profile/presentation/models/social_field_type.dart';
+import 'package:partiu/features/profile/presentation/models/midia_field_type.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:iconsax/iconsax.dart';
+
+/// Widget que exibe um card de preview de campo no formato Instagram/TikTok
+/// Mostra label à esquerda e preview do valor à direita
+/// 
+/// 🎯 Widget "burro": Apenas exibe dados, delega navegação via callback
+/// Aceita qualquer enum que tenha titleKey e isRequired via extension
+class FieldPreviewCard extends StatelessWidget {
+  const FieldPreviewCard({
+    required this.fieldType,
+    required this.preview,
+    required this.onTap,
+    super.key,
+    this.isComplete = false,
+  });
+
+  final dynamic fieldType; // PersonalFieldType, SocialFieldType ou MidiaFieldType
+  final String preview;
+  final VoidCallback onTap;
+  final bool isComplete;
+
+  /// Helper para obter title de forma polimórfica
+  String _getTitle(BuildContext context) {
+    if (fieldType is PersonalFieldType) {
+      return (fieldType as PersonalFieldType).title(context);
+    } else if (fieldType is SocialFieldType) {
+      return (fieldType as SocialFieldType).title;
+    } else if (fieldType is MidiaFieldType) {
+      return (fieldType as MidiaFieldType).title;
+    }
+    throw UnsupportedError('Unsupported field type: ${fieldType.runtimeType}');
+  }
+
+  /// Helper para obter isRequired de forma polimórfica
+  bool _getIsRequired() {
+    if (fieldType is PersonalFieldType) {
+      return (fieldType as PersonalFieldType).isRequired;
+    } else if (fieldType is SocialFieldType) {
+      return false; // Social fields are optional
+    } else if (fieldType is MidiaFieldType) {
+      return false; // Midia fields are optional
+    }
+    throw UnsupportedError('Unsupported field type: ${fieldType.runtimeType}');
+  }
+
+  /// Helper para obter a largura da coluna de label baseada no tipo
+  double _getLabelColumnWidth() {
+    if (fieldType is PersonalFieldType) {
+      return 170.0;
+    } else if (fieldType is SocialFieldType) {
+      return 170.0;
+    } else if (fieldType is MidiaFieldType) {
+      return 100.0;
+    }
+    return 140.0; // fallback
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+    final label = _getTitle(context);
+
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: Colors.grey.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label à esquerda com largura fixa
+            SizedBox(
+              width: _getLabelColumnWidth(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666666),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (_getIsRequired()) ...[
+                    const SizedBox(width: 2),
+                    const Text(
+                      '*',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Preview à direita com expansão
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      preview.isEmpty ? i18n.translate('add') : preview,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: preview.isEmpty 
+                          ? const Color(0xFF999999)
+                          : const Color(0xFF333333),
+                        fontWeight: FontWeight.w400,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Iconsax.arrow_right_3,
+                      color: const Color(0xFFCCCCCC),
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_country_selector/flutter_country_selector.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'package:partiu/firebase_options.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/managers/session_manager.dart';
 import 'package:partiu/core/services/cache/cache_manager.dart';
+import 'package:partiu/core/services/google_maps_initializer.dart';
 import 'package:partiu/core/router/app_router.dart';
+import 'package:partiu/core/services/auth_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +19,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Inicializar Google Maps
+  await GoogleMapsInitializer.initialize();
 
   // Inicializar SessionManager
   await SessionManager.instance.initialize();
@@ -27,44 +33,100 @@ void main() async {
   final serviceLocator = ServiceLocator();
   await serviceLocator.init();
 
-  runApp(MyApp(serviceLocator: serviceLocator));
+  runApp(
+    MultiProvider(
+      providers: [
+        // AuthSyncService como singleton - ÚNICA fonte de verdade para auth
+        ChangeNotifierProvider(
+          create: (_) => AuthSyncService(),
+        ),
+        // DependencyProvider via Provider para compatibility
+        Provider<ServiceLocator>.value(
+          value: serviceLocator,
+        ),
+      ],
+      child: DependencyProvider(
+        serviceLocator: serviceLocator,
+        child: const AuthInitializationGate(),
+      ),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.serviceLocator});
-
-  final ServiceLocator serviceLocator;
+/// Widget que aguarda o AuthSyncService ser inicializado antes de mostrar a UI principal.
+/// Isso evita mostrar telas incorretas durante o boot do app.
+class AuthInitializationGate extends StatelessWidget {
+  const AuthInitializationGate({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return DependencyProvider(
-      serviceLocator: serviceLocator,
-      child: MaterialApp.router(
-        title: 'Partiu',
-        debugShowCheckedModeBanner: false,
+    return Consumer<AuthSyncService>(
+      builder: (context, authSync, child) {
+        // Aguarda inicialização do AuthSyncService
+        if (!authSync.initialized) {
+          return const MaterialApp(
+            home: Scaffold(
+              backgroundColor: Colors.white,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Verificando autenticação...',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        // AuthSyncService inicializado - pode mostrar app principal
+        return const MyApp();
+      },
+    );
+  }
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Cria goRouter com acesso ao AuthSyncService via context
+    final router = createAppRouter(context);
+    
+    return MaterialApp.router(
+      title: 'Partiu',
+      debugShowCheckedModeBanner: false,
+      
+      // Configuração de rotas com go_router protegido por AuthSyncService
+      routerConfig: router,
         
-        // Configuração de rotas com go_router
-        routerConfig: goRouter,
-        
-        // Configuração de localização
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-          CountrySelectorLocalization.delegate,
-        ],
-        supportedLocales: const [
-          Locale('pt', 'BR'), // Português
-          Locale('en', 'US'), // Inglês
-          Locale('es', 'ES'), // Espanhol
-        ],
-        locale: const Locale('pt', 'BR'), // Idioma padrão
-        
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
+      // Configuração de localização
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        CountrySelectorLocalization.delegate,
+      ],
+      supportedLocales: const [
+        Locale('pt', 'BR'), // Português
+        Locale('en', 'US'), // Inglês
+        Locale('es', 'ES'), // Espanhol
+      ],
+      locale: const Locale('pt', 'BR'), // Idioma padrão
+      
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
     );
   }

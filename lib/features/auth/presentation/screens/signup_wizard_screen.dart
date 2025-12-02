@@ -203,14 +203,12 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
     AppLogger.info('Finalizing signup', tag: _tag);
     
     final model = _cadastroViewModel;
-    final userType = 'vendor'; // Sempre vendor
 
     // Aceita os termos automaticamente
     model.setAgreeTerms(true);
     
     // Dados de onboarding consolidados
     final onboardingData = <String, dynamic>{
-      'userType': userType,
       'fullName': model.fullName.trim(),
       'gender': model.selectedGender,
       'birthDay': model.userBirthDay,
@@ -222,6 +220,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
       'jobTitle': model.jobTitle.trim(),
       'bio': model.bio.trim(),
       'country': model.country,
+      'originSource': model.originSource,
       'agreeTerms': model.agreeTerms,
     };
 
@@ -232,9 +231,9 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
       onSuccess: () {
         AppLogger.success('Signup completed successfully', tag: _tag);
         
-        // Navega para tela de sucesso usando go_router
+        // Navega diretamente para atualização de localização usando go_router
         if (mounted) {
-          context.go(AppRoutes.signupSuccess);
+          context.go(AppRoutes.updateLocation);
         }
       },
       onFail: (error) {
@@ -408,7 +407,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
               onBackTap: _handleBack,
               onCancelTap: _handleCancel,
               onContinueTap: isValid ? _handleNext : null,
-              cancelText: i18n.translate('CANCEL'),
+              cancelText: i18n.translate('cancel'),
               continueText: i18n.translate(isLastStep ? 'finish' : 'continue'),
               isContinueEnabled: isValid,
               isProcessing: _isLoading,
@@ -550,7 +549,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
               onBackTap: _handleBack,
               onCancelTap: _handleCancel,
               onContinueTap: isValid ? _handleNext : null,
-              cancelText: i18n.translate('CANCEL'),
+              cancelText: i18n.translate('cancel'),
               continueText: i18n.translate(isLastStep ? 'finish' : 'continue'),
               isContinueEnabled: isValid,
               isProcessing: _isLoading,

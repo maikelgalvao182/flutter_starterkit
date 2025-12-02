@@ -6,6 +6,8 @@ import 'package:partiu/features/home/presentation/screens/profile_tab.dart';
 import 'package:partiu/features/home/presentation/screens/ranking_tab.dart';
 import 'package:partiu/features/home/presentation/widgets/home_app_bar.dart';
 import 'package:partiu/features/home/presentation/widgets/home_bottom_navigation_bar.dart';
+import 'package:partiu/shared/widgets/auth_protected_wrapper.dart';
+
 
 /// Tela principal do app com navegação por tabs
 class HomeScreenRefactored extends StatefulWidget {
@@ -84,23 +86,31 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: (_selectedIndex == 0)
-          ? HomeAppBar(
-              onNotificationsTap: () {
-                // TODO: Implementar navegação para notificações
-                debugPrint('Notificações tapped');
-              },
-              onFilterTap: () {
-                // TODO: Implementar abertura de filtros
-                debugPrint('Filtros tapped');
-              },
-            )
-          : null,
-      body: _showCurrentNavBar(),
-      bottomNavigationBar: HomeBottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onTappedNavBar,
+    return AuthProtectedWrapper(
+      loadingMessage: 'Carregando dados do usuário...',
+      child: Scaffold(
+        appBar: (_selectedIndex == 0)
+            ? HomeAppBar(
+                onNotificationsTap: () {
+                  // TODO: Implementar navegação para notificações
+                  debugPrint('Notificações tapped');
+                },
+                onFilterTap: () {
+                  // TODO: Implementar abertura de filtros
+                  debugPrint('Filtros tapped');
+                },
+              )
+            : null,
+        body: Stack(
+          children: [
+            _showCurrentNavBar(),
+
+          ],
+        ),
+        bottomNavigationBar: HomeBottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onTappedNavBar,
+        ),
       ),
     );
   }

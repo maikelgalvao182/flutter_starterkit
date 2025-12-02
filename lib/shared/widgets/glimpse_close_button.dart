@@ -24,7 +24,7 @@ class GlimpseCloseButton extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: GlimpseColors.lightTextField,
+        color: GlimpseColors.primary,
         borderRadius: BorderRadius.circular(8),
       ),
       child: IconButton(

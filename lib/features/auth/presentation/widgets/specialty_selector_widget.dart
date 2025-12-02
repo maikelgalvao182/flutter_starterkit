@@ -25,7 +25,7 @@ class SpecialtySelectorWidget extends StatefulWidget {
 class _SpecialtySelectorWidgetState extends State<SpecialtySelectorWidget> {
   final Set<String> _selectedInterests = {};
   bool _hasInitialized = false;
-  static const int maxInterests = 6;
+  static const int maxInterests = 10;
 
   @override
   void initState() {
@@ -110,6 +110,7 @@ class _SpecialtySelectorWidgetState extends State<SpecialtySelectorWidget> {
     final remaining = maxInterests - _selectedInterests.length;
     
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         // Contador de selecionados
         Container(
@@ -128,23 +129,13 @@ class _SpecialtySelectorWidgetState extends State<SpecialtySelectorWidget> {
           ),
           child: Row(
             children: [
-              Icon(
-                _selectedInterests.length >= maxInterests 
-                    ? Icons.check_circle 
-                    : Icons.radio_button_unchecked,
-                color: _selectedInterests.length >= maxInterests 
-                    ? GlimpseColors.primary 
-                    : GlimpseColors.descriptionTextColorLight,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _selectedInterests.isEmpty
                       ? 'Escolha até $maxInterests interesses'
                       : remaining > 0
-                          ? '${_selectedInterests.length} selecionado${_selectedInterests.length > 1 ? 's' : ''} • Escolha mais $remaining'
-                          : '${_selectedInterests.length} interesses selecionados ✓',
+                          ? 'Escolha mais $remaining interesses'
+                          : 'Máximo de $maxInterests interesses selecionados',
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
                     fontSize: 14,
@@ -160,10 +151,12 @@ class _SpecialtySelectorWidgetState extends State<SpecialtySelectorWidget> {
         ),
         
         // Lista de interesses
-        Expanded(
+        Flexible(
+          fit: FlexFit.loose,
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Seções por categoria
                 _buildCategorySection(context, InterestCategory.food),

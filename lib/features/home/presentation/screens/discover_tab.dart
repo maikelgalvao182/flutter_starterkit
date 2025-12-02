@@ -9,6 +9,7 @@ class DiscoverTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: GlimpseEmptyState.standard(
           text: 'Nenhum usuário encontrado\nImplementar funcionalidade de descoberta',

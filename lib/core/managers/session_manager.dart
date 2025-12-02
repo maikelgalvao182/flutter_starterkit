@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:partiu/shared/models/user_model.dart';
+import 'package:partiu/core/models/user.dart';
+import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/core/services/app_cache_service.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -59,48 +61,100 @@ class SessionManager {
   // ==================== USER DATA ====================
 
   /// Usuário atualmente logado (ou null se não estiver logado)
-  UserModel? get currentUser {
+  User? get currentUser {
     try {
       final json = _prefsOrThrow.getString(_Keys.currentUser);
       if (json == null || json.isEmpty) return null;
       
       final data = jsonDecode(json) as Map<String, dynamic>;
-      return UserModel(
-        userId: data['userId'] as String,
-        fullName: data['fullName'] as String?,
-        email: data['email'] as String?,
-        photoUrl: data['photoUrl'] as String?,
-        userType: data['userType'] as String? ?? 'vendor',
-      );
+      return User.fromDocument(data);
     } catch (e, stack) {
       _logError('Failed to decode current user', e, stack);
       return null;
     }
   }
 
+  /// Salva o usuário atual (alias para currentUser setter)
+  Future<void> saveUser(User user) async {
+    currentUser = user;
+  }
+
   /// Define o usuário atual
-  set currentUser(UserModel? user) {
+  set currentUser(User? user) {
     try {
       if (user == null) {
         _prefsOrThrow.remove(_Keys.currentUser);
         _log('Current user cleared');
+        // Atualiza AppState imediatamente
+        AppState.currentUser.value = null;
+        AppState.isVerified.value = false;
       } else {
-        final json = jsonEncode(user.toMap());
+        // Usa método helper para serialização segura
+        final safeMap = _sanitizeForJson(_userToMap(user));
+        final json = jsonEncode(safeMap);
         _prefsOrThrow.setString(_Keys.currentUser, json);
         _log('Current user saved: ${user.userId}');
+        // Propaga para AppState para refletir antes do primeiro snapshot do Firestore
+        AppState.currentUser.value = user;
+        AppState.isVerified.value = user.userIsVerified == true;
       }
     } catch (e, stack) {
       _logError('Failed to save current user', e, stack);
     }
   }
+  
+  /// Converte User para Map (serialização segura)
+  /// 
+  /// Usa nomes de campos compatíveis com o fluxo de cadastro
+  Map<String, dynamic> _userToMap(User user) {
+    return {
+      // Campos principais
+      'userId': user.userId,
+      'fullName': user.userFullname,
+      'profilePhotoUrl': user.userProfilePhoto,
+      'gender': user.userGender,
+      'birthDay': user.userBirthDay,
+      'birthMonth': user.userBirthMonth,
+      'birthYear': user.userBirthYear,
+      'jobTitle': user.userJobTitle,
+      'bio': user.userBio,
+      'country': user.userCountry,
+      'locality': user.userLocality,
+      'state': user.userState,
+      'status': user.userStatus,
+      'level': user.userLevel,
+      'isVerified': user.userIsVerified,
+      'totalLikes': user.userTotalLikes,
+      'totalVisits': user.userTotalVisits,
+      'isOnline': user.isUserOnline,
+      
+      // Campos opcionais
+      if (user.userGallery != null) 'gallery': user.userGallery,
+      if (user.userSettings != null) 'settings': user.userSettings,
+      if (user.userInstagram != null) 'instagram': user.userInstagram,
+      if (user.interests != null) 'interests': user.interests,
+      if (user.languages != null) 'languages': user.languages,
+      if (user.photoUrl != null) 'photoUrl': user.photoUrl,
+      
+      // GeoPoint serializado como latitude/longitude
+      'latitude': user.userGeoPoint.latitude,
+      'longitude': user.userGeoPoint.longitude,
+      
+      // Timestamps como ISO strings
+      'registrationDate': user.userRegDate.toIso8601String(),
+      'lastLoginDate': user.userLastLogin.toIso8601String(),
+    };
+  }
 
   /// ID do usuário atual (atalho)
+  @Deprecated('Use AppState.currentUserId (reativo)')
   String? get currentUserId => currentUser?.userId;
 
   // ==================== AUTH STATE ====================
 
   /// Indica se o usuário está logado
   bool get isLoggedIn => _prefsOrThrow.getBool(_Keys.isLoggedIn) ?? false;
+  // Sugestão: prefira AppState.isLoggedIn para UI e lógica reativa
 
   /// Define o estado de login
   set isLoggedIn(bool value) {
@@ -246,12 +300,16 @@ class SessionManager {
   /// [token] - Token JWT/OAuth (opcional)
   /// [deviceId] - ID do dispositivo (opcional)
   Future<void> login(
-    UserModel user, {
+    User user, {
     String? token,
     String? deviceId,
   }) async {
     currentUser = user;
     isLoggedIn = true;
+
+    // Garante sincronização imediata do estado reativo
+    AppState.currentUser.value = user;
+    AppState.isVerified.value = user.userIsVerified == true;
     
     // Salva metadados opcionais
     if (token != null) {
@@ -283,17 +341,18 @@ class SessionManager {
   /// 
   /// Limpa TODOS os dados da sessão, mas preserva configurações do app
   Future<void> logout() async {
-    _log('Logging out user: ${currentUserId ?? 'unknown'}');
+    _log('Logging out user: ${AppState.currentUserId ?? 'unknown'}');
     
     // Preserva configurações que devem persistir
     final savedLanguage = language;
     final savedTheme = themeMode;
     final savedOnboarding = hasCompletedOnboarding;
     
-    // Limpa todos os dados
+    // Evita race conditions usando Future wrapper
+    // clear() pode ser síncrono em algumas plataformas
     await Future(() async {
       await _prefsOrThrow.clear();
-      await _prefsOrThrow.reload();
+      await _prefsOrThrow.reload(); // Força reload do estado
     });
     
     // Restaura configurações preservadas
@@ -301,10 +360,13 @@ class SessionManager {
     themeMode = savedTheme;
     hasCompletedOnboarding = savedOnboarding;
     
-    // Limpa caches externos
+    // Delegado para limpeza de caches externos
     await _clearExternalCaches();
     
     _log('User logged out successfully');
+
+    // Reset reativo global
+    AppState.reset();
   }
 
   /// Limpa TUDO (incluindo configurações do app)
@@ -313,6 +375,7 @@ class SessionManager {
   Future<void> clearAll() async {
     _log('Clearing ALL session data');
     
+    // Mesma proteção contra race conditions
     await Future(() async {
       await _prefsOrThrow.clear();
       await _prefsOrThrow.reload();
@@ -321,14 +384,27 @@ class SessionManager {
     await _clearExternalCaches();
     
     _log('All session data cleared');
+
+    // Reset também o estado reativo
+    AppState.reset();
   }
 
   /// Limpa caches externos (imagens, dados, etc)
+  /// 
+  /// Separação de responsabilidades - idealmente seria um CacheCleanupManager
   Future<void> _clearExternalCaches() async {
     try {
       // Limpa cache de imagens
       await DefaultCacheManager().emptyCache();
       _log('Image cache cleared');
+      
+      // Limpa AppCacheService (se existir)
+      try {
+        await AppCacheService.clearCache();
+        _log('AppCacheService cleared');
+      } catch (e) {
+        _log('AppCacheService not available or already clear');
+      }
     } catch (e, stack) {
       _logError('Error clearing external caches', e, stack);
     }
@@ -342,10 +418,20 @@ class SessionManager {
   }
 
   /// Imprime estado da sessão (debug only)
+  /// 
+  /// Mascara dados sensíveis para Sentry/logs
   void printSessionState() {
     _log('=== SESSION STATE ===');
     _log('Logged in: $isLoggedIn');
-    _log('User ID: ${_maskSensitiveData(currentUserId)}');
+    _log('User ID: ${_maskSensitiveData(AppState.currentUserId)}');
+    
+    // Mascara email (mostra apenas username)
+    final user = currentUser;
+    // userEmail removido do modelo User, usando userFullname como identificador secundário se necessário
+    if (user?.userFullname != null && user!.userFullname.isNotEmpty) {
+      _log('User Name: ${user.userFullname}');
+    }
+    
     _log('Language: $language');
     _log('Theme: $themeMode');
     _log('Notifications: $notificationsEnabled');
@@ -363,6 +449,31 @@ class SessionManager {
     final start = data.substring(0, 4);
     final end = data.substring(data.length - 4);
     return '$start****$end';
+  }
+
+  /// Atualiza o usuário atual mesclando com novos dados (Map)
+  /// Útil para atualizar dados parciais vindos de outras fontes (API, etc)
+  void updateCurrentUserFromMap(Map<String, dynamic> updates) {
+    final user = currentUser;
+    if (user == null) return;
+
+    try {
+      // 1. Converte usuário atual para Map
+      final currentMap = _userToMap(user);
+      
+      // 2. Mescla com atualizações
+      final mergedMap = {...currentMap, ...updates};
+      
+      // 3. Recria usuário
+      final newUser = User.fromDocument(mergedMap);
+      
+      // 4. Salva
+      currentUser = newUser;
+      
+      _log('Current user updated from map merge');
+    } catch (e, stack) {
+      _logError('Failed to update current user from map', e, stack);
+    }
   }
 
   // ==================== LOGGING ====================

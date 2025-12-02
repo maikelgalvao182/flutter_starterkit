@@ -1,34 +1,69 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Função auxiliar para verificar se o usuário está autenticado
+    //
+    // 🔐 Funções auxiliares de autenticação/autorização
+    //
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    // Função auxiliar para verificar se é o próprio usuário
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    // Regras para a coleção Users
+
+    //
+    // 👤 Coleção principal de usuários
+    // Path usado no app:
+    // - Users/{userId}
+    //   - fullName: string
+    //   - instagram: string
+    //   - jobTitle: string
+    //   - gender: string
+    //   - bio: string
+    //   - country: string
+    //   - originSource: string
+    //   - interests: array<string>
+    //   - agreeTerms: bool
+    //   - photoUrl: string
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //   - status: string ("active" | "blocked" | ...)
+    //   - isBlocked: bool
+    //
     match /Users/{userId} {
-      // Permite leitura se estiver autenticado
       allow read: if isSignedIn();
-      
-      // Permite criação apenas se for o próprio usuário
-      allow create: if isOwner(userId);
-      
-      // Permite atualização apenas se for o próprio usuário
-      allow update: if isOwner(userId);
-      
-      // Permite exclusão apenas se for o próprio usuário
-      allow delete: if isOwner(userId);
+      allow create, update, delete: if isOwner(userId);
     }
-    
-    // Outras coleções - ajuste conforme necessário
+
+    //
+    // 👥 Coleção em minúsculo usada em algumas partes do app
+    // Path usado no app:
+    // - users/{userId}
+    //   (espelho simplificado de Users/{userId} para o módulo de perfil/cache)
+    //
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
+    }
+
+    //
+    // ⚙️ Coleção de configurações da aplicação
+    // Path usado no app:
+    // - AppInfo/{configName}
+    //   - GoogleAndroidMaps/Api_key: string
+    //   - GoogleMapsApiKey/Api_key: string
+    //
+    match /AppInfo/{configName} {
+      allow read: if isSignedIn();
+      allow write: if false; // Apenas leitura para usuários
+    }
+
+    //
+    // 🚫 Outras coleções: bloqueadas por padrão
+    //
     match /{document=**} {
-      allow read, write: if false; // Bloqueia tudo por padrão
+      allow read, write: if false;
     }
   }
 }

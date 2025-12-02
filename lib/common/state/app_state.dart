@@ -1,4 +1,5 @@
 import 'package:partiu/core/models/user.dart' show User;
+import 'package:partiu/core/services/session_cleanup_service.dart';
 import 'package:flutter/foundation.dart';
 
 /// Estado global reativo da aplicação usando ValueNotifiers.
@@ -20,20 +21,8 @@ class AppState {
   static final isAppInBackground = ValueNotifier<bool>(false);
 
   // ==================== LIFECYCLE ====================
-  static void init({
-    required Stream<User?> userStream,
-    required Stream<int> notificationsStream,
-    required Stream<int> messagesStream,
-    required Stream<int> likesStream,
-  }) {
-    userStream.listen((user) {
-      currentUser.value = user;
-      isVerified.value = user?.isVerified ?? false;
-    });
-    notificationsStream.listen((n) => unreadNotifications.value = n);
-    messagesStream.listen((n) => unreadMessages.value = n);
-    likesStream.listen((n) => unreadLikes.value = n);
-  }
+  // AppState agora é gerenciado pelo AuthSyncService
+  // Streams de notificações podem ser adicionadas separadamente quando necessário
 
   static void reset() {
     currentUser.value = null;
@@ -46,8 +35,14 @@ class AppState {
   }
 
   static Future<void> signOut() async {
-    // TODO: Implementar logout real com Firebase Auth
-    reset();
+    // Implementa logout robusto usando SessionCleanupService
+    try {
+      final sessionCleanupService = SessionCleanupService();
+      await sessionCleanupService.performLogout();
+    } catch (e) {
+      // Fallback para reset básico se houver problemas
+      reset();
+    }
   }
 
   static int get totalUnread =>

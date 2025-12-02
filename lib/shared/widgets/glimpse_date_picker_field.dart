@@ -36,15 +36,22 @@ class GlimpseDatePickerField extends StatefulWidget {
 class _GlimpseDatePickerFieldState extends State<GlimpseDatePickerField> {
   final TextEditingController _controller = TextEditingController();
   late DateTime _selectedDate;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = widget.initialDate ?? DateTime.now();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     
-    // Formata a data inicial se fornecida
-    if (widget.initialDate != null) {
+    // Formata a data inicial apenas uma vez quando as dependências estiverem prontas
+    if (!_isInitialized && widget.initialDate != null) {
       _updateTextFieldValue(_selectedDate);
+      _isInitialized = true;
     }
   }
 

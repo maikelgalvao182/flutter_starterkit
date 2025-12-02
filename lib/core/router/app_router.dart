@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:partiu/features/auth/presentation/screens/sign_in_screen_refactored.dart';
 import 'package:partiu/features/auth/presentation/screens/signup_wizard_screen.dart';
 import 'package:partiu/features/auth/presentation/screens/email_auth_screen.dart';
@@ -8,12 +9,13 @@ import 'package:partiu/features/auth/presentation/screens/blocked_account_screen
 import 'package:partiu/features/location/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen.dart';
-import 'package:partiu/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/features/auth/presentation/widgets/signup_widgets.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/models/user.dart';
+import 'package:partiu/core/services/auth_sync_service.dart';
 
 /// Rotas da aplicação
 class AppRoutes {
@@ -29,11 +31,59 @@ class AppRoutes {
   static const String editProfile = '/edit-profile';
 }
 
-/// Configuração do GoRouter
-final goRouter = GoRouter(
-  initialLocation: AppRoutes.signIn,
-  debugLogDiagnostics: true,
-  routes: [
+/// Cria o GoRouter com proteção baseada no AuthSyncService
+GoRouter createAppRouter(BuildContext context) {
+  return GoRouter(
+    initialLocation: AppRoutes.signIn,
+    debugLogDiagnostics: true,
+    
+    // Proteção de rotas baseada no AuthSyncService
+    redirect: (context, state) {
+      try {
+        final authSync = Provider.of<AuthSyncService>(context, listen: false);
+        final currentPath = state.uri.path;
+        
+        debugPrint('GoRouter redirect: path=${currentPath}, initialized=${authSync.initialized}, isLoggedIn=${authSync.isLoggedIn}');
+        
+        // Se ainda não inicializou, não navegar (aguardar)
+        if (!authSync.initialized) {
+          debugPrint('GoRouter: Aguardando inicialização do AuthSyncService');
+          return null; // Bloqueia navegação até inicializar
+        }
+        
+        // Rotas públicas (não necessitam autenticação)
+        final publicRoutes = [
+          AppRoutes.signIn,
+          AppRoutes.emailAuth,
+          AppRoutes.forgotPassword,
+          AppRoutes.signupWizard,
+          AppRoutes.signupSuccess,
+        ];
+        
+        final isLoggedIn = authSync.isLoggedIn;
+        final isPublicRoute = publicRoutes.contains(currentPath);
+        
+        // Se não está logado e tenta acessar rota protegida
+        if (!isLoggedIn && !isPublicRoute) {
+          debugPrint('GoRouter: Usuário não logado, redirecionando para login');
+          return AppRoutes.signIn;
+        }
+        
+        // Se está logado mas tenta acessar rota de login
+        if (isLoggedIn && currentPath == AppRoutes.signIn) {
+          debugPrint('GoRouter: Usuário logado tentando acessar login, redirecionando para home');
+          return AppRoutes.home;
+        }
+        
+        debugPrint('GoRouter: Sem redirecionamento necessário');
+        return null; // Sem redirecionamento
+      } catch (e) {
+        debugPrint('GoRouter: Erro no redirect: $e');
+        return null;
+      }
+    },
+    
+    routes: [
     // Tela de Login
     GoRoute(
       path: AppRoutes.signIn,
@@ -124,23 +174,24 @@ final goRouter = GoRouter(
   
   // Tratamento de erro
   errorBuilder: (context, state) => Scaffold(
-    body: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
-          const SizedBox(height: 16),
-          Text('Erro: ${state.error}'),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => context.go(AppRoutes.signIn),
-            child: const Text('Voltar ao Login'),
-          ),
-        ],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Erro: ${state.error}'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.go(AppRoutes.signIn),
+              child: const Text('Voltar ao Login'),
+            ),
+          ],
+        ),
       ),
     ),
-  ),
-);
+  );
+}
 
 /// Tela de sucesso após cadastro
 class SignupSuccessScreen extends StatelessWidget {

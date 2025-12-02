@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/features/profile/data/services/image_upload_service.dart';
 
 /// ViewModel para gerenciar o fluxo de cadastro
 /// TODO: Implementar lógica completa
@@ -153,11 +156,34 @@ class CadastroViewModel extends ChangeNotifier {
       
       AppLogger.info('User interests: $interestsList (${interestsList.length} items)', tag: tag);
       
+      // Faz upload da foto de perfil se disponível
+      String? photoUrl;
+      if (imageFile != null && imageFile is File) {
+        try {
+          AppLogger.info('Uploading compressed profile image to Storage...', tag: tag);
+          
+          // Usa o serviço de upload de imagem com compressão
+          final imageUploadService = ImageUploadService();
+          photoUrl = await imageUploadService.uploadAvatarImage(
+            userId: userId,
+            filePath: (imageFile as File).path,
+            onProgress: (progress) {
+              AppLogger.info('Upload progress: ${(progress * 100).toInt()}%', tag: tag);
+            },
+          );
+          
+          AppLogger.success('Compressed profile image uploaded successfully', tag: tag);
+        } catch (e) {
+          AppLogger.error('Failed to upload profile image: $e', tag: tag);
+        }
+      }
+      
       // Prepara os dados do usuário para salvar no Firestore
       final userData = <String, dynamic>{
         'userId': userId,
+        'userEmail': currentUser.email, // Captura email do Auth (Google, Apple, Email/Pass)
+        'userPhone': currentUser.phoneNumber, // Captura telefone se disponível
         'fullName': onboardingData['fullName'],
-        'userType': onboardingData['userType'], // vendor
         
         // Birth date
         'birthDay': onboardingData['birthDay'],
@@ -171,6 +197,10 @@ class CadastroViewModel extends ChangeNotifier {
         'gender': onboardingData['gender'],
         'bio': onboardingData['bio'],
         'country': onboardingData['country'],
+        'originSource': onboardingData['originSource'],
+        
+        // Avatar
+        if (photoUrl != null) 'photoUrl': photoUrl,
         
         // Interests (até 6 atividades como array)
         'interests': interestsList,

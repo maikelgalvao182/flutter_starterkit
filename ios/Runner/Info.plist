@@ -60,5 +60,11 @@
 	<string>13564294004-g1564itcvv0iho4s1hkki11vdkjg87pc.apps.googleusercontent.com</string>
 	<key>GIDServerClientID</key>
 	<string>988152637100-ml129liekdajoaa85dtpsvj4opt3uudt.apps.googleusercontent.com</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Precisamos da sua localização para encontrar atividades perto de você.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Precisamos da sua localização mesmo em segundo plano para melhorar sua experiência.</string>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 </dict>
 </plist>

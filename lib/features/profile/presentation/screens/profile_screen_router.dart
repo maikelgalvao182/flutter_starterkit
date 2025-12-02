@@ -33,15 +33,35 @@ class ProfileScreenRouter {
 
   /// Navegar para edição de perfil
   static Future<void> navigateToEditProfile(BuildContext context) async {
+    // Aguardar um frame para garantir que AppState foi atualizado
+    await Future.delayed(Duration.zero);
+    
     final currentUserId = AppState.currentUserId;
-    if (currentUserId == null || currentUserId.isEmpty) {
+    
+    // Aguardar até 3 frames adicionais se ainda estiver null
+    if ((currentUserId == null || currentUserId.isEmpty) && context.mounted) {
+      for (int i = 0; i < 3; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        final retryUserId = AppState.currentUserId;
+        if (retryUserId != null && retryUserId.isNotEmpty) {
+          break;
+        }
+      }
+    }
+    
+    final finalUserId = AppState.currentUserId;
+    
+    if (finalUserId == null || finalUserId.isEmpty) {
       if (context.mounted) {
-        _showError(context, 'Usuário não autenticado');
+        _showError(context, 'Usuário não autenticado. Tente novamente.');
       }
       return;
     }
 
-    context.push(AppRoutes.editProfile);
+    // Usa go_router ao invés de Navigator direto
+    if (context.mounted) {
+      context.push(AppRoutes.editProfile);
+    }
   }
 
   /// Navegar por ID do usuário (busca dados frescos)

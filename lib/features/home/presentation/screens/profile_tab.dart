@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:provider/provider.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/models/user.dart';
@@ -11,7 +12,6 @@ import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/skeletons/profile_header_skeleton.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
-import 'package:partiu/shared/widgets/profile_completeness_ring.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/profile_info_chips.dart';
 import 'package:partiu/features/profile/presentation/widgets/app_section_card.dart';
@@ -46,21 +46,27 @@ class ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  late final ProfileTabViewModel _viewModel;
+  ProfileTabViewModel? _viewModel;
   
   // Cache de TextStyles para evitar recriação a cada build
   late TextStyle _nameTextStyle;
 
   @override
-  void initState() {
-    super.initState();
-    // Inicializa o ViewModel apenas uma vez
-    _viewModel = ProfileTabViewModel();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    
+    // Inicializa ViewModel apenas uma vez usando didChangeDependencies
+    if (_viewModel == null) {
+      final serviceLocator = DependencyProvider.of(context).serviceLocator;
+      _viewModel = serviceLocator.get<ProfileTabViewModel>();
+      
+      // Inicializa completeness check após primeiro frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _viewModel!.shouldCheckCompleteness()) {
+          _viewModel!.executeCompletenessCheck(context);
+        }
+      });
+    }
     
     // Cache de TextStyle - recriado apenas quando tema muda
     _nameTextStyle = GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
@@ -68,27 +74,21 @@ class _ProfileTabState extends State<ProfileTab> {
       fontSize: 18,
       fontWeight: FontWeight.w700,
     );
-    
-    // Inicializa ViewModel após primeiro frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _viewModel.shouldCheckCompleteness()) {
-        _viewModel.executeCompletenessCheck(context);
-      }
-    });
   }
 
   @override
   void dispose() {
-    _viewModel.dispose();
+    _viewModel?.dispose();
     super.dispose();
   }
 
   // ==================== EVENT HANDLERS ====================
   
   /// Handler: Navegar para visualização de perfil
+  /// Handler: Navegar para visualização de perfil
   /// Usa Command pattern - ViewModel valida, View executa navegação
   Future<void> _handleViewProfileTap(BuildContext context) async {
-    final command = _viewModel.prepareViewProfileNavigation();
+    final command = _viewModel?.prepareViewProfileNavigation();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     
     if (command == null) {
@@ -135,7 +135,7 @@ class _ProfileTabState extends State<ProfileTab> {
   
   /// Handler: Navegar para edição de perfil
   Future<void> _handleEditProfileTap(BuildContext context) async {
-    final command = _viewModel.prepareEditProfileNavigation();
+    final command = _viewModel?.prepareEditProfileNavigation();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     
     if (command == null) {
@@ -168,17 +168,25 @@ class _ProfileTabState extends State<ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
+    // Aguarda inicialização do ViewModel
+    if (_viewModel == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: _viewModel,
+          listenable: _viewModel!,
           builder: (context, _) {
             return SingleChildScrollView(
               physics: GlimpseStyles.scrollPhysics,
               child: Column(
                 children: [
-                  // Header (título + botões de ação)
                   _ProfileHeader(
                     onViewProfile: () => _handleViewProfileTap(context),
                     onEditProfile: () => _handleEditProfileTap(context),
@@ -187,7 +195,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   
                   // Profile header content
                   _ProfileHeaderContent(
-                    viewModel: _viewModel,
+                    viewModel: _viewModel!,
                     nameTextStyle: _nameTextStyle,
                     onAvatarTap: () => _handleUpdateProfilePhoto(context),
                     onEditProfile: () => _handleEditProfileTap(context),
@@ -217,11 +225,11 @@ class _ProfileTabState extends State<ProfileTab> {
 class _IconButton extends StatelessWidget {
   
   const _IconButton({
-    required this.assetPath,
+    required this.icon,
     required this.tooltip,
     required this.onPressed,
   });
-  final String assetPath;
+  final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
   
@@ -232,14 +240,10 @@ class _IconButton extends StatelessWidget {
       child: IconButton(
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
-        icon: SvgPicture.asset(
-          assetPath,
-          width: 24,
-          height: 24,
-          colorFilter: ColorFilter.mode(
-            Theme.of(context).iconTheme.color!,
-            BlendMode.srcIn,
-          ),
+        icon: Icon(
+          icon,
+          size: 24,
+          color: Theme.of(context).iconTheme.color,
         ),
         tooltip: tooltip,
         onPressed: () {
@@ -281,13 +285,13 @@ class _ProfileHeader extends StatelessWidget {
           ),
           // Botões de ação
           _IconButton(
-            assetPath: 'assets/svg/user-circle.svg',
+            icon: Iconsax.user,
             tooltip: i18n.translate('view_profile') ?? 'Ver Perfil',
             onPressed: onViewProfile,
           ),
           const SizedBox(width: 16),
           _IconButton(
-            assetPath: 'assets/svg/edit-pen.svg',
+            icon: Iconsax.edit_2,
             tooltip: i18n.translate('edit_profile') ?? 'Editar Perfil',
             onPressed: onEditProfile,
           ),
@@ -321,60 +325,60 @@ class _ProfileHeaderContent extends StatelessWidget {
     }
     
     // Show actual profile data
-    return Column(
-      children: [
-        // Avatar com Progress Ring REATIVO
-        Center(
-          child: ValueListenableBuilder<User?>(
-            valueListenable: AppState.currentUser,
-            builder: (context, currentUser, _) {
-              if (currentUser == null) {
-                return const SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: CircularProgressIndicator(),
-                );
-              }
-              
-              // Calcula porcentagem de completude
-              final percentage = viewModel.calculateCompletenessPercentage();
-              
-              return ProfileCompletenessRing(
-                size: 100,
-                strokeWidth: 3,
-                percentage: percentage,
-                child: GestureDetector(
-                  onTap: onAvatarTap,
-                  child: StableAvatar(
-                    userId: currentUser.userId,
-                    size: 88,
-                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        children: [
+          // Avatar com Progress Ring REATIVO
+          Center(
+            child: ValueListenableBuilder<User?>(
+              valueListenable: AppState.currentUser,
+              builder: (context, currentUser, _) {
+                if (currentUser == null) {
+                  return const SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: CircularProgressIndicator(),
+                  );
+                }
+                
+                return ReactiveProfileCompletenessRing(
+                  size: 100,
+                  strokeWidth: 3,
+                  child: GestureDetector(
+                    onTap: onAvatarTap,
+                    child: StableAvatar(
+                      userId: currentUser.userId,
+                      size: 88,
+                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                      photoUrl: currentUser.photoUrl ?? currentUser.userProfilePhoto,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // Nome completo
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ReactiveUserNameWithBadge(
-              userId: user.userId,
-              style: nameTextStyle,
-              iconSize: 14,
-              spacing: 6,
-              textAlign: TextAlign.center,
+                );
+              },
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        
-        // Localização + Visits
-        const ProfileInfoChips(),
-      ],
+          const SizedBox(height: 12),
+          
+          // Nome completo
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ReactiveUserNameWithBadge(
+                userId: user.userId,
+                style: nameTextStyle,
+                iconSize: 14,
+                spacing: 6,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Localização + Visits
+          const ProfileInfoChips(),
+        ],
+      ),
     );
   }
 }
