@@ -1,5 +1,6 @@
 /// Modelos para sistema de upload de fotos
 /// Baseado no sistema do Advanced-Dating
+library;
 
 /// Tipos de upload de foto
 enum PhotoUploadType {

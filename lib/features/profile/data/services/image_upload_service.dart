@@ -204,7 +204,7 @@ class ImageUploadService {
         quality: 80,
       );
       
-      debugPrint('[$_tag] ✅ Compression complete: ${originalSize} -> ${compressedBytes.length} bytes');
+      debugPrint('[$_tag] ✅ Compression complete: $originalSize -> ${compressedBytes.length} bytes');
       AppLogger.info('Image compressed: ${file.lengthSync()} bytes -> ${compressedBytes.length} bytes', tag: _tag);
       
       final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';

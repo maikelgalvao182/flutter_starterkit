@@ -118,7 +118,6 @@ class ConversationDataProcessor {
     if (trimmedName.isEmpty) return '';
 
     final firstWord = trimmedName.split(' ').first;
-    final firstLetter = firstWord.isNotEmpty ? firstWord[0].toUpperCase() : '';
 
     // TODO: Apply VIP masking logic if needed
     // For now, just return the first name

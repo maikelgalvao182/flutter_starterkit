@@ -106,7 +106,7 @@ class VipAccessService {
       
       if (!hasAccess) {
         _log('No access, showing VIP dialog');
-        // ignore: use_build_context_synchronously
+        if (!context.mounted) return false;
         final result = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -126,6 +126,7 @@ class VipAccessService {
     } catch (e) {
       _log('Erro em checkAccessOrShowDialog: $e');
       // Em caso de erro, mostra o dialog para segurança
+      if (!context.mounted) return false;
       final result = await showDialog<bool>(
         context: context,
         barrierDismissible: false,

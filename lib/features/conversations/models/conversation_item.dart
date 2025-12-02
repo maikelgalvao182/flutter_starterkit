@@ -22,7 +22,7 @@ class ConversationItem {
   });
 
   factory ConversationItem.fromJson(Map<String, dynamic> json) {
-    DateTime? _parseTimestamp(dynamic value) {
+    DateTime? parseTimestamp(dynamic value) {
       if (value == null) return null;
       if (value is DateTime) return value;
       if (value is String) {
@@ -50,7 +50,7 @@ class ConversationItem {
         json['last_message_timestamp'] ??
         json['last_message_at'] ??
         json['timestamp'];
-    final parsedTs = _parseTimestamp(rawTs);
+    final parsedTs = parseTimestamp(rawTs);
 
     // Resolve IDs and name from multiple possible keys
     final id = (json['id'] ?? json['conversationId'] ?? json['userId'] ?? '')

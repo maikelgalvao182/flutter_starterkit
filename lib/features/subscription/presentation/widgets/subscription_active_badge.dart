@@ -1,7 +1,7 @@
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 /// Badge indicando que o usuário tem assinatura VIP ativa
 /// 

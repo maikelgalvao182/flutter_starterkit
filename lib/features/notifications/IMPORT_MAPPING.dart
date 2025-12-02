@@ -1,5 +1,6 @@
 /// Mapeamento de imports do Advanced-Dating para Partiu
 /// Use este arquivo como referência ao migrar código
+library;
 
 // ===== WIDGETS =====
 // Advanced-Dating: import 'package:dating_app/widgets/stable_avatar.dart';

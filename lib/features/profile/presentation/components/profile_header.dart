@@ -3,14 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:circle_flags/circle_flags.dart';
 import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/constants/glimpse_variables.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/stores/user_store.dart';
-import 'package:partiu/shared/widgets/reactive/reactive_user_age.dart';
-import 'package:partiu/shared/widgets/reactive/reactive_user_city.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 
 /// Header principal do perfil com foto, nome, idade e informações básicas

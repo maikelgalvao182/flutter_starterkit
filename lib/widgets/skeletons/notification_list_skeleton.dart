@@ -90,10 +90,9 @@ class _Box extends StatelessWidget {
   final double height;
   final double radius;
 
-  const _Box.square(double size, {double radius = 8})
+  const _Box.square(double size, {this.radius = 8})
       : width = size,
-        height = size,
-        radius = radius;
+        height = size;
 
   @override
   Widget build(BuildContext context) {

@@ -105,18 +105,20 @@ class ProfileCompletenessPromptService {
             subtitle: i18n.translate('profile_completeness_percentage_subtitle')
                 .replaceAll('{percentage}', pct.toString()),
             onDontShow: () async {
+              final navigator = Navigator.of(ctx);
               await prefs.setBool('$_prefsDismissKeyPrefix$currentUserId', true);
               AppLogger.info('User dismissed permanently', tag: _tag);
-              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+              if (navigator.canPop()) navigator.pop();
             },
             onEditProfile: () async {
+              final navigator = Navigator.of(ctx);
               // Marca último show (cooldown começa agora)
               await prefs.setInt(
                 '$_prefsCooldownKeyPrefix$currentUserId',
                 DateTime.now().millisecondsSinceEpoch,
               );
               AppLogger.info('User clicked edit profile', tag: _tag);
-              if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+              if (navigator.canPop()) navigator.pop();
               
               // Navegar para tela de edição imediatamente
               if (context.mounted) {

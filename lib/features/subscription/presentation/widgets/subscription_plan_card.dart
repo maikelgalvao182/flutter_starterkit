@@ -37,9 +37,6 @@ class SubscriptionPlanCard extends StatelessWidget {
     final borderColor = isSelected ? Colors.black : Colors.grey.shade300;
     final iconBg = isSelected ? Colors.black : Colors.white;
     final iconBorder = isSelected ? Colors.black : Colors.grey.shade300;
-    final iconColorFilter = isSelected
-        ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
-        : const ColorFilter.mode(Colors.black, BlendMode.srcIn);
 
     return GestureDetector(
       onTap: () {
@@ -57,7 +54,7 @@ class SubscriptionPlanCard extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

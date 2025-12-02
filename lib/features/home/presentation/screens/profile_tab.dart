@@ -115,17 +115,6 @@ class _ProfileTabState extends State<ProfileTab> {
       }
     }
   }
-  
-  /// Exibe toast de erro
-  void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red[700],
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
   /// Exibe toast de erro usando ScaffoldMessenger já capturado
   void _showErrorWithMessenger(ScaffoldMessengerState scaffoldMessenger, String message) {

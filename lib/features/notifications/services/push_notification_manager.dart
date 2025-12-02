@@ -446,7 +446,6 @@ class PushNotificationManager {
     if (_authListener != null) return;
     _authListener = fire_auth.FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null && _pendingToken != null) {
-        final token = _pendingToken!;
         _pendingToken = null;
         print('[RESUME] Sincronizando token pendente após login');
         // TODO: Sincronizar token

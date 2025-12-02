@@ -126,9 +126,4 @@ class SubscriptionPurchaseController extends ChangeNotifier {
   }
 
   Future<void> retry() => initialize();
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

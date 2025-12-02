@@ -37,7 +37,14 @@ class _UserImagesGridState extends State<UserImagesGrid> {
     debugPrint('[UserImagesGrid] 🗑️ handleDeleteImage called for index: $index');
     
     final serviceLocator = DependencyProvider.of(context).serviceLocator;
+    final i18n = AppLocalizations.of(context);
     final vm = serviceLocator.get<ImageUploadViewModel>();
+    
+    // Captura traduções antes do await
+    final imageDeletedMsg = i18n.translate('image_deleted');
+    final imageRemovedMsg = i18n.translate('image_removed_successfully');
+    final deleteFailedMsg = i18n.translate('delete_failed');
+    
     final result = await vm.deleteGalleryImageAtIndex(index: index);
     
     if (!mounted) {
@@ -45,20 +52,20 @@ class _UserImagesGridState extends State<UserImagesGrid> {
       return;
     }
     
-    final i18n = AppLocalizations.of(context);
-    
     if (result.success) {
       debugPrint('[UserImagesGrid] ✅ Delete SUCCESS for index: $index');
+      if (!context.mounted) return;
       ToastService.showError(
         context: context,
-        title: i18n.translate('image_deleted'),
-        subtitle: i18n.translate('image_removed_successfully'),
+        title: imageDeletedMsg,
+        subtitle: imageRemovedMsg,
       );
     } else {
       debugPrint('[UserImagesGrid] ❌ Delete FAILED for index: $index - ${result.errorMessage}');
+      if (!context.mounted) return;
       ToastService.showError(
         context: context,
-        title: i18n.translate('delete_failed'),
+        title: deleteFailedMsg,
         subtitle: 'Failed to remove image: ${result.errorMessage}',
       );
     }
@@ -66,6 +73,11 @@ class _UserImagesGridState extends State<UserImagesGrid> {
 
   Future<void> _handleAddImage(BuildContext context, int index) async {
     debugPrint('[UserImagesGrid] 🖼️ handleAddImage called for index: $index');
+    
+    // Captura dependências antes de qualquer await
+    final i18n = AppLocalizations.of(context);
+    final serviceLocator = DependencyProvider.of(context).serviceLocator;
+    final vm = serviceLocator.get<ImageUploadViewModel>();
     
     try {
       final picker = ImagePicker();
@@ -89,7 +101,8 @@ class _UserImagesGridState extends State<UserImagesGrid> {
       // Verificar se arquivo existe e tem tamanho válido
       if (!await file.exists()) {
         debugPrint('[UserImagesGrid] ❌ Selected file does not exist');
-        _showErrorToast(context, 'Arquivo selecionado não foi encontrado');
+        if (!context.mounted) return;
+        _showErrorToastWithI18n(context, i18n, 'Arquivo selecionado não foi encontrado');
         return;
       }
       
@@ -98,7 +111,8 @@ class _UserImagesGridState extends State<UserImagesGrid> {
       
       if (fileSize == 0) {
         debugPrint('[UserImagesGrid] ❌ File size is zero');
-        _showErrorToast(context, 'Arquivo inválido (tamanho zero)');
+        if (!context.mounted) return;
+        _showErrorToastWithI18n(context, i18n, 'Arquivo inválido (tamanho zero)');
         return;
       }
       
@@ -108,8 +122,6 @@ class _UserImagesGridState extends State<UserImagesGrid> {
         debugPrint('[UserImagesGrid] ⏳ Loading state set for index: $index');
       }
       
-      final serviceLocator = DependencyProvider.of(context).serviceLocator;
-      final vm = serviceLocator.get<ImageUploadViewModel>();
       debugPrint('[UserImagesGrid] 🚀 Starting upload for index: $index with ViewModel');
       debugPrint('[UserImagesGrid] 🔍 ServiceLocator obtained: ${serviceLocator.runtimeType}');
       
@@ -120,10 +132,9 @@ class _UserImagesGridState extends State<UserImagesGrid> {
         return;
       }
       
-      final i18n = AppLocalizations.of(context);
-      
       if (result.success) {
         debugPrint('[UserImagesGrid] ✅ Upload SUCCESS for index: $index');
+        if (!context.mounted) return;
         ToastService.showSuccess(
           context: context,
           title: i18n.translate('image_uploaded'),
@@ -131,12 +142,14 @@ class _UserImagesGridState extends State<UserImagesGrid> {
         );
       } else {
         debugPrint('[UserImagesGrid] ❌ Upload FAILED for index: $index - ${result.errorMessage}');
-        _showErrorToast(context, '${i18n.translate('failed_to_upload_image')}: ${result.errorMessage}');
+        if (!context.mounted) return;
+        _showErrorToastWithI18n(context, i18n, '${i18n.translate('failed_to_upload_image')}: ${result.errorMessage}');
       }
     } catch (e, stackTrace) {
       debugPrint('[UserImagesGrid] 💥 Exception in _handleAddImage: $e');
       debugPrint('[UserImagesGrid] 📚 StackTrace: $stackTrace');
-      _showErrorToast(context, 'Erro inesperado: $e');
+      if (!context.mounted) return;
+      _showErrorToastWithI18n(context, i18n, 'Erro inesperado: $e');
     } finally {
       // Garantir que loading seja removido
       if (mounted) {
@@ -145,9 +158,8 @@ class _UserImagesGridState extends State<UserImagesGrid> {
       }
     }
   }
-  
-  void _showErrorToast(BuildContext context, String message) {
-    final i18n = AppLocalizations.of(context);
+
+  void _showErrorToastWithI18n(BuildContext context, AppLocalizations i18n, String message) {
     ToastService.showError(
       context: context,
       title: i18n.translate('upload_failed'),

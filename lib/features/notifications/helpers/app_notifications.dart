@@ -20,9 +20,9 @@ class AppNotifications {
       case NOTIF_TYPE_MESSAGE:
       case 'new_message':
         // Navigate to conversations tab
-        Future(() {
+        if (context.mounted) {
           _goToConversationsTab(context);
-        });
+        }
       
       case 'alert':
         // Alertas não precisam de ação específica aqui

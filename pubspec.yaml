@@ -59,6 +59,7 @@ dependencies:
   timeago: ^3.7.1
   
   # Localization & Formatting
+  intl: ^0.20.2
   country_code_picker: ^3.4.0
   flutter_country_selector: ^1.0.18
   currency_text_input_formatter: ^2.2.3

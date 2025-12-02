@@ -45,7 +45,7 @@ GoRouter createAppRouter(BuildContext context) {
         final authSync = Provider.of<AuthSyncService>(context, listen: false);
         final currentPath = state.uri.path;
         
-        debugPrint('GoRouter redirect: path=${currentPath}, initialized=${authSync.initialized}, isLoggedIn=${authSync.isLoggedIn}');
+        debugPrint('GoRouter redirect: path=$currentPath, initialized=${authSync.initialized}, isLoggedIn=${authSync.isLoggedIn}');
         
         // Se ainda não inicializou, não navegar (aguardar)
         if (!authSync.initialized) {

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 /// Socket.IO Service para comunicação em tempo real com WebSocket Service
 /// Substitui Firestore Streams por WebSocket para reduzir complexidade
@@ -10,10 +10,9 @@ class SocketService {
   factory SocketService() => _instance;
   static SocketService get instance => _instance;
 
-  SocketService._internal() {
-  }
+  SocketService._internal();
 
-  IO.Socket? _socket;
+  io.Socket? _socket;
   bool _isConnected = false;
   String? _wsUrl;
 
@@ -75,9 +74,9 @@ class SocketService {
 
 
       // Configura Socket.IO forçando WebSocket puro
-      _socket = IO.io(
+      _socket = io.io(
         _wsUrl,
-        IO.OptionBuilder()
+        io.OptionBuilder()
             .setTransports(['websocket']) // APENAS WebSocket, sem polling
             .disableAutoConnect() // Controle manual
             .enableReconnection()

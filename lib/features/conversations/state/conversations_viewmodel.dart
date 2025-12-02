@@ -144,8 +144,8 @@ class ConversationsViewModel extends ChangeNotifier {
         _socket.subscribeToConversations();
         _socket.onConversationsSnapshot(_handleWsSnapshot);
         _socket.onConversationsUpdated(_handleWsUpdated);
-        _socket.onConversationsUnreadCount((count) {
-          _wsUnreadCount = count;
+        _socket.onConversationsUnreadCount((unreadCount) {
+          _wsUnreadCount = unreadCount;
           notifyListeners();
         });
       } catch (_) {

@@ -167,11 +167,11 @@ class SimpleRevenueCatService {
     if (!_initialized) await initialize();
 
     AppLogger.info('Iniciando compra: ${package.storeProduct.identifier}');
-    final info = await Purchases.purchasePackage(package);
+    final result = await Purchases.purchaseStoreProduct(package.storeProduct);
 
-    _lastInfo = info;
+    _lastInfo = result.customerInfo;
 
-    return info;
+    return result.customerInfo;
   }
 
   // --------------------------------------------------------------------------

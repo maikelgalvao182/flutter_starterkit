@@ -1,11 +1,9 @@
 // Colors provided via ConversationStyles
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/conversations/utils/conversation_styles.dart';
 // import 'package:partiu/shared/widgets/sliding_search_icon_button.dart'; // TODO: Implementar
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class ConversationsHeader extends StatelessWidget {
   const ConversationsHeader({required this.isDarkMode, super.key});

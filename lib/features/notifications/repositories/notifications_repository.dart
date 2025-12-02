@@ -17,7 +17,6 @@ class NotificationsRepository implements INotificationsRepository {
   static const String _fieldRead = 'n_read';
   static const String _fieldTimestamp = 'timestamp';
   static const String _fieldParams = 'n_params';
-  static const String _fieldMetadata = 'n_metadata';
 
   /// Get current user ID
   String? get _currentUserId => _auth.currentUser?.uid;

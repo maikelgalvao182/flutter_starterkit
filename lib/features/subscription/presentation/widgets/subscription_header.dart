@@ -39,7 +39,7 @@ class SubscriptionHeader extends StatelessWidget {
             ),
           ),
           child: ColoredBox(
-            color: Colors.black.withOpacity(0.6),
+            color: Colors.black.withValues(alpha: 0.6),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -87,7 +87,7 @@ class SubscriptionHeader extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.14),
+                color: Colors.white.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
