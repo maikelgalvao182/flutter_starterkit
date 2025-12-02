@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:partiu/screens/notifications/repositories/notifications_repository_interface.dart';
+import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 
 /// Implementação do repositório de notificações com acesso direto ao Firestore
 class NotificationsRepository implements INotificationsRepository {

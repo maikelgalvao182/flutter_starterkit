@@ -1,5 +1,5 @@
-import 'package:partiu/services/simple_revenue_cat_service.dart';
-import 'package:partiu/services/subscription_monitoring_service.dart';
+import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
+import 'package:partiu/features/subscription/services/subscription_monitoring_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 

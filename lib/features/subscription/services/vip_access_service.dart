@@ -1,6 +1,6 @@
 import 'package:partiu/dialogs/vip_dialog.dart';
-import 'package:partiu/services/simple_revenue_cat_service.dart';
-import 'package:partiu/services/subscription_monitoring_service.dart';
+import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
+import 'package:partiu/features/subscription/services/subscription_monitoring_service.dart';
 import 'package:flutter/material.dart';
 
 /// Serviço para verificar status VIP e controlar acesso a funcionalidades premium

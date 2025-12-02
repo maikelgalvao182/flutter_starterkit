@@ -168,10 +168,10 @@ class ToastService {
       // If anything goes wrong determining mounted state, proceed cautiously
     }
 
-    // Tenta obter overlay diretamente
+    // Try getting overlay via root navigator first (more reliable after dialogs pop)
     OverlayState? overlayState;
     try {
-      overlayState = Overlay.maybeOf(context, rootOverlay: true);
+      overlayState = Navigator.maybeOf(context, rootNavigator: true)?.overlay;
     } catch (_) {
       // ignore
     }

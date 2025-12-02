@@ -1,9 +1,9 @@
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/screens/notifications/controllers/simplified_notification_controller.dart';
-import 'package:partiu/screens/notifications/widgets/notification_item_widget.dart';
-import 'package:partiu/screens/notifications/widgets/notification_horizontal_filters.dart';
+import 'package:partiu/features/notifications/controllers/simplified_notification_controller.dart';
+import 'package:partiu/features/notifications/widgets/notification_item_widget.dart';
+import 'package:partiu/features/notifications/widgets/notification_horizontal_filters.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/widgets/skeletons/notification_list_skeleton.dart';

@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/screens/notifications/helpers/app_notifications.dart';
-import 'package:partiu/screens/notifications/helpers/notification_text_sanitizer.dart';
-import 'package:partiu/screens/notifications/helpers/notification_message_translator.dart';
+import 'package:partiu/features/notifications/helpers/app_notifications.dart';
+import 'package:partiu/features/notifications/helpers/notification_text_sanitizer.dart';
+import 'package:partiu/features/notifications/helpers/notification_message_translator.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:flutter/material.dart';

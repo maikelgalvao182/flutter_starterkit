@@ -6,7 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fire_auth;
-import 'package:partiu/screens/notifications/helpers/app_notifications.dart';
+import 'package:partiu/features/notifications/helpers/app_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:partiu/firebase_options.dart';
 import 'package:partiu/core/utils/app_localizations.dart';

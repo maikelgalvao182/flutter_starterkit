@@ -1,5 +1,5 @@
 import 'package:partiu/features/subscription/domain/subscription_plan.dart';
-import 'package:partiu/providers/simple_subscription_provider.dart';
+import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 

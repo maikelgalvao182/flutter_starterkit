@@ -1,5 +1,5 @@
-import 'package:partiu/services/subscription_monitoring_service.dart';
-import 'package:partiu/services/vip_access_service.dart';
+import 'package:partiu/features/subscription/services/subscription_monitoring_service.dart';
+import 'package:partiu/features/subscription/services/vip_access_service.dart';
 import 'package:flutter/widgets.dart';
 
 /// Centraliza checagens de acesso VIP.

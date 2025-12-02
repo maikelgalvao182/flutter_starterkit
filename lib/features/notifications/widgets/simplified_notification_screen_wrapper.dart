@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:partiu/screens/notifications/controllers/simplified_notification_controller.dart';
-import 'package:partiu/screens/notifications/repositories/notifications_repository.dart';
-import 'package:partiu/screens/notifications/widgets/simplified_notification_screen.dart';
+import 'package:partiu/features/notifications/controllers/simplified_notification_controller.dart';
+import 'package:partiu/features/notifications/repositories/notifications_repository.dart';
+import 'package:partiu/features/notifications/widgets/simplified_notification_screen.dart';
 
 /// Wrapper para instanciar o SimplifiedNotificationScreen com suas dependências
 class SimplifiedNotificationScreenWrapper extends StatefulWidget {

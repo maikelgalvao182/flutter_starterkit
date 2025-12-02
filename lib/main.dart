@@ -12,7 +12,7 @@ import 'package:partiu/core/services/google_maps_initializer.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
-import 'package:partiu/providers/simple_subscription_provider.dart';
+import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

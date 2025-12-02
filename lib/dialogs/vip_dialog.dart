@@ -10,10 +10,10 @@ import 'package:partiu/features/subscription/presentation/widgets/subscription_p
 import 'package:partiu/features/subscription/presentation/widgets/subscription_states.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/helpers/toast_messages_helper.dart';
-import 'package:partiu/providers/simple_subscription_provider.dart';
-import 'package:partiu/services/simple_revenue_cat_service.dart';
-import 'package:partiu/services/toast_service.dart';
-import 'package:partiu/services/vip_access_service.dart';
+import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
+import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
+import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/features/subscription/services/vip_access_service.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

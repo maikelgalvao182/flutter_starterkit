@@ -16,7 +16,7 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
-import 'package:partiu/screens/notifications/widgets/simplified_notification_screen_wrapper.dart';
+import 'package:partiu/features/notifications/widgets/simplified_notification_screen_wrapper.dart';
 
 /// Rotas da aplicação
 class AppRoutes {

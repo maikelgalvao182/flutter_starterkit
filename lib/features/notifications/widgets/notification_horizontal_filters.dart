@@ -1,4 +1,4 @@
-import 'package:partiu/screens/notifications/widgets/notification_filter.dart';
+import 'package:partiu/features/notifications/widgets/notification_filter.dart';
 import 'package:flutter/material.dart';
 
 /// Horizontal list of notification categories
