@@ -114,7 +114,8 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
         birthYear: currentUser.birthYear,
         locality: currentUser.locality ?? '',
         state: currentUser.state ?? '',
-        country: currentUser.country ?? '',
+        country: currentUser.from ?? '', // País de origem
+        locationCountry: currentUser.country ?? '', // País da localização atual
         instagram: currentUser.instagram ?? '',
         // ✅ CRÍTICO: Converter array de interesses para string CSV para compatibilidade com UI
         // Ex: ["Fotografia", "Videografia"] -> "Fotografia,Videografia"
@@ -329,7 +330,7 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
         updateData['state'] = data.state!.trim();
       }
       if (data.country != null && data.country!.isNotEmpty) {
-        updateData['country'] = data.country!.trim();
+        updateData['from'] = data.country!.trim();
       }
       if (data.email != null && data.email!.isNotEmpty) {
         updateData['email'] = data.email!.trim();

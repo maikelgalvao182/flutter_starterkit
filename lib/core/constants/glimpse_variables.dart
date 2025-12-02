@@ -1,6 +1,8 @@
 /// Constantes e variáveis globais do Partiuu
 library;
 
+import 'package:flutter_country_selector/flutter_country_selector.dart';
+
 /// Modelo de interesse/tag
 class InterestTag {
   final String id;
@@ -116,4 +118,227 @@ const List<InterestTag> interestListDisplay = [
 /// Retorna os interesses filtrados por categoria
 List<InterestTag> getInterestsByCategory(String category) {
   return interestListDisplay.where((interest) => interest.category == category).toList();
+}
+
+/// Retorna o InterestTag pelo ID
+InterestTag? getInterestById(String id) {
+  try {
+    return interestListDisplay.firstWhere((interest) => interest.id == id);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Mapa de idiomas para chaves de tradução e bandeiras
+final Map<String, LanguageInfo> _languageMap = {
+  'portuguese': LanguageInfo('language_portuguese', '🇧🇷'),
+  'portugues': LanguageInfo('language_portuguese', '🇧🇷'),
+  'português': LanguageInfo('language_portuguese', '🇧🇷'),
+  'english': LanguageInfo('language_english', '🇺🇸'),
+  'ingles': LanguageInfo('language_english', '🇺🇸'),
+  'inglês': LanguageInfo('language_english', '🇺🇸'),
+  'spanish': LanguageInfo('language_spanish', '🇪🇸'),
+  'espanhol': LanguageInfo('language_spanish', '🇪🇸'),
+  'español': LanguageInfo('language_spanish', '🇪🇸'),
+  'french': LanguageInfo('language_french', '🇫🇷'),
+  'frances': LanguageInfo('language_french', '🇫🇷'),
+  'francês': LanguageInfo('language_french', '🇫🇷'),
+  'german': LanguageInfo('language_german', '🇩🇪'),
+  'alemao': LanguageInfo('language_german', '🇩🇪'),
+  'alemão': LanguageInfo('language_german', '🇩🇪'),
+  'italian': LanguageInfo('language_italian', '🇮🇹'),
+  'italiano': LanguageInfo('language_italian', '🇮🇹'),
+  'chinese': LanguageInfo('language_chinese', '🇨🇳'),
+  'chines': LanguageInfo('language_chinese', '🇨🇳'),
+  'chinês': LanguageInfo('language_chinese', '🇨🇳'),
+  'japanese': LanguageInfo('language_japanese', '🇯🇵'),
+  'japones': LanguageInfo('language_japanese', '🇯🇵'),
+  'japonês': LanguageInfo('language_japanese', '🇯🇵'),
+  'korean': LanguageInfo('language_korean', '🇰🇷'),
+  'coreano': LanguageInfo('language_korean', '🇰🇷'),
+  'russian': LanguageInfo('language_russian', '🇷🇺'),
+  'russo': LanguageInfo('language_russian', '🇷🇺'),
+  'arabic': LanguageInfo('language_arabic', '🇸🇦'),
+  'arabe': LanguageInfo('language_arabic', '🇸🇦'),
+  'árabe': LanguageInfo('language_arabic', '🇸🇦'),
+  'hindi': LanguageInfo('language_hindi', '🇮🇳'),
+  'dutch': LanguageInfo('language_dutch', '🇳🇱'),
+  'holandes': LanguageInfo('language_dutch', '🇳🇱'),
+  'holandês': LanguageInfo('language_dutch', '🇳🇱'),
+  'swedish': LanguageInfo('language_swedish', '🇸🇪'),
+  'sueco': LanguageInfo('language_swedish', '🇸🇪'),
+  'norwegian': LanguageInfo('language_norwegian', '🇳🇴'),
+  'noruegues': LanguageInfo('language_norwegian', '🇳🇴'),
+  'norueguês': LanguageInfo('language_norwegian', '🇳🇴'),
+  'danish': LanguageInfo('language_danish', '🇩🇰'),
+  'dinamarques': LanguageInfo('language_danish', '🇩🇰'),
+  'dinamarquês': LanguageInfo('language_danish', '🇩🇰'),
+  'finnish': LanguageInfo('language_finnish', '🇫🇮'),
+  'finlandes': LanguageInfo('language_finnish', '🇫🇮'),
+  'finlandês': LanguageInfo('language_finnish', '🇫🇮'),
+  'polish': LanguageInfo('language_polish', '🇵🇱'),
+  'polones': LanguageInfo('language_polish', '🇵🇱'),
+  'polonês': LanguageInfo('language_polish', '🇵🇱'),
+  'turkish': LanguageInfo('language_turkish', '🇹🇷'),
+  'turco': LanguageInfo('language_turkish', '🇹🇷'),
+  'greek': LanguageInfo('language_greek', '🇬🇷'),
+  'grego': LanguageInfo('language_greek', '🇬🇷'),
+  'hebrew': LanguageInfo('language_hebrew', '🇮🇱'),
+  'hebraico': LanguageInfo('language_hebrew', '🇮🇱'),
+};
+
+/// Modelo de informações de idioma
+class LanguageInfo {
+  final String translationKey;
+  final String flag;
+
+  const LanguageInfo(this.translationKey, this.flag);
+}
+
+/// Retorna a chave de tradução para um idioma
+String? getLanguageKey(String language) {
+  final normalized = language.toLowerCase().trim();
+  return _languageMap[normalized]?.translationKey;
+}
+
+/// Retorna a bandeira emoji para um idioma
+String? getLanguageFlag(String language) {
+  final normalized = language.toLowerCase().trim();
+  return _languageMap[normalized]?.flag;
+}
+
+/// Retorna informações completas do idioma (chave + bandeira)
+LanguageInfo? getLanguageInfo(String language) {
+  final normalized = language.toLowerCase().trim();
+  return _languageMap[normalized];
+}
+
+// ========== PAÍSES (FROM/ORIGEM) ==========
+
+/// Modelo de informações de país
+class CountryInfo {
+  final String translationKey;
+  final String flagCode; // Código ISO do país (ex: "BR", "US")
+
+  const CountryInfo(this.translationKey, this.flagCode);
+}
+
+/// Retorna informações do país usando flutter_country_selector
+/// [countryName] pode ser o nome do país em qualquer idioma ou o código ISO
+CountryInfo? getCountryInfo(String countryName) {
+  if (countryName.isEmpty) return null;
+  
+  final normalized = countryName.trim();
+  
+  // Tenta encontrar pelo código ISO primeiro (ex: "BR", "US")
+  if (normalized.length == 2) {
+    try {
+      final isoCode = IsoCode.values.firstWhere(
+        (code) => code.name.toUpperCase() == normalized.toUpperCase(),
+      );
+      return CountryInfo('country_${isoCode.name.toLowerCase()}', isoCode.name);
+    } catch (_) {
+      // Se não encontrar, continua para busca por nome
+    }
+  }
+  
+  // Mapeia nomes comuns para códigos ISO
+  final nameToIsoMap = {
+    // Português
+    'brasil': 'BR',
+    'estados unidos': 'US',
+    'argentina': 'AR',
+    'méxico': 'MX',
+    'mexico': 'MX',
+    'colômbia': 'CO',
+    'colombia': 'CO',
+    'chile': 'CL',
+    'peru': 'PE',
+    'uruguai': 'UY',
+    'uruguaí': 'UY',
+    'paraguai': 'PY',
+    'venezuela': 'VE',
+    'bolívia': 'BO',
+    'bolivia': 'BO',
+    'equador': 'EC',
+    'portugal': 'PT',
+    'espanha': 'ES',
+    'frança': 'FR',
+    'franca': 'FR',
+    'itália': 'IT',
+    'italia': 'IT',
+    'alemanha': 'DE',
+    'reino unido': 'GB',
+    'inglaterra': 'GB',
+    'canadá': 'CA',
+    'canada': 'CA',
+    'austrália': 'AU',
+    'australia': 'AU',
+    'china': 'CN',
+    'japão': 'JP',
+    'japao': 'JP',
+    'coreia do sul': 'KR',
+    'índia': 'IN',
+    'india': 'IN',
+    'rússia': 'RU',
+    'russia': 'RU',
+    'áfrica do sul': 'ZA',
+    'africa do sul': 'ZA',
+    
+    // English
+    'brazil': 'BR',
+    'united states': 'US',
+    'usa': 'US',
+    'eua': 'US',
+    'mexico': 'MX',
+    'colombia': 'CO',
+    'uruguay': 'UY',
+    'paraguay': 'PY',
+    'bolivia': 'BO',
+    'ecuador': 'EC',
+    'spain': 'ES',
+    'france': 'FR',
+    'italy': 'IT',
+    'germany': 'DE',
+    'united kingdom': 'GB',
+    'uk': 'GB',
+    'england': 'GB',
+    'canada': 'CA',
+    'australia': 'AU',
+    'japan': 'JP',
+    'south korea': 'KR',
+    'india': 'IN',
+    'russia': 'RU',
+    'south africa': 'ZA',
+    
+    // Español
+    'españa': 'ES',
+    'francia': 'FR',
+    'alemania': 'DE',
+    'inglaterra': 'GB',
+    'japón': 'JP',
+    'corea del sur': 'KR',
+    'rusia': 'RU',
+    'sudáfrica': 'ZA',
+  };
+  
+  final normalizedLower = normalized.toLowerCase();
+  final isoCodeStr = nameToIsoMap[normalizedLower];
+  
+  if (isoCodeStr != null) {
+    return CountryInfo('country_${isoCodeStr.toLowerCase()}', isoCodeStr);
+  }
+  
+  // Fallback: retorna o nome original sem tradução
+  return null;
+}
+
+/// Retorna o código da bandeira (código ISO) para usar com CircleFlag
+String? getCountryFlag(String countryName) {
+  return getCountryInfo(countryName)?.flagCode;
+}
+
+/// Retorna a chave de tradução para um país
+String? getCountryKey(String countryName) {
+  return getCountryInfo(countryName)?.translationKey;
 }

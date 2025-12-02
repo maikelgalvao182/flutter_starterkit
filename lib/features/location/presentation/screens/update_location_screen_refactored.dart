@@ -5,6 +5,7 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/features/location/presentation/viewmodels/update_location_view_model.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
+import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -21,9 +22,11 @@ class UpdateLocationScreenRefactored extends StatefulWidget {
   const UpdateLocationScreenRefactored({
     super.key,
     this.isSignUpProcess = true,
+    this.isFromEditProfile = false,
   });
   
   final bool isSignUpProcess;
+  final bool isFromEditProfile;
 
   @override
   UpdateLocationScreenRefactoredState createState() => UpdateLocationScreenRefactoredState();
@@ -181,6 +184,19 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: widget.isFromEditProfile
+          ? AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: GlimpseBackButton(
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ),
+              leadingWidth: 56,
+            )
+          : null,
       body: Column(
         children: [
           Expanded(

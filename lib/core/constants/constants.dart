@@ -45,6 +45,8 @@ const NOTIFY_USERS = 'NOTIFY_USERS';
 const String C_APP_INFO = 'AppInfo';
 const String C_USERS = 'Users';
 const String C_NOTIFICATIONS = 'Notifications';
+const String C_CONNECTIONS = 'Connections';
+const String C_CONVERSATIONS = 'Conversations';
 
 
 
@@ -102,6 +104,12 @@ const String NOTIF_TYPE_MESSAGE = 'message';
 /// DATABASE SHARED FIELDS FOR COLLECTION
 ///
 const String TIMESTAMP = 'timestamp';
+const String USER_ID = 'user_id';
+const String USER_PROFILE_PHOTO = 'user_photo_link';
+const String USER_FULLNAME = 'user_fullname';
+const String MESSAGE_TYPE = 'message_type';
+const String MESSAGE_READ = 'message_read';
+const String LAST_MESSAGE = 'last_message';
 
 /// FEATURE FLAGS / ACCESS GATES
 ///

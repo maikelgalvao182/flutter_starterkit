@@ -9,6 +9,7 @@ class TagVendor extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? backgroundColor;
   final Color? textColor;
+  final Color? borderColor;
 
   const TagVendor({
     super.key,
@@ -18,13 +19,14 @@ class TagVendor extends StatelessWidget {
     this.onTap,
     this.backgroundColor,
     this.textColor,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
     // Quando selecionado: borda 1px primary + fundo primaryLight
     // Quando não selecionado: borda cinza + fundo transparente
-    final borderColor = isSelected
+    final defaultBorderColor = isSelected
         ? GlimpseColors.primary
         : Colors.grey.shade300;
 
@@ -44,7 +46,7 @@ class TagVendor extends StatelessWidget {
           color: backgroundColor ?? bgColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: borderColor,
+            color: borderColor ?? defaultBorderColor,
             width: 1,
           ),
         ),

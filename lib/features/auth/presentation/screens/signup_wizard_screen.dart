@@ -219,7 +219,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
       'instagram': model.instagram.trim(),
       'jobTitle': model.jobTitle.trim(),
       'bio': model.bio.trim(),
-      'country': model.country,
+      'from': model.country,
       'originSource': model.originSource,
       'agreeTerms': model.agreeTerms,
     };

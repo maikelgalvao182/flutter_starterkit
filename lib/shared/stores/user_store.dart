@@ -23,9 +23,12 @@ class UserEntry {
     this.city,
     this.state,
     this.country,
+    this.from,
     this.latitude,
     this.longitude,
     this.instagram,
+    this.interests,
+    this.languages,
   });
   // Dados básicos (campos do wizard)
   String? name;
@@ -48,11 +51,18 @@ class UserEntry {
   String? city;
   String? state;
   String? country;
+  String? from; // País de origem/nacionalidade
   double? latitude;
   double? longitude;
   
   // Redes sociais (apenas Instagram é usado no wizard)
   String? instagram;
+  
+  // Interesses (tags/categorias)
+  List<String>? interests;
+  
+  // Idiomas (comma-separated string)
+  String? languages;
   
   final DateTime lastUpdated;
 }
@@ -98,6 +108,9 @@ class UserStore {
   final Map<String, ValueNotifier<String?>> _cityNotifiers = {};
   final Map<String, ValueNotifier<String?>> _stateNotifiers = {};
   final Map<String, ValueNotifier<String?>> _countryNotifiers = {};
+  final Map<String, ValueNotifier<String?>> _fromNotifiers = {};
+  final Map<String, ValueNotifier<List<String>?>> _interestsNotifiers = {};
+  final Map<String, ValueNotifier<String?>> _languagesNotifiers = {};
   // Notifiers para campos do wizard foram removidos pois não são utilizados atualmente
   // Podem ser adicionados de volta quando necessário
   
@@ -231,6 +244,33 @@ class UserStore {
     });
   }
 
+  /// ✅ Origem/Nacionalidade (from)
+  ValueNotifier<String?> getFromNotifier(String userId) {
+    if (userId.isEmpty) return ValueNotifier<String?>(null);
+    _ensureListening(userId);
+    return _fromNotifiers.putIfAbsent(userId, () {
+      return ValueNotifier<String?>(_users[userId]?.from);
+    });
+  }
+
+  /// ✅ Interesses
+  ValueNotifier<List<String>?> getInterestsNotifier(String userId) {
+    if (userId.isEmpty) return ValueNotifier<List<String>?>(null);
+    _ensureListening(userId);
+    return _interestsNotifiers.putIfAbsent(userId, () {
+      return ValueNotifier<List<String>?>(_users[userId]?.interests);
+    });
+  }
+
+  /// ✅ Idiomas
+  ValueNotifier<String?> getLanguagesNotifier(String userId) {
+    if (userId.isEmpty) return ValueNotifier<String?>(null);
+    _ensureListening(userId);
+    return _languagesNotifiers.putIfAbsent(userId, () {
+      return ValueNotifier<String?>(_users[userId]?.languages);
+    });
+  }
+
   // ========== APIs SÍNCRONAS (sem reatividade) ==========
 
   /// Acesso síncrono ao avatar provider
@@ -286,6 +326,26 @@ class UserStore {
   /// Acesso síncrono à entry completa
   UserEntry? getUser(String userId) {
     return _users[userId];
+  }
+
+  /// Preload avatar URL (útil para otimização)
+  void preloadAvatar(String userId, String avatarUrl) {
+    if (userId.isEmpty || avatarUrl.isEmpty) return;
+    
+    final entry = _users[userId];
+    if (entry != null && entry.avatarUrl != avatarUrl) {
+      // Atualiza URL do avatar se mudou
+      final newProvider = NetworkImage(avatarUrl);
+      entry.avatarUrl = avatarUrl;
+      entry.avatarProvider = newProvider;
+      
+      // Notifica mudança
+      _avatarNotifiers[userId]?.value = newProvider;
+      _avatarEntryNotifiers[userId]?.value = AvatarEntry(
+        AvatarState.loaded,
+        newProvider,
+      );
+    }
   }
 
   // ========== FIRESTORE LISTENER ==========
@@ -387,9 +447,16 @@ class UserStore {
     final city = userData['city'] as String? ?? userData['locality'] as String?;
     final state = userData['state'] as String?;
     final country = userData['country'] as String?;
+    final from = userData['from'] as String?; // País de origem/nacionalidade
     
     // Redes sociais
     final instagram = userData['instagram'] as String?;
+
+    // Interesses (lista de strings)
+    final interests = (userData['interests'] as List?)?.cast<String>();
+
+    // Idiomas (string comma-separated)
+    final languages = userData['languages'] as String?;
 
     // Birthdate e idade
     int? age;
@@ -437,7 +504,10 @@ class UserStore {
       city: city,
       state: state,
       country: country,
+      from: from,
       instagram: instagram,
+      interests: interests,
+      languages: languages,
       lastUpdated: DateTime.now(),
     );
 
@@ -498,6 +568,19 @@ class UserStore {
       if (oldEntry == null || oldEntry.country != newEntry.country) {
         _countryNotifiers[userId]?.value = newEntry.country;
       }
+
+      if (oldEntry == null || oldEntry.from != newEntry.from) {
+        _fromNotifiers[userId]?.value = newEntry.from;
+      }
+
+      // Compara listas de interesses (null-safe)
+      if (oldEntry == null || !_listEquals(oldEntry.interests, newEntry.interests)) {
+        _interestsNotifiers[userId]?.value = newEntry.interests;
+      }
+
+      if (oldEntry == null || oldEntry.languages != newEntry.languages) {
+        _languagesNotifiers[userId]?.value = newEntry.languages;
+      }
     }
     
     // 🛡️ PROTEÇÃO: Se estamos durante build phase, adia para próximo frame
@@ -521,6 +604,17 @@ class UserStore {
     } catch (_) {
       // Ignore errors during eviction
     }
+  }
+
+  /// Helper para comparar listas (null-safe)
+  bool _listEquals(List<String>? a, List<String>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   // ========== CLEANUP ==========

@@ -162,8 +162,9 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       _controllersInitialized = true;
     }
     
-    // ✅ NOVO: Sincroniza controllers com ViewModel quando estado muda
-    if (viewModel.state is EditProfileStateLoaded) {
+    // ✅ Sincroniza controllers apenas após comandos que alteram dados
+    // NÃO sincronizar durante edição normal para evitar sobrescrever mudanças do usuário
+    if (command is SaveProfileSuccessCommand && viewModel.state is EditProfileStateLoaded) {
       _syncControllersWithViewModel(viewModel);
     }
   }
@@ -190,8 +191,8 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     _bioController.text = formData.bio;
     _jobController.text = formData.jobTitle;
     
-    // ✅ Localização: Formatar APENAS para exibição (read-only)
-    // NÃO salvar de volta - localização só muda via UpdateLocationScreen
+    // ✅ Localização: Formatar locality, state e locationCountry para exibição (read-only)
+    // NÃO incluir 'country' (origem) aqui - localização só muda via UpdateLocationScreen
     final locationParts = <String>[];
     if (formData.locality != null && formData.locality!.isNotEmpty) {
       locationParts.add(formData.locality!);
@@ -199,8 +200,8 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     if (formData.state != null && formData.state!.isNotEmpty) {
       locationParts.add(formData.state!);
     }
-    if (formData.country != null && formData.country!.isNotEmpty) {
-      locationParts.add(formData.country!);
+    if (formData.locationCountry != null && formData.locationCountry!.isNotEmpty) {
+      locationParts.add(formData.locationCountry!);
     }
     _localityController.text = locationParts.join(', ');
     
@@ -415,8 +416,9 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     } catch (_) {}
     
     // View coleta TODOS os campos editáveis
-    // ⚠️ IMPORTANTE: locality, state, country NÃO são editáveis aqui
+    // ⚠️ IMPORTANTE: locality e state NÃO são editáveis aqui
     // Eles só podem ser atualizados via UpdateLocationScreen
+    // ✅ Country é editável via PersonalFieldEditorScreen
     return currentData.copyWith(
       fullname: _fullnameController.text.trim(),
       bio: _bioController.text.trim(),
@@ -425,6 +427,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       birthDay: birthDay,
       birthMonth: birthMonth,
       birthYear: birthYear,
+      country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
       languages: _languagesController.text.trim(),
       instagram: _instagramController.text.trim(),
       // Offers mantém os dados do currentData (gerenciados pela OffersTab)
@@ -444,6 +447,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       MaterialPageRoute(
         builder: (context) => const UpdateLocationScreenRefactored(
           isSignUpProcess: false,
+          isFromEditProfile: true,
         ),
       ),
     );

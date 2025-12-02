@@ -16,6 +16,7 @@ import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view
 import 'package:partiu/features/profile/presentation/widgets/profile_info_chips.dart';
 import 'package:partiu/features/profile/presentation/widgets/app_section_card.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen_router.dart';
+import 'package:partiu/features/profile/presentation/screens/profile_screen_optimized.dart';
 import 'package:partiu/core/services/distance_unit_service.dart';
 
 // ==================== PERFORMANCE OPTIMIZATIONS ====================
@@ -85,7 +86,6 @@ class _ProfileTabState extends State<ProfileTab> {
   // ==================== EVENT HANDLERS ====================
   
   /// Handler: Navegar para visualização de perfil
-  /// Handler: Navegar para visualização de perfil
   /// Usa Command pattern - ViewModel valida, View executa navegação
   Future<void> _handleViewProfileTap(BuildContext context) async {
     final command = _viewModel?.prepareViewProfileNavigation();
@@ -100,9 +100,14 @@ class _ProfileTabState extends State<ProfileTab> {
     }
     
     try {
-      await ProfileScreenRouter.navigateToProfile(
-        context,
-        user: command.user,
+      // Navega para o próprio perfil usando ProfileScreenOptimized
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ProfileScreenOptimized(
+            user: command.user,
+            currentUserId: command.user.userId,
+          ),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -154,16 +159,10 @@ class _ProfileTabState extends State<ProfileTab> {
     }
   }
   
-  /// Handler para atualizar foto de perfil
-  Future<void> _handleUpdateProfilePhoto(BuildContext context) async {
-    try {
-      // TODO: Implementar seleção e upload de foto
-      debugPrint('Selecionando nova foto de perfil');
-    } catch (e) {
-      if (mounted) {
-        _showError(context, 'Erro no upload da foto');
-      }
-    }
+  /// Handler para atualizar foto de perfil ou visualizar perfil
+  Future<void> _handleAvatarTap(BuildContext context) async {
+    // Ao clicar no avatar, navega para o próprio perfil
+    await _handleViewProfileTap(context);
   }
 
   @override
@@ -197,7 +196,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   _ProfileHeaderContent(
                     viewModel: _viewModel!,
                     nameTextStyle: _nameTextStyle,
-                    onAvatarTap: () => _handleUpdateProfilePhoto(context),
+                    onAvatarTap: () => _handleAvatarTap(context),
                     onEditProfile: () => _handleEditProfileTap(context),
                   ),
                   const SizedBox(height: GlimpseStyles.mediumSpacing),

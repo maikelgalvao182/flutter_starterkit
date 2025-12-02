@@ -36,6 +36,7 @@ class ProfileFormData {
     this.locality,
     this.state,
     this.country,
+    this.locationCountry,
     this.email,
     this.phoneNumber,
     this.website,
@@ -62,7 +63,8 @@ class ProfileFormData {
   final int? birthYear;
   final String? locality;
   final String? state;
-  final String? country;
+  final String? country; // País de origem (from)
+  final String? locationCountry; // País da localização atual (country)
   final String? email;
   final String? phoneNumber;
   final String? website;
@@ -90,6 +92,7 @@ class ProfileFormData {
     String? locality,
     String? state,
     String? country,
+    String? locationCountry,
     String? email,
     String? phoneNumber,
     String? website,
@@ -117,6 +120,7 @@ class ProfileFormData {
       locality: locality ?? this.locality,
       state: state ?? this.state,
       country: country ?? this.country,
+      locationCountry: locationCountry ?? this.locationCountry,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       website: website ?? this.website,

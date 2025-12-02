@@ -8,7 +8,7 @@ import 'package:partiu/features/auth/presentation/screens/forgot_password_screen
 import 'package:partiu/features/auth/presentation/screens/blocked_account_screen_router.dart';
 import 'package:partiu/features/location/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
-import 'package:partiu/features/profile/presentation/screens/profile_screen.dart';
+import 'package:partiu/features/profile/presentation/screens/profile_screen_optimized.dart';
 import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/features/auth/presentation/widgets/signup_widgets.dart';
@@ -142,14 +142,24 @@ GoRouter createAppRouter(BuildContext context) {
     
     // Profile
     GoRoute(
-      path: AppRoutes.profile,
+      path: '${AppRoutes.profile}/:id',
       name: 'profile',
       builder: (context, state) {
+        final userId = state.pathParameters['id'];
+        
+        if (userId == null) {
+          return Scaffold(
+            body: Center(
+              child: Text(AppLocalizations.of(context).translate('profile_id_not_found')),
+            ),
+          );
+        }
+        
         final extra = state.extra as Map<String, dynamic>?;
         if (extra == null) {
-          return const Scaffold(
+          return Scaffold(
             body: Center(
-              child: Text('Dados do perfil não encontrados'),
+              child: Text(AppLocalizations.of(context).translate('profile_data_not_found')),
             ),
           );
         }
@@ -157,7 +167,7 @@ GoRouter createAppRouter(BuildContext context) {
         final user = extra['user'] as User;
         final currentUserId = extra['currentUserId'] as String;
         
-        return ProfileScreen(
+        return ProfileScreenOptimized(
           user: user,
           currentUserId: currentUserId,
         );

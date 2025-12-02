@@ -11,6 +11,7 @@ import 'package:partiu/core/services/cache/cache_manager.dart';
 import 'package:partiu/core/services/google_maps_initializer.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
+import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,10 @@ void main() async {
         // AuthSyncService como singleton - ÚNICA fonte de verdade para auth
         ChangeNotifierProvider(
           create: (_) => AuthSyncService(),
+        ),
+        // ConversationsViewModel - gerencia estado das conversas
+        ChangeNotifierProvider(
+          create: (_) => ConversationsViewModel(),
         ),
         // DependencyProvider via Provider para compatibility
         Provider<ServiceLocator>.value(

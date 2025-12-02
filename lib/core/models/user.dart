@@ -100,6 +100,7 @@ class User {
     this.interests,
     this.languages,
     this.photoUrl,
+    this.from,
   });
 
   /// Safe empty user to avoid LateInitializationError before auth finishes
@@ -207,6 +208,7 @@ class User {
       interests: (doc['interests'] as List?)?.cast<String>(),
       languages: doc['languages'],
       photoUrl: doc['photoUrl'],
+      from: doc['from'],
     );
   }
   
@@ -239,6 +241,7 @@ class User {
   final List<String>? interests;
   final String? languages;
   final String? photoUrl;
+  final String? from; // País de origem
 
   /// Badge de verificação
   bool get isVerified => userIsVerified;

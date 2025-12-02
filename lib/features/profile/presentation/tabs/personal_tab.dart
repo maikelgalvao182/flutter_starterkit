@@ -3,7 +3,9 @@ import 'package:partiu/core/utils/date_formatter_helper.dart';
 import 'package:partiu/features/profile/presentation/widgets/field_preview_card.dart';
 import 'package:partiu/features/profile/presentation/models/personal_field_type.dart';
 import 'package:partiu/features/profile/presentation/screens/personal_field_editor_screen.dart';
+import 'package:partiu/features/location/presentation/screens/update_location_screen_refactored.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class PersonalTab extends StatelessWidget {
 
