@@ -69,7 +69,40 @@ class UpdateLocationViewModel extends ChangeNotifier {
     super.dispose();
   }
   
+  /// Verifica o status da permissão sem solicitar
+  Future<LocationPermission> checkPermissionStatus() async {
+    return await Geolocator.checkPermission();
+  }
+  
+  /// Solicita permissão de localização explicitamente
+  Future<LocationPermission> requestLocationPermission() async {
+    // Verifica se o serviço está habilitado primeiro
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      AppLogger.warning('Location service not enabled', tag: 'UpdateLocationVM');
+      return LocationPermission.denied;
+    }
+    
+    // Verifica permissão atual
+    var permission = await Geolocator.checkPermission();
+    
+    // Se já foi negada permanentemente, não pode solicitar novamente
+    if (permission == LocationPermission.deniedForever) {
+      AppLogger.warning('Location permission denied forever', tag: 'UpdateLocationVM');
+      return LocationPermission.deniedForever;
+    }
+    
+    // Solicita permissão
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      AppLogger.info('Permission request result: $permission', tag: 'UpdateLocationVM');
+    }
+    
+    return permission;
+  }
+  
   /// Inicia o rastreamento de localização em tempo real
+  /// IMPORTANTE: A permissão deve ser solicitada ANTES de chamar este método
   Future<void> startLocationTracking(String locationNotAvailable) async {
     _trackingState = LocationTrackingState.loading;
     notifyListeners();
@@ -83,15 +116,13 @@ class UpdateLocationViewModel extends ChangeNotifier {
         return;
       }
 
-      // Verifica permissões
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          AppLogger.warning('Location permission denied', tag: 'UpdateLocationVM');
-          _setDefaultLocation(locationNotAvailable);
-          return;
-        }
+      // Apenas verifica a permissão (não solicita mais aqui)
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied || 
+          permission == LocationPermission.deniedForever) {
+        AppLogger.warning('Location permission not granted: $permission', tag: 'UpdateLocationVM');
+        _setDefaultLocation(locationNotAvailable);
+        return;
       }
 
       // Obtém posição atual

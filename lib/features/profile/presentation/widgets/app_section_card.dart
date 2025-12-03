@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/features/auth/presentation/screens/sign_in_screen_refactored.dart';
+import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/app_section_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/dialogs/delete_account_confirm_dialog.dart';
 import 'package:partiu/core/services/distance_unit_service.dart';
@@ -72,6 +73,20 @@ class _AppSectionCardState extends State<AppSectionCard> {
             onTap: () {
               final localeService = Provider.of<LocaleService>(context, listen: false);
               LanguageSelectorDialog.show(context, localeService);
+            },
+          ),
+          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+          _buildListItem(
+            context,
+            icon: Iconsax.location,
+            title: 'Teste Location Picker',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const LocationPickerPageRefactored(),
+                  fullscreenDialog: true,
+                ),
+              );
             },
           ),
           Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),

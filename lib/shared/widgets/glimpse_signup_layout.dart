@@ -1,4 +1,3 @@
-import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

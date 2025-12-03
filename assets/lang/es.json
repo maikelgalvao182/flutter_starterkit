@@ -64,6 +64,10 @@
   "location_not_available": "Ubicación no disponible",
   "user_not_logged_in": "Usuario no logueado",
   "location_updated_successfully": "¡Ubicación actualizada exitosamente!",
+  "location_permission_required": "Se requiere permiso de ubicación",
+  "permission_required": "Permiso requerido",
+  "location_permission_denied_forever_message": "El permiso de ubicación se ha denegado permanentemente. Para usar esta función, necesitas habilitar el permiso en la configuración de la aplicación.",
+  "open_settings": "Abrir configuración",
   "GET_LOCATION": "Obtener Ubicación",
   "connect_with_nearby_travelers": "conecta con viajeros cercanos",
   "enable_location_to_discover": "habilita la ubicación para descubrir actividades cercanas y permitir que otros viajeros vean que estás en el área",
@@ -236,5 +240,9 @@
   "country_kr": "Corea del Sur",
   "country_in": "India",
   "country_ru": "Rusia",
-  "country_za": "Sudáfrica"
+  "country_za": "Sudáfrica",
+  "search_location": "Buscar ubicación",
+  "choose_meeting_point": "Elige un punto de encuentro específico",
+  "exact_location_visible": "La ubicación exacta será visible para todos (puedes controlar quién puede ver la actividad después)",
+  "set_activity_location": "Establecer Ubicación de Actividad"
 }

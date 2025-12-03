@@ -5,9 +5,9 @@ class GlimpseColors {
   // Cores do tema claro
   static const Color primary = Color(0xFF5BAD46);
   static const Color primaryLight = Color(0xFFEBF6E6);
-  static const Color primaryColorLight = Color(0xFF0a0a0a);
+  static const Color primaryColorLight = Color(0xFF000000);
   static const Color borderColorLight = Color(0xFFDDDDDD);
-  static const Color textSubTitle = Color(0xFF201913);
+  static const Color textSubTitle = Color(0xFF494949);
   static const Color textHint = Color(0xFFC5C8D2);
   static const Color lightTextField = Color(0xFFF8F8F8);
   static const Color disabledButtonColorLight = Color(0xFFE0E0E0);

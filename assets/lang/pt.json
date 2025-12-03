@@ -268,6 +268,10 @@
   "location_not_available": "Localização não disponível",
   "user_not_logged_in": "Usuário não está logado",
   "location_updated_successfully": "Localização atualizada com sucesso!",
+  "location_permission_required": "Permissão de localização necessária",
+  "permission_required": "Permissão necessária",
+  "location_permission_denied_forever_message": "A permissão de localização foi negada permanentemente. Para usar este recurso, você precisa habilitar a permissão nas configurações do app.",
+  "open_settings": "Abrir configurações",
   "GET_LOCATION": "Confirmar Localização",
   "connect_with_nearby_travelers": "Conecte com pessoas próximas",
   "discover_nearby_activities": "Descobrir atividades próximas",
@@ -322,8 +326,8 @@
   "select_languages": "Selecione os idiomas",
   "complete_your_profile": "Complete seu perfil",
   "profile_completeness_subtitle": "Seu perfil está incompleto",
-  "profile_completeness_percentage_subtitle": "Você já completou {percentage}% do perfil. Complete para ter mais visibilidade!",
-  "dont_show": "Não mostrar novamente",
+  "profile_completeness_percentage_subtitle": "Você já preencheu {percentage}% do perfil. Complete para ter mais visibilidade!",
+  "dont_show": "Não mostrar",
   "edit_profile_button": "Editar Perfil",
   "remove_image": "Remover imagem?",
   "delete_image_confirmation": "Tem certeza que deseja remover esta imagem?",
@@ -409,6 +413,10 @@
   "country_kr": "Coreia do Sul",
   "country_in": "Índia",
   "country_ru": "Rússia",
-  "country_za": "África do Sul"
+  "country_za": "África do Sul",
+  "search_location": "Buscar nome do local...",
+  "choose_meeting_point": "Escolha seu local de encontro",
+  "exact_location_visible": "O local exato ficará visível para todos (você pode controlar quem pode ver a atividade depois)",
+  "set_activity_location": "Definir local da atividade"
 }
 

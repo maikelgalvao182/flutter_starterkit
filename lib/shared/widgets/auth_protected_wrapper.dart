@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
-import 'package:partiu/core/constants/glimpse_colors.dart';
 
 /// Widget que protege telas que necessitam de usuário autenticado.
 /// Mostra loader enquanto aguarda inicialização completa do AuthSyncService.

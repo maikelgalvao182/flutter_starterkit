@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:geolocator/geolocator.dart';
 import 'package:iconsax/iconsax.dart';
 
 /// Tela de autorização de localização - UI inspirada no design do Nomadtable
@@ -51,13 +52,7 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     _viewModel = serviceLocator.get<UpdateLocationViewModel>();
     _i18n = AppLocalizations.of(context);
 
-    // Inicia rastreamento após o primeiro build, garantindo que ViewModel e i18n estejam prontos
-    if (!_hasStartedTracking) {
-      _hasStartedTracking = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _viewModel.startLocationTracking(_i18n.translate('location_not_available'));
-      });
-    }
+    // NÃO inicia rastreamento automaticamente - apenas ao clicar no botão
   }
 
   @override
@@ -74,41 +69,70 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
       return;
     }
     
-    // Aguarda GPS estar pronto
-    final isReady = await _viewModel.waitForLocationReady();
-    if (!isReady) {
-      _showErrorDialog(_i18n.translate('location_not_available'));
-      return;
-    }
-    
     // Mostra loading no botão
     setState(() => _isSaving = true);
     
-    // Salva localização
-    await _viewModel.saveCurrentLocation(userId);
-    
-    // Aguarda o estado mudar
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    // Esconde loading
-    if (mounted) setState(() => _isSaving = false);
-    
-    // Trata o resultado baseado no estado
-    if (_viewModel.saveState == LocationSaveState.success) {
-      final message = '${_i18n.translate("location_updated_successfully")}\n${_viewModel.savedLocation}';
-      _showSuccessDialog(message);
-
-      if (widget.isSignUpProcess) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) context.go(AppRoutes.home);
-        });
-      } else {
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) Navigator.of(context).pop(true);
-        });
+    try {
+      // 1. Solicita permissão de localização
+      final permission = await _viewModel.requestLocationPermission();
+      
+      if (permission == LocationPermission.deniedForever) {
+        // Usuário negou permanentemente - mostrar dialog com instruções
+        if (mounted) setState(() => _isSaving = false);
+        _showPermissionDeniedForeverDialog();
+        return;
       }
-    } else if (_viewModel.saveState == LocationSaveState.error) {
-      _showErrorDialog(_viewModel.saveError ?? 'Unknown error');
+      
+      if (permission == LocationPermission.denied) {
+        // Usuário negou agora - mostrar mensagem
+        if (mounted) setState(() => _isSaving = false);
+        _showErrorDialog(_i18n.translate('location_permission_required'));
+        return;
+      }
+      
+      // 2. Inicia rastreamento de localização
+      if (!_hasStartedTracking) {
+        _hasStartedTracking = true;
+        await _viewModel.startLocationTracking(_i18n.translate('location_not_available'));
+      }
+      
+      // 3. Aguarda GPS estar pronto
+      final isReady = await _viewModel.waitForLocationReady();
+      if (!isReady) {
+        if (mounted) setState(() => _isSaving = false);
+        _showErrorDialog(_i18n.translate('location_not_available'));
+        return;
+      }
+      
+      // 4. Salva localização
+      await _viewModel.saveCurrentLocation(userId);
+      
+      // Aguarda o estado mudar
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Esconde loading
+      if (mounted) setState(() => _isSaving = false);
+      
+      // 5. Trata o resultado baseado no estado
+      if (_viewModel.saveState == LocationSaveState.success) {
+        final message = '${_i18n.translate("location_updated_successfully")}\n${_viewModel.savedLocation}';
+        _showSuccessDialog(message);
+
+        if (widget.isSignUpProcess) {
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) context.go(AppRoutes.home);
+          });
+        } else {
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) Navigator.of(context).pop(true);
+          });
+        }
+      } else if (_viewModel.saveState == LocationSaveState.error) {
+        _showErrorDialog(_viewModel.saveError ?? 'Unknown error');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isSaving = false);
+      _showErrorDialog('Erro ao obter localização: $e');
     }
   }
   
@@ -169,6 +193,63 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
                   onPressed: () => Navigator.pop(context),
                   style: DialogStyles.successButtonStyle,
                   child: Text('OK', style: DialogStyles.successButtonTextStyle),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  void _showPermissionDeniedForeverDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: DialogStyles.containerBorderRadius),
+        child: Container(
+          margin: DialogStyles.containerMargin,
+          padding: DialogStyles.containerPadding,
+          decoration: DialogStyles.containerDecoration,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DialogStyles.buildWarningIcon(icon: Iconsax.location_slash, iconSize: 40),
+              const SizedBox(height: DialogStyles.spacingAfterIcon),
+              DialogStyles.buildTitle(_i18n.translate('permission_required')),
+              const SizedBox(height: DialogStyles.spacingAfterTitle),
+              DialogStyles.buildMessage(
+                _i18n.translate('location_permission_denied_forever_message'),
+              ),
+              const SizedBox(height: DialogStyles.spacingBeforeButtons),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Abre configurações do app
+                    Geolocator.openAppSettings();
+                  },
+                  style: DialogStyles.positiveButtonStyle,
+                  child: Text(
+                    _i18n.translate('open_settings'),
+                    style: DialogStyles.positiveButtonTextStyle,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    _i18n.translate('cancel'),
+                    style: GoogleFonts.getFont(
+                      FONT_PLUS_JAKARTA_SANS,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ),
               ),
             ],

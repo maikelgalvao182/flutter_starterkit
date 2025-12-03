@@ -1,0 +1,219 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/features/home/presentation/widgets/schedule/horizontal_week_calendar.dart';
+import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
+import 'package:partiu/features/home/presentation/widgets/schedule/time_picker_widget.dart';
+import 'package:partiu/features/home/presentation/widgets/participants_drawer.dart';
+import 'package:partiu/shared/widgets/glimpse_back_button.dart';
+import 'package:partiu/shared/widgets/glimpse_button.dart';
+import 'package:partiu/shared/widgets/glimpse_close_button.dart';
+import 'package:partiu/shared/widgets/animated_expandable.dart';
+
+/// Bottom sheet para seleção de data e horário da atividade
+class ScheduleDrawer extends StatefulWidget {
+  const ScheduleDrawer({super.key});
+
+  @override
+  State<ScheduleDrawer> createState() => _ScheduleDrawerState();
+}
+
+class _ScheduleDrawerState extends State<ScheduleDrawer> {
+  DateTime _selectedDate = DateTime.now();
+  TimeType? _selectedTimeType;
+  DateTime _selectedTime = DateTime.now();
+
+  void _handleContinue() async {
+    if (_selectedTimeType == null) return;
+
+    final result = {
+      'date': _selectedDate,
+      'timeType': _selectedTimeType,
+      if (_selectedTimeType == TimeType.specific) 'time': _selectedTime,
+    };
+
+    // Abre o drawer de participantes
+    final participantsResult = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const ParticipantsDrawer(),
+    );
+
+    if (participantsResult != null) {
+      // Combina os resultados e retorna
+      final combinedResult = {
+        ...result,
+        ...participantsResult,
+      };
+      
+      if (mounted) {
+        Navigator.of(context).pop(combinedResult);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle e header
+              Padding(
+                padding: const EdgeInsets.only(
+                  top: 12,
+                  left: 20,
+                  right: 20,
+                ),
+                child: Column(
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: GlimpseColors.borderColorLight,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Header: Back + Título + Close
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Botão voltar
+                        GlimpseBackButton(
+                          onTap: () => Navigator.of(context).pop(),
+                        ),
+
+                        // Título centralizado
+                        Expanded(
+                          child: Text(
+                            'Quando vai rolar?',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.getFont(
+                              FONT_PLUS_JAKARTA_SANS,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: GlimpseColors.textSubTitle,
+                            ),
+                          ),
+                        ),
+
+                        // Botão fechar
+                        const GlimpseCloseButton(
+                          size: 32,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Calendário horizontal (7 dias)
+              HorizontalWeekCalendar(
+                selectedDate: _selectedDate,
+                onDateSelected: (date) {
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Cards de seleção de horário
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: TimeTypeSelector(
+                  selectedType: _selectedTimeType,
+                  onTypeSelected: (type) {
+                    setState(() {
+                      _selectedTimeType = type;
+                    });
+                  },
+                ),
+              ),
+
+              // Hour Picker (apenas quando específico está selecionado)
+              AnimatedExpandable(
+                isExpanded: _selectedTimeType == TimeType.specific,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: TimePickerWidget(
+                        selectedTime: _selectedTime,
+                        onTimeChanged: (DateTime newTime) {
+                          setState(() {
+                            _selectedTime = newTime;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Texto informativo
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Sua atividade vai continuar visível no mapa até meia noite.',
+                  style: GoogleFonts.getFont(
+                    FONT_PLUS_JAKARTA_SANS,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: GlimpseColors.textSubTitle,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Botão de continuar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: GlimpseButton(
+                  text: 'Continuar',
+                  onPressed: _selectedTimeType != null ? _handleContinue : null,
+                ),
+              ),
+
+              // Padding bottom para safe area
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -10,6 +10,7 @@ import 'package:partiu/features/location/presentation/screens/update_location_sc
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen_optimized.dart';
 import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
+import 'package:partiu/features/home/presentation/widgets/schedule_drawer.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/features/auth/presentation/widgets/signup_widgets.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
@@ -31,6 +32,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String notifications = '/notifications';
+  static const String schedule = '/schedule';
 }
 
 /// Cria o GoRouter com proteção baseada no AuthSyncService
@@ -188,6 +190,13 @@ GoRouter createAppRouter(BuildContext context) {
       path: AppRoutes.notifications,
       name: 'notifications',
       builder: (context, state) => const SimplifiedNotificationScreenWrapper(),
+    ),
+    
+    // Schedule
+    GoRoute(
+      path: AppRoutes.schedule,
+      name: 'schedule',
+      builder: (context, state) => const ScheduleDrawer(),
     ),
   ],
   

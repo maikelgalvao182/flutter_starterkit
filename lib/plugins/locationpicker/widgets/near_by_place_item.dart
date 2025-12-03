@@ -10,11 +10,13 @@ class NearbyPlaceItem extends StatelessWidget {
   final VoidCallback onTap;
 
   String? _getPhotoUrl() {
-    if (nearbyPlace.photoReference != null) {
-      return 'https://maps.googleapis.com/maps/api/place/photo?'
+    if (nearbyPlace.photoReference != null && 
+        nearbyPlace.photoReference!.isNotEmpty) {
+      final url = 'https://maps.googleapis.com/maps/api/place/photo?'
           'maxwidth=400&'
           'photoreference=${nearbyPlace.photoReference}&'
           'key=$_apiKey';
+      return url;
     }
     return null;
   }
@@ -42,21 +44,33 @@ class NearbyPlaceItem extends StatelessWidget {
                     placeholder: (context, url) => Container(
                       width: 60,
                       height: 60,
-                      color: Colors.grey[200],
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: const Center(
                         child: SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                          ),
                         ),
                       ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      width: 60,
-                      height: 60,
-                      color: Colors.grey[200],
-                      child: Icon(Icons.place, color: Colors.grey[400], size: 30),
-                    ),
+                    errorWidget: (context, url, error) {
+                      debugPrint('❌ Erro ao carregar foto: $error');
+                      return Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.place, color: Colors.grey[400], size: 30),
+                      );
+                    },
                   ),
                 )
               else
@@ -67,7 +81,7 @@ class NearbyPlaceItem extends StatelessWidget {
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: nearbyPlace.icon != null
+                  child: nearbyPlace.icon != null && nearbyPlace.icon!.isNotEmpty
                       ? Padding(
                           padding: const EdgeInsets.all(16),
                           child: Image.network(

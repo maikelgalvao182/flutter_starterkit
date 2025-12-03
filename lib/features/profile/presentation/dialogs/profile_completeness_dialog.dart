@@ -1,10 +1,10 @@
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:partiu/core/constants/constants.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:partiu/shared/widgets/profile_completeness_ring.dart';
+import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
+import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 
 /// Bottom-sheet content que exibe o progresso de completude do perfil
 /// e permite navegar para edição ou dispensar permanentemente
@@ -47,15 +47,12 @@ class ProfileCompletenessDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(
+                GlimpseCloseButton(
                   onPressed: () {
                     if (Navigator.of(context).canPop()) {
                       Navigator.of(context).pop();
                     }
                   },
-                  icon: const Icon(Icons.close, size: 24),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -66,47 +63,22 @@ class ProfileCompletenessDialog extends StatelessWidget {
               size: 90,
               strokeWidth: 4,
               percentage: percentage ?? 0,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: photoUrl != null && photoUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: photoUrl!,
-                        width: 82,
-                        height: 82,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          width: 82,
-                          height: 82,
-                          color: GlimpseColors.lightTextField,
-                          child: const Icon(Icons.person, size: 40, color: Colors.grey),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          width: 82,
-                          height: 82,
-                          color: GlimpseColors.lightTextField,
-                          child: const Icon(Icons.person, size: 40, color: Colors.grey),
-                        ),
-                      )
-                    : Container(
-                        width: 82,
-                        height: 82,
-                        color: GlimpseColors.lightTextField,
-                        child: const Icon(Icons.person, size: 40, color: Colors.grey),
-                      ),
+              child: CircleAvatar(
+                radius: 41,
+                backgroundColor: GlimpseColors.lightTextField,
+                backgroundImage: photoUrl != null && photoUrl!.isNotEmpty
+                    ? CachedNetworkImageProvider(photoUrl!)
+                    : null,
+                child: photoUrl == null || photoUrl!.isEmpty
+                    ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                    : null,
               ),
             ),
             const SizedBox(height: 24),
             
             // Title
-            Text(
+            DialogStyles.buildTitle(
               title ?? i18n.translate('complete_your_profile'),
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-              ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             
@@ -115,33 +87,16 @@ class ProfileCompletenessDialog extends StatelessWidget {
               context,
               subtitle ?? i18n.translate('profile_completeness_subtitle'),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             
             // Buttons
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: onDontShow,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: GlimpseColors.borderColorLight),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text(
-                      i18n.translate('dont_show'),
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
+                DialogStyles.buildNegativeButton(
+                  text: i18n.translate('dont_show'),
+                  onPressed: onDontShow,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: DialogStyles.buttonSpacing),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: onEditProfile,
@@ -149,17 +104,14 @@ class ProfileCompletenessDialog extends StatelessWidget {
                       backgroundColor: GlimpseColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: DialogStyles.buttonBorderRadius,
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: DialogStyles.buttonPadding,
                       elevation: 0,
                     ),
                     child: Text(
                       i18n.translate('edit_profile_button'),
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                      style: DialogStyles.buttonTextStyle.copyWith(
                         color: Colors.white,
                       ),
                     ),
@@ -179,12 +131,7 @@ class ProfileCompletenessDialog extends StatelessWidget {
     final percentageRegex = RegExp(r'(\d+)%');
     final match = percentageRegex.firstMatch(message);
     
-    final baseStyle = GoogleFonts.getFont(
-      FONT_PLUS_JAKARTA_SANS,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-      color: GlimpseColors.textSubTitle,
-    );
+    final baseStyle = DialogStyles.messageStyle;
     
     if (match == null) {
       // Se não houver porcentagem, retorna mensagem normal

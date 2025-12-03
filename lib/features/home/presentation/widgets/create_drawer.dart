@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/features/home/presentation/screens/location_picker_page.dart';
+import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
@@ -17,53 +17,53 @@ class CreateDrawer extends StatefulWidget {
 
 class _CreateDrawerState extends State<CreateDrawer> {
   final TextEditingController _activityController = TextEditingController();
-  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _activityController.addListener(_onTextChanged);
+  }
 
   @override
   void dispose() {
+    _activityController.removeListener(_onTextChanged);
     _activityController.dispose();
     super.dispose();
   }
 
+  void _onTextChanged() {
+    setState(() {});
+  }
+
   void _handleCreate() async {
-    if (_activityController.text.trim().isEmpty) {
-      // TODO: Mostrar erro - campo vazio
-      return;
-    }
+    if (_activityController.text.trim().isEmpty) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
+    // Salvar dados necessários
+    final activityText = _activityController.text;
+    final navigator = Navigator.of(context);
+    
+    // Fechar teclado
+    FocusScope.of(context).unfocus();
+    
+    // Fechar o drawer imediatamente
+    navigator.pop();
 
+    // Navegar para o LocationPicker
     try {
-      // Fechar o bottom sheet atual antes de navegar
-      Navigator.of(context).pop();
-
-      // Abrir seletor de localização em tela cheia
-      final LocationResult? locationResult = await Navigator.of(context).push(
+      final LocationResult? locationResult = await navigator.push<LocationResult>(
         MaterialPageRoute(
-          builder: (context) => const LocationPickerPage(),
+          builder: (_) => const LocationPickerPageRefactored(),
+          fullscreenDialog: true,
         ),
       );
 
-      // Se o usuário selecionou uma localização
       if (locationResult != null && locationResult.latLng != null) {
-        // TODO: Continuar com a criação da atividade
-        // Dados disponíveis:
-        // - _activityController.text (título da atividade)
-        // - locationResult.latLng (coordenadas)
-        // - locationResult.formattedAddress (endereço completo)
-        // - locationResult.name (nome do local)
-        debugPrint('Atividade: ${_activityController.text}');
+        debugPrint('Atividade: $activityText');
         debugPrint('Local: ${locationResult.formattedAddress}');
-        debugPrint('Coordenadas: ${locationResult.latLng}');
+        // TODO: Continuar fluxo de criação
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+    } catch (e) {
+      debugPrint('Erro na navegação: \$e');
     }
   }
 
@@ -139,17 +139,28 @@ class _CreateDrawerState extends State<CreateDrawer> {
               // Título
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Partiu...',
-                    style: GoogleFonts.getFont(
-                      FONT_PLUS_JAKARTA_SANS,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: GlimpseColors.textSubTitle,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Partiu...',
+                      style: GoogleFonts.getFont(
+                        FONT_PLUS_JAKARTA_SANS,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: GlimpseColors.textSubTitle,
+                      ),
                     ),
-                  ),
+                    Text(
+                      'Sugestão?',
+                      style: GoogleFonts.getFont(
+                        FONT_PLUS_JAKARTA_SANS,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: GlimpseColors.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -167,6 +178,7 @@ class _CreateDrawerState extends State<CreateDrawer> {
                     controller: _activityController,
                     autofocus: true,
                     maxLines: 1,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       hintText: 'Correr no parque, tomar um chop...',
                       hintStyle: GoogleFonts.getFont(
@@ -195,8 +207,9 @@ class _CreateDrawerState extends State<CreateDrawer> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: GlimpseButton(
                   text: 'Continuar',
-                  onPressed: _isProcessing ? null : _handleCreate,
-                  isProcessing: _isProcessing,
+                  onPressed: _activityController.text.trim().isNotEmpty
+                      ? _handleCreate
+                      : null,
                 ),
               ),
 

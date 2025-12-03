@@ -53,14 +53,16 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     super.initState();
     localizationItem = widget.localizationItem ?? LocalizationItem();
     
-    // Carregar o mapa imediatamente sem esperar localização
-    setState(() {
-      _loadMap = true;
-    });
+    // Carregar o mapa imediatamente
+    _loadMap = true;
     
     if (widget.displayLocation == null) {
-      // Buscar localização em background
+      // Buscar localização em background com timeout reduzido
       _getCurrentLocation()
+          .timeout(
+            const Duration(seconds: 3),
+            onTimeout: () => widget.defaultLocation,
+          )
           .then((value) {
             if (mounted) {
               setState(() {
@@ -70,18 +72,22 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
             }
           })
           .catchError((e) {
-            // Ignorar erros de localização, apenas usar localização padrão
+            // Em caso de erro, usar localização padrão
             debugPrint('Erro ao obter localização: $e');
+            if (mounted) {
+              setState(() {
+                _currentLocation = widget.defaultLocation;
+              });
+              moveToLocation(widget.defaultLocation);
+            }
           });
     } else {
-      setState(() {
-        markers.add(
-          Marker(
-            position: widget.displayLocation!,
-            markerId: const MarkerId('selected-location'),
-          ),
-        );
-      });
+      markers.add(
+        Marker(
+          position: widget.displayLocation!,
+          markerId: const MarkerId('selected-location'),
+        ),
+      );
       moveToLocation(widget.displayLocation!);
     }
   }
@@ -427,12 +433,16 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
       final responseJson = json.decode(response.body) as Map<String, dynamic>;
 
       if (responseJson['status'] != null && responseJson['status'] != 'OK') {
+        debugPrint('❌ Places API error: ${responseJson['status']}');
         throw Exception('Places API error: ${responseJson['status']}');
       }
 
       if (responseJson['results'] == null) {
+        debugPrint('❌ No results found in API response');
         throw Error();
       }
+      
+      debugPrint('📍 Found ${(responseJson['results'] as List).length} nearby places');
 
       nearbyPlaces.clear();
 
@@ -442,22 +452,31 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
         int? photoHeight;
         
         // Extrair primeira foto se disponível
-        if (item['photos'] != null && item['photos'].isNotEmpty) {
-          final photo = item['photos'][0];
-          photoReference = photo['photo_reference'];
-          photoWidth = photo['width'];
-          photoHeight = photo['height'];
+        if (item['photos'] != null && (item['photos'] as List).isNotEmpty) {
+          try {
+            final photo = (item['photos'] as List)[0] as Map<String, dynamic>;
+            photoReference = photo['photo_reference'] as String?;
+            photoWidth = photo['width'] as int?;
+            photoHeight = photo['height'] as int?;
+            
+            // Debug: verificar se foto foi extraída
+            if (photoReference != null && photoReference.isNotEmpty) {
+              debugPrint('✅ Foto encontrada para: ${item['name']} - ref: ${photoReference.substring(0, 20)}...');
+            }
+          } catch (e) {
+            debugPrint('⚠️ Erro ao extrair foto de ${item['name']}: $e');
+          }
         }
         
         final nearbyPlace = NearbyPlace()
-          ..name = item['name']
-          ..icon = item['icon']
+          ..name = item['name'] as String?
+          ..icon = item['icon'] as String?
           ..photoReference = photoReference
           ..photoWidth = photoWidth
           ..photoHeight = photoHeight
           ..latLng = LatLng(
-            item['geometry']['location']['lat'],
-            item['geometry']['location']['lng'],
+            (item['geometry']['location']['lat'] as num).toDouble(),
+            (item['geometry']['location']['lng'] as num).toDouble(),
           );
 
         nearbyPlaces.add(nearbyPlace);
@@ -620,44 +639,39 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
 
   Future<LatLng> _getCurrentLocation() async {
     try {
-      bool serviceEnabled;
-      LocationPermission permission;
-      
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      // Primeiro tentar última localização conhecida (mais rápido)
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        return LatLng(lastKnown.latitude, lastKnown.longitude);
+      }
+
+      // Verificar se o serviço está habilitado
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         return widget.defaultLocation;
       }
       
-      permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return widget.defaultLocation;
-        }
-      }
-      
-      if (permission == LocationPermission.deniedForever) {
+      // Verificar permissão (não solicitar aqui para não bloquear)
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return widget.defaultLocation;
       }
       
+      // Obter localização atual com timeout curto
       final locationData = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 2),
         ),
+      ).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => throw TimeoutException('Location timeout'),
       );
+      
       return LatLng(locationData.latitude, locationData.longitude);
     } catch (e) {
       debugPrint('Erro ao obter localização: $e');
-      // Tentar última localização conhecida
-      try {
-        final locationData = await Geolocator.getLastKnownPosition();
-        if (locationData != null) {
-          return LatLng(locationData.latitude, locationData.longitude);
-        }
-      } catch (e) {
-        debugPrint('Erro ao obter última localização: $e');
-      }
       return widget.defaultLocation;
     }
   }

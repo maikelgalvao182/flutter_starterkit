@@ -8,30 +8,11 @@ import GoogleMaps
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Google Maps will be configured dynamically from Flutter side with Firebase keys
-    GeneratedPluginRegistrant.register(with: self)
+    // Google Maps SDK API Key (iOS) - DEVE vir ANTES de GeneratedPluginRegistrant
+    GMSServices.provideAPIKey("AIzaSyBHlCReMj7dEaA-e0dguSe45roNoU1HKXA")
+    print("✅ Google Maps API Key configurada")
     
-    // Setup method channel for dynamic Google Maps configuration
-    if let controller = window?.rootViewController as? FlutterViewController {
-      let googleMapsChannel = FlutterMethodChannel(
-        name: "com.maikelgalvao.partiu/google_maps",
-        binaryMessenger: controller.binaryMessenger
-      )
-      
-      googleMapsChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
-        if call.method == "setApiKey" {
-          if let args = call.arguments as? [String: Any],
-             let apiKey = args["apiKey"] as? String {
-            GMSServices.provideAPIKey(apiKey)
-            result("Google Maps API Key configured")
-          } else {
-            result(FlutterError(code: "INVALID_ARGUMENT", message: "API Key is required", details: nil))
-          }
-        } else {
-          result(FlutterMethodNotImplemented)
-        }
-      }
-    }
+    GeneratedPluginRegistrant.register(with: self)
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

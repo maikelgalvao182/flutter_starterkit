@@ -240,6 +240,10 @@
   "location_not_available": "Location not available",
   "user_not_logged_in": "User not logged in",
   "location_updated_successfully": "Location updated successfully!",
+  "location_permission_required": "Location permission required",
+  "permission_required": "Permission required",
+  "location_permission_denied_forever_message": "Location permission has been permanently denied. To use this feature, you need to enable the permission in the app settings.",
+  "open_settings": "Open settings",
   "GET_LOCATION": "Get Location",
   "connect_with_nearby_travelers": "connect with nearby travelers",
   "enable_location_to_discover": "enable location to discover nearby activities",
@@ -389,5 +393,9 @@
   "country_kr": "South Korea",
   "country_in": "India",
   "country_ru": "Russia",
-  "country_za": "South Africa"
+  "country_za": "South Africa",
+  "search_location": "Search location",
+  "choose_meeting_point": "Choose a specific meeting point",
+  "exact_location_visible": "Exact location will be visible to everyone (you can control who can see activity later)",
+  "set_activity_location": "Set Activity Location"
 }
