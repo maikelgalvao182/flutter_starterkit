@@ -196,7 +196,7 @@ class CadastroViewModel extends ChangeNotifier {
         'jobTitle': onboardingData['jobTitle'],
         'gender': onboardingData['gender'],
         'bio': onboardingData['bio'],
-        'country': onboardingData['country'],
+        'from': onboardingData['from'], // País de origem
         'originSource': onboardingData['originSource'],
         
         // Avatar

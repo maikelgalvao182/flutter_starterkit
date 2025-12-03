@@ -8,14 +8,14 @@ class ReactiveUserNameWithBadge extends StatelessWidget {
   const ReactiveUserNameWithBadge({
     super.key,
     required this.userId,
-    required this.style,
+    this.style,
     this.iconSize = 16.0,
     this.spacing = 4.0,
     this.textAlign = TextAlign.start,
   });
 
   final String userId;
-  final TextStyle style;
+  final TextStyle? style;
   final double iconSize;
   final double spacing;
   final TextAlign textAlign;
@@ -46,7 +46,13 @@ class ReactiveUserNameWithBadge extends StatelessWidget {
                 Flexible(
                   child: Text(
                     displayName,
-                    style: style,
+                    style: style ?? TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.white 
+                          : Colors.black,
+                    ),
                     textAlign: textAlign,
                     overflow: TextOverflow.ellipsis,
                   ),

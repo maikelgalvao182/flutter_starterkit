@@ -12,8 +12,11 @@ class ConversationStyles {
   // AVATAR & IMAGES
   // ============================================================================
   
-  /// Tamanho padrão do avatar na lista de conversas
+  /// Tamanho padrão do avatar na lista de conversas (conversation_tile)
   static const double avatarSize = 40;
+  
+  /// Tamanho do avatar no app bar do chat (chat_app_bar_widget)
+  static const double avatarSizeChatAppBar = 40;
   
   /// Border radius do avatar (quadrado com cantos arredondados)
   static const BorderRadius avatarRadius = BorderRadius.all(Radius.circular(8));
@@ -25,8 +28,42 @@ class ConversationStyles {
   static const double verifiedIconSpacing = 4;
 
   // ============================================================================
+  // EVENT EMOJI CONTAINER (usado em conversation_tile e chat_app_bar)
+  // ============================================================================
+  
+  /// Border radius do container de emoji do evento
+  static const double eventEmojiContainerRadius = 8;
+  
+  /// Cor de fundo do container de emoji do evento
+  static Color eventEmojiContainerBg() => GlimpseColors.lightTextField;
+  
+  /// Tamanho da fonte do emoji no conversation_tile
+  static const double eventEmojiFontSize = 24;
+  
+  /// Tamanho da fonte do emoji no chat_app_bar_widget
+  static const double eventEmojiFontSizeChatAppBar = 24;
+  
+  /// Emoji padrão quando não especificado
+  static const String eventEmojiDefault = '🎉';
+
+  // ============================================================================
   // SPACING & PADDING
   // ============================================================================
+  
+  /// Espaçamento entre o botão de voltar e o avatar no chat_app_bar
+  static const double chatAppBarBackButtonSpacing = 12;
+  
+  /// Espaçamento entre o avatar e o nome no chat_app_bar
+  static const double chatAppBarAvatarNameSpacing = 12;
+  
+  /// Espaçamento entre nome e status (time-ago/schedule) no chat_app_bar
+  static const double chatAppBarNameStatusSpacing = 4;
+  
+  /// Espaçamento entre time-ago e presença no chat_app_bar
+  static const double chatAppBarTimePresenceSpacing = 8;
+  
+  /// Padding do trailing do chat_app_bar
+  static const double chatAppBarTrailingPadding = 20;
   
   /// Espaçamento entre elementos no trailing (tempo e badge)
   static const double trailingChipSpacing = 6;
@@ -82,6 +119,12 @@ class ConversationStyles {
   /// Peso da fonte do título
   static const FontWeight titleFontWeight = FontWeight.w600;
   
+  /// Tamanho da fonte do activityText (nome do evento)
+  static const double eventNameFontSize = 14;
+  
+  /// Peso da fonte do activityText
+  static const FontWeight eventNameFontWeight = FontWeight.w700;
+  
   /// Tamanho da fonte do subtítulo (última mensagem)
   static const double subtitleFontSize = 13;
   
@@ -107,24 +150,27 @@ class ConversationStyles {
   // TEXT STYLES - COMPOSED
   // ============================================================================
   
-  /// Estilo do título (display name)
-  static TextStyle title() => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+  /// Estilo do título (display name) - usado em conversation_tile e chat_app_bar
+  static TextStyle title({Color? color}) => GoogleFonts.getFont(
+        FONT_PLUS_JAKARTA_SANS, 
         fontSize: titleFontSize,
         fontWeight: titleFontWeight,
-        color: GlimpseColors.textSubTitle,
+        color: color ?? GlimpseColors.textSubTitle,
       );
 
-  /// Estilo do subtítulo (last message)
-  static TextStyle subtitle() => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+  /// Estilo do subtítulo (last message) - usado em conversation_tile e chat_app_bar
+  static TextStyle subtitle({Color? color}) => GoogleFonts.getFont(
+        FONT_PLUS_JAKARTA_SANS,
         fontSize: subtitleFontSize,
-        color: GlimpseColors.textSubTitle,
+        color: color ?? GlimpseColors.textSubTitle,
       );
 
-  /// Estilo do label de tempo (trailing time)
-  static TextStyle timeLabel() => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+  /// Estilo do label de tempo (trailing time) - usado em conversation_tile
+  static TextStyle timeLabel({Color? color}) => GoogleFonts.getFont(
+        FONT_PLUS_JAKARTA_SANS, 
         fontSize: timeLabelFontSize,
         fontWeight: timeLabelFontWeight,
-        color: GlimpseColors.textSubTitle,
+        color: color ?? GlimpseColors.textSubTitle,
       );
 
   /// Estilo do texto do chip "new" (unread badge)
@@ -132,6 +178,16 @@ class ConversationStyles {
     color: Colors.white,
     fontSize: unreadChipFontSize,
     fontWeight: unreadChipFontWeight,
+  );
+  
+  /// Estilo do texto de emoji (eventos) - usado em conversation_tile e chat_app_bar
+  static const TextStyle eventEmojiText = TextStyle(
+    fontSize: eventEmojiFontSize,
+  );
+  
+  /// Estilo do texto de emoji no chat app bar (eventos)
+  static const TextStyle eventEmojiTextChatAppBar = TextStyle(
+    fontSize: eventEmojiFontSizeChatAppBar,
   );
 
   // ============================================================================
@@ -172,4 +228,75 @@ class ConversationStyles {
   
   /// Box constraints vazio para remover tamanho mínimo de botões
   static const BoxConstraints emptyConstraints = BoxConstraints();
+  
+  // ============================================================================
+  // WIDGET BUILDERS - EMOJI CONTAINER
+  // ============================================================================
+  
+  /// Constrói o container de emoji para eventos (conversation_tile)
+  /// Garante consistência visual entre conversation_tile e chat_app_bar
+  static Widget buildEventEmojiContainer({
+    required String emoji,
+    double? size,
+  }) {
+    return Container(
+      width: size ?? avatarSize,
+      height: size ?? avatarSize,
+      decoration: BoxDecoration(
+        color: eventEmojiContainerBg(),
+        borderRadius: BorderRadius.circular(eventEmojiContainerRadius),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        emoji.isNotEmpty ? emoji : eventEmojiDefault,
+        style: eventEmojiText,
+      ),
+    );
+  }
+  
+  /// Constrói o container de emoji para eventos no chat app bar
+  /// Mesmo estilo do conversation_tile, mas tamanho pode ser customizado
+  static Widget buildEventEmojiContainerChatAppBar({
+    required String emoji,
+    double? size,
+  }) {
+    return Container(
+      width: size ?? avatarSizeChatAppBar,
+      height: size ?? avatarSizeChatAppBar,
+      decoration: BoxDecoration(
+        color: eventEmojiContainerBg(),
+        borderRadius: BorderRadius.circular(eventEmojiContainerRadius),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        emoji.isNotEmpty ? emoji : eventEmojiDefault,
+        style: eventEmojiTextChatAppBar,
+      ),
+    );
+  }
+  
+  // ============================================================================
+  // WIDGET BUILDERS - EVENT NAME TEXT
+  // ============================================================================
+  
+  /// Constrói o Text do nome do evento (activityText)
+  /// Garante consistência visual entre conversation_tile e chat_app_bar
+  /// Usa fonte 14px e cor primaryColorLight conforme especificação
+  static Widget buildEventNameText({
+    required String name,
+    int? maxLines,
+    TextOverflow? overflow,
+  }) {
+    return Text(
+      name,
+      style: GoogleFonts.getFont(
+        FONT_PLUS_JAKARTA_SANS,
+        fontSize: eventNameFontSize,
+        fontWeight: eventNameFontWeight,
+        color: GlimpseColors.primaryColorLight,
+      ),
+      maxLines: maxLines,
+      overflow: overflow,
+    );
+  }
 }

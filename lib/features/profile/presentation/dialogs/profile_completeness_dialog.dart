@@ -1,10 +1,11 @@
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:partiu/shared/widgets/profile_completeness_ring.dart';
 import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
+import 'package:partiu/shared/widgets/stable_avatar.dart';
+import 'package:partiu/common/state/app_state.dart';
 
 /// Bottom-sheet content que exibe o progresso de completude do perfil
 /// e permite navegar para edição ou dispensar permanentemente
@@ -13,6 +14,7 @@ class ProfileCompletenessDialog extends StatelessWidget {
     required this.onEditProfile,
     required this.onDontShow,
     super.key,
+    this.userId,
     this.photoUrl,
     this.percentage, // Percentual de completude (0-100)
     this.title,
@@ -21,6 +23,7 @@ class ProfileCompletenessDialog extends StatelessWidget {
 
   final VoidCallback onEditProfile;
   final VoidCallback onDontShow;
+  final String? userId;
   final String? photoUrl;
   final int? percentage; // Percentual de completude (0-100)
   final String? title;
@@ -63,22 +66,22 @@ class ProfileCompletenessDialog extends StatelessWidget {
               size: 90,
               strokeWidth: 4,
               percentage: percentage ?? 0,
-              child: CircleAvatar(
-                radius: 41,
-                backgroundColor: GlimpseColors.lightTextField,
-                backgroundImage: photoUrl != null && photoUrl!.isNotEmpty
-                    ? CachedNetworkImageProvider(photoUrl!)
-                    : null,
-                child: photoUrl == null || photoUrl!.isEmpty
-                    ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                    : null,
+              child: StableAvatar(
+                userId: userId ?? AppState.currentUserId ?? '',
+                size: 82,
+                photoUrl: photoUrl,
+                enableNavigation: false,
               ),
             ),
             const SizedBox(height: 24),
             
             // Title
-            DialogStyles.buildTitle(
+            Text(
               title ?? i18n.translate('complete_your_profile'),
+              textAlign: TextAlign.center,
+              style: DialogStyles.titleStyle.copyWith(
+                color: GlimpseColors.primaryColorLight,
+              ),
             ),
             const SizedBox(height: 12),
             

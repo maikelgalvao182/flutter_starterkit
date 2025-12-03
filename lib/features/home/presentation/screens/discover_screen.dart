@@ -5,18 +5,36 @@ import 'package:partiu/features/home/presentation/widgets/apple_map_view.dart';
 /// 
 /// Esta tela exibe um mapa Apple Maps com a localização do usuário.
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key});
+  const DiscoverScreen({super.key, this.onCenterUserRequested});
+
+  final VoidCallback? onCenterUserRequested;
 
   @override
-  State<DiscoverScreen> createState() => _DiscoverScreenState();
+  State<DiscoverScreen> createState() => DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> {
+class DiscoverScreenState extends State<DiscoverScreen> {
+  final GlobalKey<AppleMapViewState> _mapKey = GlobalKey<AppleMapViewState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Notifica o callback quando o widget é criado
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onCenterUserRequested?.call();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
-      child: const AppleMapView(),
+      child: AppleMapView(key: _mapKey),
     );
+  }
+
+  /// Centraliza o mapa na localização do usuário
+  void centerOnUser() {
+    _mapKey.currentState?.centerOnUser();
   }
 }

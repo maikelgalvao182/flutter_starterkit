@@ -27,8 +27,7 @@ class SessionCleanupService {
   static bool get isLoggingOut => _isLoggingOut;
 
   /// Executa o logout completo e limpeza de sessão.
-  /// [navigateCallback] deve navegar para a tela de login após conclusão.
-  Future<void> performLogout({VoidCallback? navigateCallback}) async {
+  Future<void> performLogout() async {
     _isLoggingOut = true; // Marcar início do logout
     _log('=== INICIANDO LOGOUT COMPLETO ===');
     
@@ -151,17 +150,11 @@ class SessionCleanupService {
         _log('Falha ao reinscrever no tópico global: $e');
       }
 
-      // 10. Navegação para tela de login
-      _log('ETAPA 10: Executando callback de navegação');
-      navigateCallback?.call();
-      _log('Callback de navegação executado');
-
       _log('=== LOGOUT COMPLETO FINALIZADO COM SUCESSO ===');
     } catch (e, st) {
       _logError('Falha inesperada no performLogout: $e', stackTrace: st);
+      rethrow; // Propaga erro para o chamador
     } finally {
-      // Aguarda 2 segundos antes de resetar o flag para garantir que navegação ocorra
-      await Future.delayed(const Duration(seconds: 2));
       _isLoggingOut = false;
       _log('Flag de logout resetado');
     }

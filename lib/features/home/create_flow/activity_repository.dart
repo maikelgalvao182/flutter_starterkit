@@ -51,10 +51,8 @@ class ActivityRepository {
 
       // Agendamento
       'schedule': {
-        'date': Timestamp.fromDate(draft.selectedDate!),
+        'date': Timestamp.fromDate(draft.selectedTime ?? draft.selectedDate!),
         'timeType': _timeTypeToString(draft.timeType!),
-        if (draft.selectedTime != null)
-          'specificTime': Timestamp.fromDate(draft.selectedTime!),
       },
 
       // Participantes

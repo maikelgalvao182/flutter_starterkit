@@ -3,17 +3,10 @@ import 'dart:async';
 import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/features/location/domain/repositories/location_repository_interface.dart';
 import 'package:partiu/core/services/state_abbreviation_service.dart';
+import 'package:partiu/core/services/location_service.dart';
+import 'package:partiu/core/services/location_permission_flow.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
-/// Estados do rastreamento de localização
-enum LocationTrackingState {
-  idle,
-  loading,
-  ready,
-  error,
-}
 
 /// Estados do salvamento de localização
 enum LocationSaveState {
@@ -23,215 +16,108 @@ enum LocationSaveState {
   error,
 }
 
+/// ViewModel simplificado para atualização de localização
+/// 
+/// Responsabilidades reduzidas:
+/// - Orquestrar o fluxo de salvamento de localização
+/// - Obter endereço legível via repository
+/// - Salvar dados no Firestore via repository
+/// - Notificar UI sobre estados (loading, success, error)
+/// 
+/// Delegado para outros serviços:
+/// - LocationPermissionFlow: gerenciar permissões
+/// - LocationService: obter coordenadas GPS
 class UpdateLocationViewModel extends ChangeNotifier {
   
   UpdateLocationViewModel({
     required LocationRepositoryInterface locationRepository,
-  }) : _locationRepository = locationRepository;
+    required LocationService locationService,
+    required LocationPermissionFlow permissionFlow,
+  }) : _locationRepository = locationRepository,
+       _locationService = locationService,
+       _permissionFlow = permissionFlow;
+  
   final LocationRepositoryInterface _locationRepository;
-  
-  // Estados gerais
-  bool _isLoading = false;
-  String? _errorMessage;
-  
-  // Estados de rastreamento
-  LocationTrackingState _trackingState = LocationTrackingState.idle;
-  LatLng? _currentPosition;
-  Set<Marker> _markers = {};
-  StreamSubscription<Position>? _positionSubscription;
+  final LocationService _locationService;
+  final LocationPermissionFlow _permissionFlow;
   
   // Estados de salvamento
   LocationSaveState _saveState = LocationSaveState.idle;
   String? _savedLocation;
   String? _saveError;
   
-  // Default location (São Paulo, Brazil)
-  static const LatLng defaultLocation = LatLng(-23.5505, -46.6333);
-  
-  // Getters gerais
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  
-  // Getters de rastreamento
-  LocationTrackingState get trackingState => _trackingState;
-  LatLng? get currentPosition => _currentPosition;
-  Set<Marker> get markers => _markers;
-  bool get isLocationReady => _trackingState == LocationTrackingState.ready;
-  
   // Getters de salvamento
   LocationSaveState get saveState => _saveState;
   String? get savedLocation => _savedLocation;
   String? get saveError => _saveError;
   
-  @override
-  void dispose() {
-    _positionSubscription?.cancel();
-    super.dispose();
-  }
-  
   /// Verifica o status da permissão sem solicitar
   Future<LocationPermission> checkPermissionStatus() async {
-    return await Geolocator.checkPermission();
+    return await _permissionFlow.check();
   }
   
-  /// Solicita permissão de localização explicitamente
+  /// Solicita permissão de localização
   Future<LocationPermission> requestLocationPermission() async {
-    // Verifica se o serviço está habilitado primeiro
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      AppLogger.warning('Location service not enabled', tag: 'UpdateLocationVM');
-      return LocationPermission.denied;
-    }
-    
-    // Verifica permissão atual
-    var permission = await Geolocator.checkPermission();
-    
-    // Se já foi negada permanentemente, não pode solicitar novamente
-    if (permission == LocationPermission.deniedForever) {
-      AppLogger.warning('Location permission denied forever', tag: 'UpdateLocationVM');
-      return LocationPermission.deniedForever;
-    }
-    
-    // Solicita permissão
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      AppLogger.info('Permission request result: $permission', tag: 'UpdateLocationVM');
-    }
-    
-    return permission;
+    return await _permissionFlow.resolvePermission();
   }
   
-  /// Inicia o rastreamento de localização em tempo real
-  /// IMPORTANTE: A permissão deve ser solicitada ANTES de chamar este método
-  Future<void> startLocationTracking(String locationNotAvailable) async {
-    _trackingState = LocationTrackingState.loading;
+  /// Verifica se GPS está habilitado
+  Future<bool> isGpsEnabled() async {
+    return await _permissionFlow.isGpsEnabled();
+  }
+  
+  /// Obtém a localização atual do dispositivo via LocationService
+  Future<Position?> getCurrentLocation() async {
+    return await _locationService.getCurrentLocation();
+  }
+  
+  /// Salva a localização atual do usuário no Firestore
+  /// 
+  /// Fluxo:
+  /// 1. Obtém posição atual via LocationService
+  /// 2. Busca endereço legível via repository (geocoding reverso)
+  /// 3. Salva no Firestore via repository
+  Future<void> saveCurrentLocation(String userId) async {
+    _saveState = LocationSaveState.loading;
+    _saveError = null;
+    _savedLocation = null;
     notifyListeners();
     
     try {
-      // Verifica se o serviço de localização está habilitado
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        AppLogger.warning('Location service not enabled', tag: 'UpdateLocationVM');
-        _setDefaultLocation(locationNotAvailable);
-        return;
-      }
-
-      // Apenas verifica a permissão (não solicita mais aqui)
-      final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || 
-          permission == LocationPermission.deniedForever) {
-        AppLogger.warning('Location permission not granted: $permission', tag: 'UpdateLocationVM');
-        _setDefaultLocation(locationNotAvailable);
-        return;
-      }
-
-      // Obtém posição atual
-      final position = await Geolocator.getCurrentPosition();
-      final currentLatLng = LatLng(position.latitude, position.longitude);
+      // 1. Obtém posição atual
+      final position = await _locationService.getCurrentLocation(
+        timeout: const Duration(seconds: 10),
+      );
       
-      _currentPosition = currentLatLng;
-      _trackingState = LocationTrackingState.ready;
-      _updateMarker(currentLatLng, locationNotAvailable);
-      notifyListeners();
-
-      // Inicia stream de posições em tempo real
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 10, // Atualiza a cada 10 metros
-        ),
-      ).listen((Position position) {
-        final newPosition = LatLng(position.latitude, position.longitude);
-        _currentPosition = newPosition;
-        _updateMarker(newPosition, locationNotAvailable);
+      if (position == null) {
+        _saveState = LocationSaveState.error;
+        _saveError = 'Unable to get current location';
         notifyListeners();
-      });
-
-      AppLogger.success('Location tracking started', tag: 'UpdateLocationVM');
-
+        return;
+      }
+      
+      // 2. Salva usando as coordenadas obtidas
+      await saveLocationDirectly(
+        userId: userId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      
     } catch (e) {
-      AppLogger.error('Failed to start location tracking: $e', tag: 'UpdateLocationVM');
-      _setDefaultLocation(locationNotAvailable);
-    }
-  }
-  
-  /// Define localização padrão em caso de erro
-  void _setDefaultLocation(String locationNotAvailable) {
-    _currentPosition = defaultLocation;
-    _trackingState = LocationTrackingState.error;
-    _errorMessage = locationNotAvailable;
-    _updateMarker(defaultLocation, locationNotAvailable);
-    notifyListeners();
-  }
-  
-  /// Atualiza o marcador no mapa
-  void _updateMarker(LatLng position, String yourCurrentLocation) {
-    _markers = {
-      Marker(
-        markerId: const MarkerId('current_location'),
-        position: position,
-        infoWindow: InfoWindow(
-          title: yourCurrentLocation,
-          snippet: 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}',
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-      ),
-    };
-  }
-  
-  /// Atualiza posição manualmente (quando usuário toca no mapa)
-  void updatePositionManually(LatLng position, String yourCurrentLocation) {
-    _currentPosition = position;
-    _trackingState = LocationTrackingState.ready;
-    _updateMarker(position, yourCurrentLocation);
-    notifyListeners();
-  }
-  
-  /// Aguarda até que a localização esteja pronta
-  Future<bool> waitForLocationReady({int maxAttempts = 50}) async {
-    if (isLocationReady && _currentPosition != null) {
-      return true;
-    }
-    
-    AppLogger.info('⏳ Waiting for GPS to be ready...', tag: 'UpdateLocationVM');
-    
-    var attempts = 0;
-    while (!isLocationReady && attempts < maxAttempts) {
-      await Future.delayed(const Duration(milliseconds: 100));
-      attempts++;
-    }
-    
-    final ready = isLocationReady && _currentPosition != null;
-    if (!ready) {
-      AppLogger.warning('GPS timeout - location not available', tag: 'UpdateLocationVM');
-    }
-    
-    return ready;
-  }
-  
-  /// Salva a localização atual
-  Future<void> saveCurrentLocation(String userId) async {
-    if (_currentPosition == null) {
       _saveState = LocationSaveState.error;
-      _saveError = 'No location available';
+      _saveError = 'Error getting location: $e';
+      AppLogger.error('Error in saveCurrentLocation: $e', tag: 'UpdateLocationVM');
       notifyListeners();
-      return;
     }
-    
-    await saveLocationDirectly(
-      userId: userId,
-      latitude: _currentPosition!.latitude,
-      longitude: _currentPosition!.longitude,
-    );
   }
   
+  /// Salva localização diretamente com coordenadas fornecidas
   Future<void> saveLocationDirectly({
     required String userId,
     required double latitude,
     required double longitude,
   }) async {
     _saveState = LocationSaveState.loading;
-    _isLoading = true;
     _saveError = null;
     _savedLocation = null;
     notifyListeners();
@@ -289,7 +175,6 @@ class UpdateLocationViewModel extends ChangeNotifier {
       );
       
       _saveState = LocationSaveState.success;
-      _isLoading = false;
       _savedLocation = '$countryStr, $localityStr, $stateAbbr';
       
       AppLogger.success('Location saved successfully', tag: 'UpdateLocationVM');
@@ -297,7 +182,6 @@ class UpdateLocationViewModel extends ChangeNotifier {
       
     } on TimeoutException {
       _saveState = LocationSaveState.error;
-      _isLoading = false;
       _saveError = 'Location request timed out';
       
       AppLogger.error('Timeout saving location', tag: 'UpdateLocationVM');
@@ -305,7 +189,6 @@ class UpdateLocationViewModel extends ChangeNotifier {
       
     } catch (e) {
       _saveState = LocationSaveState.error;
-      _isLoading = false;
       _saveError = 'Failed to save location: $e';
       
       AppLogger.error('Error saving location: $e', tag: 'UpdateLocationVM');

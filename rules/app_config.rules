@@ -1,0 +1,10 @@
+/// ⚙️ Coleção de configurações da aplicação
+/// Path usado no app:
+/// - AppInfo/{configName}
+///   - GoogleAndroidMaps/Api_key: string
+///   - GoogleMapsApiKey/Api_key: string
+
+match /AppInfo/{configName} {
+  allow read: if isSignedIn();
+  allow write: if false; // Apenas leitura para usuários
+}

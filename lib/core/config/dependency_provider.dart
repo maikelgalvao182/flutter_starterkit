@@ -15,6 +15,11 @@ import 'package:partiu/features/profile/presentation/viewmodels/image_upload_vie
 import 'package:partiu/features/profile/data/repositories/profile_repository.dart';
 import 'package:partiu/features/profile/domain/repositories/profile_repository_interface.dart';
 import 'package:partiu/core/services/image_picker_service.dart';
+import 'package:partiu/core/services/location_service.dart';
+import 'package:partiu/core/services/location_permission_flow.dart';
+import 'package:partiu/core/services/location_cache.dart';
+import 'package:partiu/core/services/location_background_updater.dart';
+import 'package:partiu/core/services/location_analytics_service.dart';
 
 /// Sistema de injeção de dependências usando get_it
 class DependencyProvider extends InheritedWidget {
@@ -56,6 +61,13 @@ class ServiceLocator {
     
     // Services
     _getIt.registerLazySingleton<ImagePickerService>(() => ImagePickerService());
+    
+    // 🗺️ Location Services (Enterprise Architecture)
+    _getIt.registerLazySingleton<LocationService>(() => LocationService());
+    _getIt.registerLazySingleton<LocationPermissionFlow>(() => LocationPermissionFlow());
+    _getIt.registerLazySingleton<LocationCache>(() => LocationCache.instance);
+    _getIt.registerLazySingleton<LocationAnalyticsService>(() => LocationAnalyticsService.instance);
+    // LocationSyncScheduler é inicializado no main.dart
 
     // ViewModels
     _getIt.registerFactory<SignInViewModel>(
@@ -64,7 +76,11 @@ class ServiceLocator {
     _getIt.registerFactory<EmailAuthViewModel>(() => EmailAuthViewModel());
     _getIt.registerFactory<CadastroViewModel>(() => CadastroViewModel());
     _getIt.registerFactory<UpdateLocationViewModel>(
-      () => UpdateLocationViewModel(locationRepository: _getIt<LocationRepositoryInterface>()),
+      () => UpdateLocationViewModel(
+        locationRepository: _getIt<LocationRepositoryInterface>(),
+        locationService: _getIt<LocationService>(),
+        permissionFlow: _getIt<LocationPermissionFlow>(),
+      ),
     );
     _getIt.registerFactory<ProfileTabViewModel>(() => ProfileTabViewModel());
     _getIt.registerFactory<EditProfileViewModelRefactored>(

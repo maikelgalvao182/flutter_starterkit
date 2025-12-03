@@ -11,6 +11,8 @@ import 'package:partiu/core/services/cache/cache_manager.dart';
 import 'package:partiu/core/services/google_maps_initializer.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
+import 'package:partiu/core/services/location_service.dart';
+import 'package:partiu/core/services/location_background_updater.dart'; // LocationSyncScheduler
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
 
@@ -34,6 +36,15 @@ void main() async {
   // Inicializar Service Locator
   final serviceLocator = ServiceLocator();
   await serviceLocator.init();
+
+  // Inicializar LocationSyncScheduler para atualização automática de localização
+  // Isso mantém o Firestore atualizado a cada 10 minutos automaticamente
+  final locationService = serviceLocator.get<LocationService>();
+  LocationSyncScheduler.start(
+    locationService,
+    config: LocationConfig.standard, // Usar configuração padrão (Uber/Tinder)
+  );
+  debugPrint('✅ LocationSyncScheduler iniciado');
 
   runApp(
     MultiProvider(

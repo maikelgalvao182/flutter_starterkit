@@ -1,0 +1,50 @@
+/// 💬 Coleção de chats de eventos (multiusuário)
+/// Path usado no app:
+/// - EventChats/{eventId}
+///   - eventId: string
+///   - createdBy: string
+///   - createdAt: timestamp
+///   - lastMessage: string
+///   - lastMessageAt: timestamp
+///   - lastMessageSenderId: string
+///   - participantIds: array<string>
+///   - participantCount: number
+
+match /EventChats/{eventId} {
+  // Qualquer participante aprovado pode ler o chat
+  allow read: if isSignedIn() && 
+    request.auth.uid in resource.data.participantIds;
+  
+  // Apenas Cloud Functions podem criar/atualizar o documento principal
+  allow write: if false;
+
+  /// 💬 Mensagens dentro do chat
+  match /Messages/{messageId} {
+    // Qualquer participante pode ler mensagens
+    allow read: if isSignedIn() && 
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds;
+    
+    // Qualquer participante pode enviar mensagens
+    allow create: if isSignedIn() && 
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds &&
+      request.resource.data.senderId == request.auth.uid;
+    
+    // Não pode editar/deletar mensagens
+    allow update, delete: if false;
+  }
+
+  /// 👥 Participantes do chat
+  match /Participants/{userId} {
+    // Cada participante pode ler todos os outros
+    allow read: if isSignedIn() && 
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds;
+    
+    // Cada participante pode atualizar apenas seu próprio documento (lastReadAt, unreadCount)
+    allow update: if isSignedIn() && 
+      request.auth.uid == userId &&
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds;
+    
+    // Apenas Cloud Functions podem criar/deletar participantes
+    allow create, delete: if false;
+  }
+}

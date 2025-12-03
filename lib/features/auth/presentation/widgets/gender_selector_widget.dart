@@ -1,3 +1,4 @@
+import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_dropdown.dart';
 import 'package:flutter/material.dart';
@@ -19,9 +20,9 @@ class GenderSelectorWidget extends StatelessWidget {
     final i18n = AppLocalizations.of(context);
     
     final genderOptions = [
-      i18n.translate('gender_male'),
-      i18n.translate('gender_female'),
-      i18n.translate('gender_non_binary'),
+      GENDER_MAN,
+      GENDER_WOMAN,
+      GENDER_OTHER,
     ];
     
     return GlimpseDropdown(

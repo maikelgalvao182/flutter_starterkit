@@ -367,7 +367,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
               systemNavigationBarIconBrightness: isOnboarding ? Brightness.light : Brightness.dark,
             ),
             child: Scaffold(
-              backgroundColor: isOnboarding ? Colors.black : GlimpseColors.textSubTitle,
+              backgroundColor: isOnboarding ? Colors.black : Colors.white,
               body: isOnboarding
                   ? _buildOnboardingLayout()
                   : _buildNormalLayout(),
@@ -428,103 +428,133 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
   Widget _buildStepWidget(SignupWizardStep step) {
     switch (step) {
       case SignupWizardStep.profilePhoto:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: ProfilePhotoWidget(
-            imageFile: _cadastroViewModel.imageFile as File?,
-            onImageSelected: (file) => _cadastroViewModel.setImageFile(file),
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: ProfilePhotoWidget(
+              imageFile: _cadastroViewModel.imageFile as File?,
+              onImageSelected: (file) => _cadastroViewModel.setImageFile(file),
+            ),
           ),
         );
       
       case SignupWizardStep.personalInfo:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            children: [
-              PersonalInfoWidget(
-                initialName: _cadastroViewModel.fullName,
-                onNameChanged: _cadastroViewModel.setFullName,
-              ),
-              const SizedBox(height: 24),
-              BirthDateWidget(
-                initialDate: _cadastroViewModel.birthDate,
-                onDateChanged: (DateTime? date) {
-                  if (date != null) _cadastroViewModel.setBirthDate(date);
-                },
-              ),
-            ],
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              children: [
+                PersonalInfoWidget(
+                  initialName: _cadastroViewModel.fullName,
+                  onNameChanged: _cadastroViewModel.setFullName,
+                ),
+                const SizedBox(height: 24),
+                BirthDateWidget(
+                  initialDate: _cadastroViewModel.birthDate,
+                  onDateChanged: (DateTime? date) {
+                    if (date != null) _cadastroViewModel.setBirthDate(date);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       
       case SignupWizardStep.instagram:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: InstagramWidget(
-            initialInstagram: _cadastroViewModel.instagram,
-            onInstagramChanged: _cadastroViewModel.setInstagram,
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: InstagramWidget(
+              initialInstagram: _cadastroViewModel.instagram,
+              onInstagramChanged: _cadastroViewModel.setInstagram,
+            ),
           ),
         );
       
       case SignupWizardStep.jobTitle:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: JobTitleWidget(
-            initialJobTitle: _cadastroViewModel.jobTitle,
-            onJobTitleChanged: _cadastroViewModel.setJobTitle,
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: JobTitleWidget(
+              initialJobTitle: _cadastroViewModel.jobTitle,
+              onJobTitleChanged: _cadastroViewModel.setJobTitle,
+            ),
           ),
         );
       
       case SignupWizardStep.gender:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: GenderSelectorWidget(
-            initialGender: _cadastroViewModel.selectedGender,
-            onGenderChanged: (value) => _cadastroViewModel.setGender(value ?? ''),
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: GenderSelectorWidget(
+              initialGender: _cadastroViewModel.selectedGender,
+              onGenderChanged: (value) => _cadastroViewModel.setGender(value ?? ''),
+            ),
           ),
         );
       
       case SignupWizardStep.bio:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: BioWidget(
-            initialBio: _cadastroViewModel.bio,
-            onBioChanged: _cadastroViewModel.setBio,
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: BioWidget(
+              initialBio: _cadastroViewModel.bio,
+              onBioChanged: _cadastroViewModel.setBio,
+            ),
           ),
         );
       
       case SignupWizardStep.country:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: CountrySelectorWidget(
-            initialCountry: _cadastroViewModel.country,
-            onCountryChanged: _cadastroViewModel.setCountry,
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: CountrySelectorWidget(
+              initialCountry: _cadastroViewModel.country,
+              onCountryChanged: _cadastroViewModel.setCountry,
+            ),
           ),
         );
       
       case SignupWizardStep.interests:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: SpecialtySelectorWidget(
-            initialSpecialty: _cadastroViewModel.interests,
-            onSpecialtyChanged: (value) => _cadastroViewModel.setInterests(value ?? ''),
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SpecialtySelectorWidget(
+              initialSpecialty: _cadastroViewModel.interests,
+              onSpecialtyChanged: (value) => _cadastroViewModel.setInterests(value ?? ''),
+            ),
           ),
         );
       
       case SignupWizardStep.origin:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: OriginSelectorWidget(
-            initialOrigin: _cadastroViewModel.originSource,
-            onOriginChanged: (value) => _cadastroViewModel.setOriginSource(value ?? ''),
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: OriginSelectorWidget(
+              initialOrigin: _cadastroViewModel.originSource,
+              onOriginChanged: (value) => _cadastroViewModel.setOriginSource(value ?? ''),
+            ),
           ),
         );
       
       case SignupWizardStep.evaluation:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: AppEvaluationWidget(
-            isBride: false, // Sempre vendor
-            shouldAutoRequestReview: false,
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: AppEvaluationWidget(
+              isBride: false, // Sempre vendor
+              shouldAutoRequestReview: false,
+            ),
           ),
         );
     }

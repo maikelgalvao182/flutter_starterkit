@@ -25,7 +25,7 @@ class TextStyles {
   static TextStyle get headerTitle => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
     fontSize: 18,
     fontWeight: FontWeight.w700,
-    color: GlimpseColors.textSubTitle,
+    color: GlimpseColors.primaryColorLight,
   );
 
   /// Subtítulo dos cabeçalhos das telas (GlimpseProgressHeader)

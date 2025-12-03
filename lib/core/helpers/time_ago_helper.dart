@@ -38,8 +38,13 @@ class TimeAgoHelper {
     bool abbreviated = true,
   }) {
     // Detectar locale (ordem: parâmetro > AppLocalizations > fallback 'en')
-    final effectiveLocale = locale ?? 
-      AppLocalizations.currentLocale ?? 'en';
+    var effectiveLocale = locale;
+    if (effectiveLocale == null || effectiveLocale.isEmpty) {
+      effectiveLocale = AppLocalizations.currentLocale;
+    }
+    if (effectiveLocale == null || effectiveLocale.isEmpty) {
+      effectiveLocale = 'en';
+    }
     
     // Converter timestamp para DateTime
     DateTime dateTime;

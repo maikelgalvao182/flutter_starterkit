@@ -8,6 +8,7 @@ import 'package:partiu/features/auth/presentation/screens/forgot_password_screen
 import 'package:partiu/features/auth/presentation/screens/blocked_account_screen_router.dart';
 import 'package:partiu/features/location/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
+import 'package:partiu/features/home/presentation/screens/advanced_filters_screen.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen_optimized.dart';
 import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule_drawer.dart';
@@ -32,6 +33,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String notifications = '/notifications';
+  static const String advancedFilters = '/advanced-filters';
   static const String schedule = '/schedule';
 }
 
@@ -190,6 +192,13 @@ GoRouter createAppRouter(BuildContext context) {
       path: AppRoutes.notifications,
       name: 'notifications',
       builder: (context, state) => const SimplifiedNotificationScreenWrapper(),
+    ),
+    
+    // Advanced Filters
+    GoRoute(
+      path: AppRoutes.advancedFilters,
+      name: 'advancedFilters',
+      builder: (context, state) => const AdvancedFiltersScreen(),
     ),
     
     // Schedule

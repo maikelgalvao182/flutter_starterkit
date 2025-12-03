@@ -7,10 +7,11 @@ class GlimpseColors {
   static const Color primaryLight = Color(0xFFEBF6E6);
   static const Color primaryColorLight = Color(0xFF000000);
   static const Color borderColorLight = Color(0xFFDDDDDD);
-  static const Color textSubTitle = Color(0xFF494949);
+  static const Color textSubTitle = Color(0xFF6F6E6E);
   static const Color textHint = Color(0xFFC5C8D2);
   static const Color lightTextField = Color(0xFFF8F8F8);
   static const Color disabledButtonColorLight = Color(0xFFE0E0E0);
+  static const Color bgColorLight = Color(0xFFFFFFFF);
 
   // Cor de ação genérica
   static const Color actionColor = Color(0xFFFF8F39);

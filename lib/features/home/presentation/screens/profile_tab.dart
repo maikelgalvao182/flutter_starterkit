@@ -9,9 +9,11 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/app/services/localization_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/skeletons/profile_header_skeleton.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
+import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/profile_info_chips.dart';
 import 'package:partiu/features/profile/presentation/widgets/app_section_card.dart';
@@ -94,7 +96,7 @@ class _ProfileTabState extends State<ProfileTab> {
     if (command == null) {
       // Usuário não autenticado - mostra feedback
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, 'Perfil do usuário não encontrado');
+        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('profile_not_found'));
       }
       return;
     }
@@ -111,7 +113,7 @@ class _ProfileTabState extends State<ProfileTab> {
       );
     } catch (e) {
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, 'Erro ao carregar perfil do usuário');
+        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('error_loading_profile'));
       }
     }
   }
@@ -134,7 +136,7 @@ class _ProfileTabState extends State<ProfileTab> {
     
     if (command == null) {
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, 'Usuário não autenticado');
+        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('user_not_authenticated'));
       }
       return;
     }
@@ -143,15 +145,9 @@ class _ProfileTabState extends State<ProfileTab> {
       await ProfileScreenRouter.navigateToEditProfile(context);
     } catch (e) {
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, 'Erro ao abrir edição de perfil');
+        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('error_opening_edit_profile'));
       }
     }
-  }
-  
-  /// Handler para atualizar foto de perfil ou visualizar perfil
-  Future<void> _handleAvatarTap(BuildContext context) async {
-    // Ao clicar no avatar, navega para o próprio perfil
-    await _handleViewProfileTap(context);
   }
 
   @override
@@ -175,9 +171,21 @@ class _ProfileTabState extends State<ProfileTab> {
               physics: GlimpseStyles.scrollPhysics,
               child: Column(
                 children: [
-                  _ProfileHeader(
-                    onViewProfile: () => _handleViewProfileTap(context),
-                    onEditProfile: () => _handleEditProfileTap(context),
+                  GlimpseTabAppBar(
+                    title: LocalizationService.of(context).translate('profile') ?? 'Perfil',
+                    actions: [
+                      GlimpseTabActionButton(
+                        icon: Iconsax.user,
+                        tooltip: LocalizationService.of(context).translate('view_profile') ?? 'Ver Perfil',
+                        onPressed: () => _handleViewProfileTap(context),
+                      ),
+                      const SizedBox(width: 16),
+                      GlimpseTabActionButton(
+                        icon: Iconsax.edit_2,
+                        tooltip: LocalizationService.of(context).translate('edit_profile') ?? 'Editar Perfil',
+                        onPressed: () => _handleEditProfileTap(context),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   
@@ -185,7 +193,6 @@ class _ProfileTabState extends State<ProfileTab> {
                   _ProfileHeaderContent(
                     viewModel: _viewModel!,
                     nameTextStyle: _nameTextStyle,
-                    onAvatarTap: () => _handleAvatarTap(context),
                     onEditProfile: () => _handleEditProfileTap(context),
                   ),
                   const SizedBox(height: GlimpseStyles.mediumSpacing),
@@ -209,96 +216,16 @@ class _ProfileTabState extends State<ProfileTab> {
 
 // ==================== OPTIMIZED WIDGETS ====================
 
-/// Widget otimizado para botão de ação com ícone SVG
-class _IconButton extends StatelessWidget {
-  
-  const _IconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 28,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        icon: Icon(
-          icon,
-          size: 24,
-          color: Theme.of(context).iconTheme.color,
-        ),
-        tooltip: tooltip,
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          onPressed();
-        },
-      ),
-    );
-  }
-}
-
-/// Header da tab com título e botões de ação
-class _ProfileHeader extends StatelessWidget {
-  
-  const _ProfileHeader({
-    required this.onViewProfile,
-    required this.onEditProfile,
-  });
-  final VoidCallback onViewProfile;
-  final VoidCallback onEditProfile;
-  
-  @override
-  Widget build(BuildContext context) {
-    final i18n = LocalizationService.of(context);
-    
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              i18n.translate('profile') ?? 'Perfil',
-              style: GlimpseStyles.messagesTitleStyle(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // Botões de ação
-          _IconButton(
-            icon: Iconsax.user,
-            tooltip: i18n.translate('view_profile') ?? 'Ver Perfil',
-            onPressed: onViewProfile,
-          ),
-          const SizedBox(width: 16),
-          _IconButton(
-            icon: Iconsax.edit_2,
-            tooltip: i18n.translate('edit_profile') ?? 'Editar Perfil',
-            onPressed: onEditProfile,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Conteúdo do header do perfil (avatar, nome, chips)
 class _ProfileHeaderContent extends StatelessWidget {
   
   const _ProfileHeaderContent({
     required this.viewModel,
     required this.nameTextStyle,
-    required this.onAvatarTap,
     required this.onEditProfile,
   });
   final ProfileTabViewModel viewModel;
   final TextStyle nameTextStyle;
-  final VoidCallback onAvatarTap;
   final VoidCallback onEditProfile;
 
   @override
@@ -329,16 +256,14 @@ class _ProfileHeaderContent extends StatelessWidget {
                 }
                 
                 return ReactiveProfileCompletenessRing(
-                  size: 100,
+                  size: 98,
                   strokeWidth: 3,
-                  child: GestureDetector(
-                    onTap: onAvatarTap,
-                    child: StableAvatar(
-                      userId: currentUser.userId,
-                      size: 88,
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                      photoUrl: currentUser.photoUrl ?? currentUser.userProfilePhoto,
-                    ),
+                  child: StableAvatar(
+                    userId: currentUser.userId,
+                    size: 88,
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    photoUrl: currentUser.photoUrl ?? currentUser.userProfilePhoto,
+                    enableNavigation: true,
                   ),
                 );
               },

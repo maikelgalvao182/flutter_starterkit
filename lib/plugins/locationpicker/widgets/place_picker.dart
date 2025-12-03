@@ -96,6 +96,7 @@ class PlacePickerState extends State<PlacePicker> {
     if (widget.displayLocation == null) {
       _getCurrentLocation()
           .then((value) {
+            if (!mounted) return;
             setState(() {
               _currentLocation = value;
             });
@@ -104,6 +105,7 @@ class PlacePickerState extends State<PlacePicker> {
             });
           })
           .catchError((e) {
+            if (!mounted) return;
             if (e is LocationServiceDisabledException) {
               Navigator.of(context).pop();
             } else {
@@ -423,6 +425,7 @@ class PlacePickerState extends State<PlacePicker> {
         moveToLocation(LatLng(location['lat'], location['lng']));
       }
     } catch (e) {
+      // Ignore reverse geocoding errors; marker will still move.
     }
   }
 
@@ -531,6 +534,7 @@ class PlacePickerState extends State<PlacePicker> {
         hasSearchTerm = false;
       });
     } catch (e) {
+      // Ignore errors while loading nearby places; UI will simply not update.
     }
   }
 
@@ -656,6 +660,7 @@ class PlacePickerState extends State<PlacePicker> {
               );
       });
     } catch (e) {
+      // Ignore address parsing errors; partial address data is acceptable.
     }
   }
 
@@ -699,9 +704,11 @@ class PlacePickerState extends State<PlacePicker> {
       // accessing the position and request users of the
       // App to enable the location services.
 
-      final isOk = await Future(
-        () => _showLocationDisabledAlertDialog(context),
-      );
+      if (!mounted) {
+        return Future.error('Location picker is no longer mounted');
+      }
+
+      final isOk = await _showLocationDisabledAlertDialog(context);
       if (isOk ?? false) {
         return Future.error(const LocationServiceDisabledException());
       } else {
@@ -788,8 +795,8 @@ class PlacePickerState extends State<PlacePicker> {
               TextButton(
                 child: const Text('OK'),
                 onPressed: () async {
-                  await Geolocator.openLocationSettings();
-                  Future(() => Navigator.of(context).pop(true));
+                  Geolocator.openLocationSettings();
+                  Navigator.of(context).pop(true);
                 },
               ),
             ],
@@ -801,7 +808,9 @@ class PlacePickerState extends State<PlacePicker> {
 
   // add delay to the map pop to avoid `Fatal Exception: java.lang.NullPointerException` error on Android
   Future<bool> _delayedPop() async {
-    Navigator.of(context, rootNavigator: true).push(
+    final navigator = Navigator.of(context, rootNavigator: true);
+
+    navigator.push(
       PageRouteBuilder(
     pageBuilder:
       (context, animation, secondaryAnimation) => const PopScope(
@@ -819,10 +828,9 @@ class PlacePickerState extends State<PlacePicker> {
 
     await Future.delayed(const Duration(milliseconds: 500));
     Future(
-      () =>
-          Navigator.of(context)
-            ..pop()
-            ..pop(locationResult),
+      () => navigator
+        ..pop()
+        ..pop(locationResult),
     );
     return Future.value(false);
   }

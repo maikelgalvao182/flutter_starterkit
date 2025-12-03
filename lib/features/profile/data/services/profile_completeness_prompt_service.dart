@@ -6,8 +6,9 @@ import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/features/profile/domain/calculators/i_profile_completeness_calculator.dart';
 import 'package:partiu/features/profile/domain/calculators/vendor_profile_completeness_calculator.dart';
 import 'package:partiu/features/profile/presentation/dialogs/profile_completeness_dialog.dart';
-import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
+import 'package:partiu/core/router/app_router.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service responsável por decidir quando exibir o bottom sheet de
@@ -99,6 +100,7 @@ class ProfileCompletenessPromptService {
         backgroundColor: Colors.transparent,
         builder: (ctx) {
           return ProfileCompletenessDialog(
+            userId: currentUserId,
             photoUrl: currentUser.userProfilePhoto,
             percentage: pct,
             title: i18n.translate('complete_your_profile'),
@@ -120,13 +122,9 @@ class ProfileCompletenessPromptService {
               AppLogger.info('User clicked edit profile', tag: _tag);
               if (navigator.canPop()) navigator.pop();
               
-              // Navegar para tela de edição imediatamente
+              // Navegar para tela de edição usando GoRouter
               if (context.mounted) {
-                Navigator.of(context).push<void>(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const EditProfileScreen(),
-                  ),
-                );
+                context.push(AppRoutes.editProfile);
               }
             },
           );

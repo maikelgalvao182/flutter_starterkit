@@ -3,14 +3,12 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/helpers/time_ago_helper.dart';
-import 'package:partiu/core/services/chat_service.dart';
+import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/features/conversations/services/conversation_data_processor.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/conversations/utils/conversation_styles.dart';
-import 'package:partiu/core/services/user_data_cache_placeholder.dart';
-import 'package:partiu/shared/widgets/avatar_memory_cache.dart';
-import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
+import 'package:partiu/shared/widgets/event_emoji_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -79,43 +77,38 @@ class ConversationTile extends StatelessWidget {
   }
 
   Widget _buildTileContent(BuildContext context, ConversationDisplayData displayData, AppLocalizations i18n) {
-    // [OK] Debug logs to track avatar data flow
+    // Verificar se é chat de evento
+    final isEventChat = rawData['is_event_chat'] == true || rawData['event_id'] != null;
     
-    // [OK] FIX: Fetch current URL from Users collection (like header.dart does)
-    // instead of using stale URL from Conversation document
-    String? effectivePhotoUrl;
-    
-    // First check memory cache (fastest)
-    effectivePhotoUrl = AvatarMemoryCache.get(displayData.otherUserId);
-    
-    // If not in cache, fetch from Users collection asynchronously
-    if (effectivePhotoUrl == null && displayData.otherUserId.isNotEmpty) {
-      // Fire-and-forget fetch that will update cache for next rebuild
-      UserDataCachePlaceholder().getUserData(displayData.otherUserId).then((userData) {
-        final freshUrl = userData?['photoUrl'] as String?;
-        if (freshUrl != null && freshUrl.isNotEmpty) {
-          AvatarMemoryCache.set(displayData.otherUserId, freshUrl);
-          // Widget will rebuild automatically via provider
-        }
-      }).catchError((e) {
-      });
-      
-      // Meanwhile, use conversation URL as fallback (will be replaced on next rebuild)
-      effectivePhotoUrl = displayData.photoUrl;
-    } else {
-    }
-    
-    final Widget leading = SizedBox(
-      width: ConversationStyles.avatarSize,
-      height: ConversationStyles.avatarSize,
-      child: StableAvatar(
-        key: ValueKey('conversation_avatar_${displayData.otherUserId}'),
-        userId: displayData.otherUserId,
+    // Leading: Avatar ou Emoji do evento
+    final Widget leading;
+    if (isEventChat) {
+      // Usar widget compartilhável de emoji avatar
+      final emoji = rawData['emoji'] ?? EventEmojiAvatar.defaultEmoji;
+      final eventId = rawData['event_id']?.toString() ?? '';
+      leading = EventEmojiAvatar(
+        emoji: emoji,
+        eventId: eventId,
         size: ConversationStyles.avatarSize,
-      ),
-    );
+        emojiSize: ConversationStyles.eventEmojiFontSize,
+      );
+    } else {
+      // Avatar normal para conversas 1-1
+      leading = SizedBox(
+        width: ConversationStyles.avatarSize,
+        height: ConversationStyles.avatarSize,
+        child: StableAvatar(
+          key: ValueKey('conversation_avatar_${displayData.otherUserId}'),
+          userId: displayData.otherUserId,
+          size: ConversationStyles.avatarSize,
+        ),
+      );
+    }
 
     final tile = ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      visualDensity: VisualDensity.standard,
+      dense: false,
       tileColor: displayData.hasUnreadMessage 
           ? GlimpseColors.lightTextField
           : null,
@@ -124,10 +117,26 @@ class ConversationTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: ReactiveUserNameWithBadge(
-              userId: displayData.otherUserId,
-              style: ConversationStyles.title(),
-            ),
+            child: isEventChat
+                ? StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('events')
+                        .doc(displayData.otherUserId.replaceFirst('event_', ''))
+                        .snapshots(),
+                    builder: (context, snap) {
+                      String eventName = 'Evento';
+                      if (snap.hasData && snap.data!.data() != null) {
+                        final data = snap.data!.data()!;
+                        eventName = data['activityText'] ?? 'Evento';
+                      }
+                      return ConversationStyles.buildEventNameText(
+                        name: eventName,
+                      );
+                    },
+                  )
+                : ConversationStyles.buildEventNameText(
+                    name: rawData['activityText'] ?? 'Usuário',
+                  ),
           ),
           const SizedBox(width: 8),
           // 🔥 Time-ago reativo usando StreamBuilder (igual ao chat_app_bar_widget.dart)

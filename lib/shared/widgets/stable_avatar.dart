@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/services/cache/avatar_cache_service.dart';
+import 'package:partiu/core/router/app_router.dart';
+import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/shared/stores/avatar_store.dart';
 
 /// Avatar reativo, quadrado, leve, sem jank e com skeleton automático.
@@ -60,6 +63,7 @@ class StableAvatar extends StatelessWidget {
       size: size,
       borderRadius: borderRadius,
       enableNavigation: enableNavigation,
+      userId: userId,
       onTap: onTap,
       child: RepaintBoundary(
         child: ValueListenableBuilder(
@@ -103,14 +107,46 @@ class _AvatarShell extends StatelessWidget {
     required this.borderRadius,
     required this.enableNavigation,
     required this.child,
+    this.userId,
     this.onTap,
   });
 
   final double size;
   final BorderRadius borderRadius;
   final bool enableNavigation;
+  final String? userId;
   final VoidCallback? onTap;
   final Widget child;
+
+  void _handleTap(BuildContext context) {
+    // Se há callback customizado, usa ele
+    if (onTap != null) {
+      onTap!();
+      return;
+    }
+
+    // Navegação padrão para perfil
+    if (userId == null || userId!.isEmpty) return;
+
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null) return;
+
+    // Por enquanto, só navega se for o próprio usuário
+    // TODO: Implementar busca de outros usuários quando necessário
+    if (userId != currentUserId) return;
+
+    final currentUser = AppState.currentUser.value;
+    if (currentUser == null) return;
+
+    // Navega para o perfil usando GoRouter
+    context.push(
+      '${AppRoutes.profile}/$userId',
+      extra: {
+        'user': currentUser,
+        'currentUserId': currentUserId,
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +165,7 @@ class _AvatarShell extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: onTap,
+        onTap: () => _handleTap(context),
         child: clipped,
       ),
     );

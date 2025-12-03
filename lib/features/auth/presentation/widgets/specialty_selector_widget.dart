@@ -140,9 +140,7 @@ class _SpecialtySelectorWidgetState extends State<SpecialtySelectorWidget> {
                     FONT_PLUS_JAKARTA_SANS,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: _selectedInterests.length >= maxInterests
-                        ? GlimpseColors.primary
-                        : GlimpseColors.textSubTitle,
+                    color: GlimpseColors.primaryColorLight,
                   ),
                 ),
               ),

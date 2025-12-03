@@ -12,8 +12,8 @@ import 'package:partiu/core/constants/constants.dart';
 /// 
 /// Formata automaticamente conforme o locale:
 /// - en: MM-DD-YYYY
-/// - pt: DD-MM-YYYY
-/// - es: DD-MM-YYYY
+/// - pt: DD-MM-AAAA
+/// - es: DD-MM-AAAA
 class GlimpseDatePickerField extends StatefulWidget {
 
   const GlimpseDatePickerField({
@@ -63,7 +63,7 @@ class _GlimpseDatePickerFieldState extends State<GlimpseDatePickerField> {
 
   void _updateTextFieldValue(DateTime date) {
     // Usa DateFormatterHelper para formatar conforme o locale
-    // en: MM-DD-YYYY, pt/es: DD-MM-YYYY
+    // en: MM-DD-YYYY, pt/es: DD-MM-AAAA
     final locale = Localizations.localeOf(context).languageCode;
     final formattedDate = DateFormatterHelper.formatBirthday(date, locale);
     _controller.text = formattedDate;
@@ -74,11 +74,11 @@ class _GlimpseDatePickerFieldState extends State<GlimpseDatePickerField> {
     final i18n = AppLocalizations.of(context);
     final locale = i18n.locale.languageCode;
     
-    // en: MM-DD-YYYY, pt/es: DD-MM-YYYY
+    // en: MM-DD-YYYY, pt/es: DD-MM-AAAA
     if (locale == 'en') {
       return 'MM-DD-YYYY';
     } else {
-      return 'DD-MM-YYYY';
+      return 'DD-MM-AAAA';
     }
   }
 

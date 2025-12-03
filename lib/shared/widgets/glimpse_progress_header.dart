@@ -47,10 +47,10 @@ class GlimpseProgressHeader extends StatelessWidget {
     final textColor = whiteMode ? Colors.white : GlimpseColors.textSubTitle;
     final titleStyle = whiteMode 
         ? TextStyles.headerTitle.copyWith(color: Colors.white) 
-        : TextStyles.headerTitle;
+        : TextStyles.headerTitle.copyWith(color: GlimpseColors.primaryColorLight);
     final subtitleStyle = whiteMode 
         ? TextStyles.headerSubtitle.copyWith(color: Colors.white.withValues(alpha: 0.9)) 
-        : TextStyles.headerSubtitle;
+        : TextStyles.headerSubtitle.copyWith(color: GlimpseColors.textSubTitle);
     
     final continueButtonStyle = GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
       fontSize: 14,
@@ -150,7 +150,7 @@ class GlimpseScreenHeader extends StatelessWidget {
           child: const Icon(
             IconsaxPlusLinear.arrow_left,
             size: 24,
-            color: GlimpseColors.textSubTitle,
+            color: GlimpseColors.primaryColorLight,
           ),
         ),
         const SizedBox(height: 24),

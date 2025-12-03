@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:partiu/features/home/presentation/screens/discover_screen.dart';
 import 'package:partiu/features/home/presentation/widgets/create_button.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
+import 'package:partiu/features/home/presentation/widgets/navigate_to_user_button.dart';
 
 /// Tela de descoberta (Tab 0)
 /// Exibe mapa interativo com atividades próximas
-class DiscoverTab extends StatelessWidget {
+class DiscoverTab extends StatefulWidget {
   const DiscoverTab({super.key});
+
+  @override
+  State<DiscoverTab> createState() => _DiscoverTabState();
+}
+
+class _DiscoverTabState extends State<DiscoverTab> {
+  final GlobalKey<DiscoverScreenState> _discoverKey = GlobalKey<DiscoverScreenState>();
 
   void _showCreateDrawer(BuildContext context) {
     showModalBottomSheet(
@@ -17,14 +25,27 @@ class DiscoverTab extends StatelessWidget {
     );
   }
 
+  void _centerOnUser() {
+    _discoverKey.currentState?.centerOnUser();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         // Mapa Apple Maps
-        const DiscoverScreen(),
+        DiscoverScreen(key: _discoverKey),
         
-        // Botão flutuante no canto inferior direito
+        // Botão de centralizar no usuário
+        Positioned(
+          right: 16,
+          bottom: 96, // 24 (bottom do CreateButton) + 56 (tamanho do FAB) + 16 (espaçamento)
+          child: NavigateToUserButton(
+            onPressed: _centerOnUser,
+          ),
+        ),
+        
+        // Botão flutuante para criar atividade
         Positioned(
           right: 16,
           bottom: 24,

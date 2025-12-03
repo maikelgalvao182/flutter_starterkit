@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/api/conversations_api.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/core/services/chat_service.dart';
+import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/features/conversations/models/conversation_item.dart';
 import 'package:partiu/features/conversations/services/conversation_state_service.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
@@ -74,6 +74,8 @@ class ConversationStreamWidget extends StatelessWidget {
           LAST_MESSAGE: item.lastMessage ?? '',
           MESSAGE_READ: item.isRead,
           TIMESTAMP: item.lastMessageAt?.millisecondsSinceEpoch,
+          'is_event_chat': item.isEventChat,
+          'event_id': item.eventId,
         };
 
         return ConversationTile(

@@ -37,9 +37,25 @@ class CreateFlowCoordinator extends ChangeNotifier {
   }) {
     _draft.selectedDate = date;
     _draft.timeType = timeType;
-    _draft.selectedTime = time;
+    
+    // Combinar data selecionada + horário selecionado
+    if (time != null && timeType == TimeType.specific) {
+      _draft.selectedTime = DateTime(
+        date.year,
+        date.month, 
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    } else {
+      _draft.selectedTime = null;
+    }
+    
     notifyListeners();
     debugPrint('📅 [CreateFlow] Schedule set: $date ($timeType)');
+    if (_draft.selectedTime != null) {
+      debugPrint('🕒 [CreateFlow] Combined datetime: ${_draft.selectedTime}');
+    }
   }
 
   /// Define as configurações de participantes

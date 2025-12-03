@@ -1,65 +1,98 @@
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:partiu/core/models/user.dart';
+import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/widgets/event_card/event_card.dart';
+import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
+import 'package:partiu/screens/chat/chat_screen_refactored.dart';
 
 /// Widget de mapa Apple Maps limpo e performático
 /// 
-/// Este widget:
-/// - Renderiza o Apple Map uma única vez
-/// - Exibe a localização do usuário (ponto azul)
-/// - Fornece métodos para animar a câmera
-/// - Sem markers, overlays ou complexidades desnecessárias
+/// Responsabilidades:
+/// - Renderizar o Apple Map
+/// - Exibir localização do usuário
+/// - Exibir markers (delegado ao ViewModel)
+/// - Controlar câmera
+/// 
+/// Toda lógica de negócio foi extraída para:
+/// - AppleMapViewModel (orquestração)
+/// - EventMarkerService (markers)
+/// - UserLocationService (localização)
+/// - AvatarService (avatares)
 class AppleMapView extends StatefulWidget {
   const AppleMapView({super.key});
 
   @override
-  State<AppleMapView> createState() => _AppleMapViewState();
+  State<AppleMapView> createState() => AppleMapViewState();
 }
 
-class _AppleMapViewState extends State<AppleMapView> {
+class AppleMapViewState extends State<AppleMapView> {
+  /// Método público para centralizar no usuário
+  void centerOnUser() {
+    _moveCameraToUserLocation();
+  }
   /// Controller do mapa Apple Maps
   AppleMapController? _mapController;
-  
-  /// Flag para saber se o mapa foi inicializado
-  /// Usado apenas para controle interno, NÃO para recriar o mapa
-  bool _mapReady = false;
+
+  /// ViewModel para gerenciar estado e lógica
+  late final AppleMapViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
-    // Nada pesado aqui - inicialização leve
+    _viewModel = AppleMapViewModel(
+      onMarkerTap: _onMarkerTap,
+    );
+    _initializeMap();
   }
 
-  /// Callback chamado quando o mapa é criado
-  /// Armazena o controller para uso posterior
+  /// Inicializa o mapa e carrega dados
+  Future<void> _initializeMap() async {
+    await _viewModel.initialize();
+  }
+
+  /// Callback quando o mapa é criado
   void _onMapCreated(AppleMapController controller) {
     _mapController = controller;
-    setState(() {
-      _mapReady = true;
-    });
-    
-    // Opcional: mover para localização do usuário automaticamente
+
+    // Mover câmera e carregar eventos
     _moveCameraToUserLocation();
+
+    // Carregar eventos após posicionar câmera
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _viewModel.loadNearbyEvents();
+      }
+    });
   }
 
-  /// Move a câmera para uma coordenada específica com animação
-  /// 
-  /// Parâmetros:
-  /// - [lat]: Latitude de destino
-  /// - [lng]: Longitude de destino
-  /// - [zoom]: Nível de zoom (padrão: 14)
+  /// Move a câmera para a localização do usuário
+  Future<void> _moveCameraToUserLocation() async {
+    final result = await _viewModel.getUserLocation();
+
+    // Exibir mensagem de erro se houver
+    if (result.hasError && mounted) {
+      _showMessage(result.errorMessage!);
+    }
+
+    // Mover câmera
+    await _moveCameraTo(
+      result.location.latitude,
+      result.location.longitude,
+      zoom: 15.0,
+    );
+  }
+
+  /// Move a câmera para uma coordenada específica
   Future<void> _moveCameraTo(
     double lat,
     double lng, {
     double zoom = 14.0,
   }) async {
-    if (_mapController == null || !_mapReady) {
-      debugPrint('⚠️ Mapa ainda não está pronto para animação');
-      return;
-    }
+    if (_mapController == null) return;
 
     try {
-      // Anima a câmera para a nova posição
       await _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
@@ -68,94 +101,15 @@ class _AppleMapViewState extends State<AppleMapView> {
           ),
         ),
       );
-      debugPrint('✅ Câmera movida para: $lat, $lng');
     } catch (e) {
-      debugPrint('❌ Erro ao mover câmera: $e');
+      // Falha silenciosa - câmera continua onde está
     }
   }
 
-  /// Move a câmera para a localização atual do usuário
-  /// 
-  /// Este método:
-  /// 1. Verifica permissões de localização
-  /// 2. Obtém a posição atual usando Geolocator
-  /// 3. Anima a câmera até a localização
-  /// 4. Trata erros comuns (permissão negada, GPS desligado, etc.)
-  Future<void> _moveCameraToUserLocation() async {
-    try {
-      // 1. Verificar se o serviço de localização está ativo
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('⚠️ Serviço de localização desativado');
-        if (mounted) {
-          _showLocationMessage('Ative o GPS para ver sua localização');
-        }
-        return;
-      }
-
-      // 2. Verificar permissões
-      LocationPermission permission = await Geolocator.checkPermission();
-      
-      if (permission == LocationPermission.denied) {
-        // Solicitar permissão
-        permission = await Geolocator.requestPermission();
-        
-        if (permission == LocationPermission.denied) {
-          debugPrint('⚠️ Permissão de localização negada');
-          if (mounted) {
-            _showLocationMessage('Permissão de localização negada');
-          }
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('⚠️ Permissão de localização negada permanentemente');
-        if (mounted) {
-          _showLocationMessage(
-            'Permissão negada. Ative nas configurações do app',
-          );
-        }
-        return;
-      }
-
-      // 3. Obter posição atual
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
-
-      debugPrint('📍 Localização obtida: ${position.latitude}, ${position.longitude}');
-
-      // 4. Mover câmera para a localização
-      await _moveCameraTo(
-        position.latitude,
-        position.longitude,
-        zoom: 15.0,
-      );
-    } on LocationServiceDisabledException {
-      debugPrint('❌ Serviço de localização está desabilitado');
-      if (mounted) {
-        _showLocationMessage('Ative o GPS nas configurações');
-      }
-    } on PermissionDeniedException {
-      debugPrint('❌ Permissão de localização negada');
-      if (mounted) {
-        _showLocationMessage('Permissão de localização necessária');
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao obter localização: $e');
-      if (mounted) {
-        _showLocationMessage('Erro ao obter localização');
-      }
-    }
-  }
-
-  /// Exibe mensagem de feedback para o usuário
-  void _showLocationMessage(String message) {
+  /// Exibe mensagem para o usuário
+  void _showMessage(String message) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -164,42 +118,142 @@ class _AppleMapViewState extends State<AppleMapView> {
     );
   }
 
+  /// Callback quando usuário toca em um marker
+  void _onMarkerTap(String eventId) async {
+    // Criar controller e carregar dados ANTES de abrir o dialog
+    final controller = EventCardController(eventId: eventId);
+    
+    try {
+      // Aguardar o carregamento completo dos dados
+      await controller.load();
+      
+      // Verificar se os dados foram carregados com sucesso
+      if (!controller.hasData) {
+        if (mounted) {
+          _showMessage(controller.error ?? 'Erro ao carregar evento');
+        }
+        return;
+      }
+      
+      // Agora sim, abrir o dialog com todos os dados prontos
+      if (!mounted) return;
+      
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        useSafeArea: true,
+        constraints: const BoxConstraints(
+          maxWidth: 500,
+        ),
+        builder: (context) => EventCard(
+          controller: controller,
+          onActionPressed: () async {
+            // Capturar o navigator antes de fechar o modal
+            final navigator = Navigator.of(context);
+            
+            // Fechar o card
+            navigator.pop();
+            
+            // Se for o criador ou estiver aprovado, navegar para o chat
+            if (controller.isCreator || controller.isApproved) {
+              // Buscar dados do evento para pegar o nome
+              final eventDoc = await FirebaseFirestore.instance
+                  .collection('events')
+                  .doc(eventId)
+                  .get();
+              
+              if (!eventDoc.exists) return;
+              
+              final eventData = eventDoc.data()!;
+              final eventName = eventData['activityText'] as String? ?? 'Evento';
+              final emoji = eventData['emoji'] as String? ?? '🎉';
+              
+              // ✅ CORRIGIDO: Usar event_${eventId} (igual ao backend e conversation_navigation_service)
+              // Criar User com dados do evento usando campos corretos do SessionManager
+              final chatUser = User.fromDocument({
+                'userId': 'event_$eventId',  // ✅ Prefixo event_ para consistência
+                'fullName': eventName,
+                'profilePhotoUrl': emoji,
+                'gender': '',
+                'birthDay': 1,
+                'birthMonth': 1,
+                'birthYear': 2000,
+                'jobTitle': '',
+                'bio': '',
+                'country': '',
+                'locality': '',
+                'latitude': 0.0,
+                'longitude': 0.0,
+                'status': 'active',
+                'level': '',
+                'isVerified': false,
+                'registrationDate': DateTime.now().toIso8601String(),
+                'lastLoginDate': DateTime.now().toIso8601String(),
+                'totalLikes': 0,
+                'totalVisits': 0,
+                'isOnline': false,
+              });
+              
+              // Usar o navigator capturado anteriormente
+              navigator.push(
+                MaterialPageRoute(
+                  builder: (context) => ChatScreenRefactored(
+                    user: chatUser,
+                    isEvent: true,
+                    eventId: eventId,
+                  ),
+                ),
+              );
+            }
+            
+            controller.dispose();
+          },
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        _showMessage('Erro ao carregar evento');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ⚠️ IMPORTANTE: O mapa é criado UMA VEZ aqui no build()
-    // Não será recriado quando _mapReady mudar de false -> true
-    // O AppleMap é imutável e performático
-    return AppleMap(
-      // Callback de criação do mapa
-      onMapCreated: _onMapCreated,
-      
-      // Posição inicial da câmera (São Paulo como padrão)
-      initialCameraPosition: const CameraPosition(
-        target: LatLng(-23.5505, -46.6333),
-        zoom: 12.0,
-      ),
-      
-      // Exibir localização do usuário (ponto azul)
-      myLocationEnabled: true,
-      
-      // Desabilitar botão de localização padrão
-      // (você pode implementar seu próprio botão customizado se quiser)
-      myLocationButtonEnabled: false,
-      
-      // Tipo do mapa (standard = padrão do Apple Maps)
-      mapType: MapType.standard,
-      
-      // Permitir gestos de interação
-      compassEnabled: true,
-      rotateGesturesEnabled: true,
-      scrollGesturesEnabled: true,
-      zoomGesturesEnabled: true,
+    // Widget limpo - apenas UI
+    // Toda lógica delegada ao ViewModel
+    return ListenableBuilder(
+      listenable: _viewModel,
+      builder: (context, _) {
+        return AppleMap(
+          // Callback de criação
+          onMapCreated: _onMapCreated,
+
+          // Posição inicial (São Paulo)
+          initialCameraPosition: const CameraPosition(
+            target: LatLng(-23.5505, -46.6333),
+            zoom: 12.0,
+          ),
+
+          // Markers fornecidos pelo ViewModel
+          annotations: _viewModel.eventMarkers,
+
+          // Configurações do mapa
+          myLocationEnabled: true,
+          myLocationButtonEnabled: false,
+          mapType: MapType.standard,
+          compassEnabled: true,
+          rotateGesturesEnabled: true,
+          scrollGesturesEnabled: true,
+          zoomGesturesEnabled: true,
+        );
+      },
     );
   }
 
   @override
   void dispose() {
-    // Cleanup do controller se necessário
+    _viewModel.dispose();
     _mapController = null;
     super.dispose();
   }

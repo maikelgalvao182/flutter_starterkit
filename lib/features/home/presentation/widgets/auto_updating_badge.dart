@@ -10,6 +10,8 @@ class AutoUpdatingBadge extends StatelessWidget {
     this.badgeColor = Colors.red,
     this.textColor = Colors.white,
     this.fontSize = 10,
+    this.minBadgeSize = 16.0,
+    this.badgePadding = const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
   });
 
   final Widget child;
@@ -17,11 +19,11 @@ class AutoUpdatingBadge extends StatelessWidget {
   final Color badgeColor;
   final Color textColor;
   final double fontSize;
+  final double minBadgeSize;
+  final EdgeInsets badgePadding;
 
-  static const _badgePadding = EdgeInsets.symmetric(horizontal: 6, vertical: 2);
   static const _badgeRadius = 10.0;
   static const _badgeBorderRadius = BorderRadius.all(Radius.circular(_badgeRadius));
-  static const _minBadgeSize = 16.0;
   static const _badgePosition = -2.0;
   static const _badgeTop = 2.0;
 
@@ -38,15 +40,15 @@ class AutoUpdatingBadge extends StatelessWidget {
               top: _badgeTop,
               child: IgnorePointer(
                 child: Container(
-                  padding: _badgePadding,
+                  padding: badgePadding,
                   decoration: BoxDecoration(
                     color: badgeColor,
                     borderRadius: _badgeBorderRadius,
                     border: Border.all(color: Colors.white),
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: _minBadgeSize,
-                    minHeight: _minBadgeSize,
+                  constraints: BoxConstraints(
+                    minWidth: minBadgeSize,
+                    minHeight: minBadgeSize,
                   ),
                   child: Text(
                     count > 99 ? '99+' : count.toString(),

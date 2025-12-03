@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fire_auth;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/create_flow/activity_repository.dart';
 import 'package:partiu/features/home/presentation/widgets/controllers/participants_drawer_controller.dart';
@@ -61,7 +62,7 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
       // Verificar autenticação
       final currentUser = fire_auth.FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
-        throw Exception('Usuário não autenticado');
+        throw Exception(AppLocalizations.of(context).translate('user_not_authenticated'));
       }
 
       // Salvar dados no coordinator
@@ -114,7 +115,7 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
         // Mostrar erro para o usuário
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao criar atividade: $e'),
+            content: Text(AppLocalizations.of(context).translate('error_creating_activity').replaceAll('{error}', e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -181,7 +182,7 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
                         // Título centralizado
                         Expanded(
                           child: Text(
-                            'Quem pode participar?',
+                            AppLocalizations.of(context).translate('participants_title'),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.getFont(
                               FONT_PLUS_JAKARTA_SANS,
@@ -255,7 +256,9 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: GlimpseButton(
-                  text: _isSaving ? 'Salvando...' : 'Continuar',
+                  text: _isSaving 
+                    ? AppLocalizations.of(context).translate('creating_activity') 
+                    : AppLocalizations.of(context).translate('continue'),
                   onPressed: _controller.canContinue && !_isSaving ? _handleContinue : null,
                 ),
               ),

@@ -27,8 +27,6 @@ class PersonalTab extends StatelessWidget {
     required this.jobLabel,
     required this.jobHint,
     super.key,
-    this.onTapLocality,
-    this.onTapCountry,
     this.brideMode = false,
   });
   final TextEditingController fullnameController;
@@ -49,8 +47,6 @@ class PersonalTab extends StatelessWidget {
   final String bioHint;
   final String jobLabel;
   final String jobHint;
-  final VoidCallback? onTapLocality;
-  final VoidCallback? onTapCountry;
   // Bride mode: show only Full name, Bio, Gender, Birth date, Phone, Email, Locality
   final bool brideMode;
 
@@ -80,7 +76,6 @@ class PersonalTab extends StatelessWidget {
           controllers: controllers,
           validateBio: validateBio,
           bioHint: bioHint,
-          onTapLocality: onTapLocality,
         ),
       ),
     );
@@ -144,18 +139,18 @@ class PersonalTab extends StatelessWidget {
           },
         ),
 
-        // Locality
+        // Locality (Read-only - atualizado automaticamente pelo LocationBackgroundUpdater)
         FieldPreviewCard(
           fieldType: PersonalFieldType.locality,
           preview: localityController.text,
-          onTap: () => _openFieldEditor(context, PersonalFieldType.locality),
+          onTap: () {}, // Read-only - sem ação
         ),
 
-        // Country
+        // Country (Read-only - atualizado automaticamente pelo LocationBackgroundUpdater)
         FieldPreviewCard(
           fieldType: PersonalFieldType.country,
           preview: countryController.text,
-          onTap: () => _openFieldEditor(context, PersonalFieldType.country),
+          onTap: () {}, // Read-only - sem ação
         ),
 
         // Languages

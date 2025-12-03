@@ -4,6 +4,8 @@ import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/features/location/presentation/viewmodels/update_location_view_model.dart';
+import 'package:partiu/core/services/location_service.dart';
+import 'package:partiu/core/services/location_permission_flow.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
@@ -16,8 +18,11 @@ import 'package:iconsax/iconsax.dart';
 
 /// Tela de autorização de localização - UI inspirada no design do Nomadtable
 /// 
-/// Este widget exibe uma tela de permissão sem mapa, enquanto o ViewModel
-/// continua operando no background para obter dados de localização
+/// Este widget exibe uma tela de permissão sem mapa.
+/// Usa os novos serviços:
+/// - LocationPermissionFlow para gerenciar permissões
+/// - LocationService para obter coordenadas
+/// - UpdateLocationViewModel para salvar no Firestore
 class UpdateLocationScreenRefactored extends StatefulWidget {
 
   const UpdateLocationScreenRefactored({
@@ -36,8 +41,9 @@ class UpdateLocationScreenRefactored extends StatefulWidget {
 class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefactored> {
   late AppLocalizations _i18n;
   late UpdateLocationViewModel _viewModel;
+  late LocationService _locationService;
+  late LocationPermissionFlow _permissionFlow;
   bool _isSaving = false;
-  bool _hasStartedTracking = false;
 
   @override
   void initState() {
@@ -47,12 +53,12 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Obtém ViewModel via DI
+    // Obtém serviços via DI
     final serviceLocator = DependencyProvider.of(context).serviceLocator;
     _viewModel = serviceLocator.get<UpdateLocationViewModel>();
+    _locationService = serviceLocator.get<LocationService>();
+    _permissionFlow = serviceLocator.get<LocationPermissionFlow>();
     _i18n = AppLocalizations.of(context);
-
-    // NÃO inicia rastreamento automaticamente - apenas ao clicar no botão
   }
 
   @override
@@ -60,7 +66,7 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     super.dispose();
   }
 
-  /// Processa o salvamento da localização
+  /// Processa o salvamento da localização usando os novos serviços
   Future<void> _handleSaveLocation() async {
     final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
     
@@ -73,39 +79,48 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     setState(() => _isSaving = true);
     
     try {
-      // 1. Solicita permissão de localização
-      final permission = await _viewModel.requestLocationPermission();
+      // 1. Solicita permissão usando LocationPermissionFlow
+      final permission = await _permissionFlow.resolvePermission();
       
       if (permission == LocationPermission.deniedForever) {
-        // Usuário negou permanentemente - mostrar dialog com instruções
+        // Usuário negou permanentemente
         if (mounted) setState(() => _isSaving = false);
         _showPermissionDeniedForeverDialog();
         return;
       }
       
       if (permission == LocationPermission.denied) {
-        // Usuário negou agora - mostrar mensagem
+        // Usuário negou agora
         if (mounted) setState(() => _isSaving = false);
         _showErrorDialog(_i18n.translate('location_permission_required'));
         return;
       }
       
-      // 2. Inicia rastreamento de localização
-      if (!_hasStartedTracking) {
-        _hasStartedTracking = true;
-        await _viewModel.startLocationTracking(_i18n.translate('location_not_available'));
+      // 2. Verifica se GPS está habilitado
+      final gpsEnabled = await _permissionFlow.isGpsEnabled();
+      if (!gpsEnabled) {
+        if (mounted) setState(() => _isSaving = false);
+        _showErrorDialog(_i18n.translate('please_enable_gps'));
+        return;
       }
       
-      // 3. Aguarda GPS estar pronto
-      final isReady = await _viewModel.waitForLocationReady();
-      if (!isReady) {
+      // 3. Obtém localização via LocationService
+      final position = await _locationService.getCurrentLocation(
+        timeout: const Duration(seconds: 10),
+      );
+      
+      if (position == null) {
         if (mounted) setState(() => _isSaving = false);
         _showErrorDialog(_i18n.translate('location_not_available'));
         return;
       }
       
-      // 4. Salva localização
-      await _viewModel.saveCurrentLocation(userId);
+      // 4. Salva no Firestore via ViewModel
+      await _viewModel.saveLocationDirectly(
+        userId: userId,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
       
       // Aguarda o estado mudar
       await Future.delayed(const Duration(milliseconds: 100));
@@ -119,11 +134,12 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
         _showSuccessDialog(message);
 
         if (widget.isSignUpProcess) {
-          Future.delayed(const Duration(seconds: 2), () {
+          Future.delayed(const Duration(seconds: 6), () {
             if (mounted) context.go(AppRoutes.home);
           });
         } else {
-          Future.delayed(const Duration(seconds: 1), () {
+          // Se veio do edit profile, volta para a tela anterior
+          Future.delayed(const Duration(seconds: 6), () {
             if (mounted) Navigator.of(context).pop(true);
           });
         }
@@ -139,16 +155,16 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Dialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: DialogStyles.containerBorderRadius),
-        child: Container(
-          margin: DialogStyles.containerMargin,
+        child: Padding(
           padding: DialogStyles.containerPadding,
-          decoration: DialogStyles.containerDecoration,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DialogStyles.buildWarningIcon(icon: Icons.error_outline, iconSize: 40),
+              DialogStyles.buildWarningIcon(icon: Iconsax.close_circle, iconSize: 40),
               const SizedBox(height: DialogStyles.spacingAfterIcon),
               DialogStyles.buildTitle(_i18n.translate('error')),
               const SizedBox(height: DialogStyles.spacingAfterTitle),
@@ -172,16 +188,16 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Dialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: DialogStyles.containerBorderRadius),
-        child: Container(
-          margin: DialogStyles.containerMargin,
+        child: Padding(
           padding: DialogStyles.containerPadding,
-          decoration: DialogStyles.containerDecoration,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DialogStyles.buildSuccessIcon(icon: Icons.check_circle_outline, iconSize: 40),
+              DialogStyles.buildSuccessIcon(icon: Iconsax.tick_circle, iconSize: 40),
               const SizedBox(height: DialogStyles.spacingAfterIcon),
               DialogStyles.buildTitle(_i18n.translate('success')),
               const SizedBox(height: DialogStyles.spacingAfterTitle),
@@ -205,12 +221,12 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
   void _showPermissionDeniedForeverDialog() {
     showDialog(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => Dialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: DialogStyles.containerBorderRadius),
-        child: Container(
-          margin: DialogStyles.containerMargin,
+        child: Padding(
           padding: DialogStyles.containerPadding,
-          decoration: DialogStyles.containerDecoration,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

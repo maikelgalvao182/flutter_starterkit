@@ -1,3 +1,4 @@
+import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/profile/presentation/widgets/edit_profile_styles.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/typing_indicator.dart';
@@ -37,7 +38,7 @@ class EditProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
           style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
             fontSize: EditProfileStyles.appBarTitleStyle.fontSize,
             fontWeight: EditProfileStyles.appBarTitleStyle.fontWeight,
-            color: EditProfileStyles.textSubTitle,
+            color: GlimpseColors.primaryColorLight,
           ),
         ),
         leading: GlimpseBackButton.iconButton(
@@ -45,8 +46,8 @@ class EditProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
           constraints: EditProfileStyles.iconButtonConstraints,
           onPressed: isBackEnabled ? onBack : () {},
           color: isBackEnabled 
-              ? EditProfileStyles.textSubTitle 
-              : EditProfileStyles.textSubTitle.withValues(alpha: 0.3),
+              ? GlimpseColors.primaryColorLight 
+              : GlimpseColors.primaryColorLight.withValues(alpha: 0.3),
         ),
         leadingWidth: 56,
         actions: [

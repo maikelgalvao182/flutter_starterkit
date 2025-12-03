@@ -7,7 +7,6 @@ import 'package:partiu/features/profile/presentation/models/edit_profile_command
 import 'package:partiu/features/profile/presentation/tabs/gallery_tab.dart';
 import 'package:partiu/features/profile/presentation/tabs/personal_tab.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/edit_profile_view_model_refactored.dart' as vm;
-import 'package:partiu/features/location/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/shared/repositories/auth_repository.dart';
 import 'package:partiu/features/auth/presentation/widgets/specialty_selector_widget.dart';
@@ -435,90 +434,6 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     );
   }
   
-  /// Handler: Abrir tela de atualização de localização
-  Future<void> _handleOpenUpdateLocation() async {
-    final viewModel = context.read<vm.EditProfileViewModelRefactored>();
-    
-    // ✅ SOLUÇÃO: Salvar estado atual dos controllers ANTES de navegar
-    final savedState = _saveControllersState();
-    
-    // Navigate to UpdateLocationScreenRefactored
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const UpdateLocationScreenRefactored(
-          isSignUpProcess: false,
-          isFromEditProfile: true,
-        ),
-      ),
-    );
-    
-    // Reload location data if it was updated
-    if (result == true || mounted) {
-      // Recarrega dados do perfil para atualizar locality
-      await viewModel.loadProfileData();
-      
-      // ✅ Primeiro restaura todos os campos salvos
-      _restoreControllersState(savedState);
-      
-      // ✅ Depois atualiza APENAS o campo locality com os novos dados formatados
-      if (viewModel.state is EditProfileStateLoaded) {
-        final formData = (viewModel.state as EditProfileStateLoaded).formData;
-        
-        // ✅ SOLUÇÃO: Formatar locality como "city, state, country"
-        final locationParts = <String>[];
-        if (formData.locality != null && formData.locality!.isNotEmpty) {
-          locationParts.add(formData.locality!);
-        }
-        if (formData.state != null && formData.state!.isNotEmpty) {
-          locationParts.add(formData.state!);
-        }
-        if (formData.country != null && formData.country!.isNotEmpty) {
-          locationParts.add(formData.country!);
-        }
-        
-        // Atualiza apenas locality com o novo formato
-        if (locationParts.isNotEmpty) {
-          _localityController.text = locationParts.join(', ');
-        }
-      }
-    } else {
-      // Se não houve alteração, apenas restaura o estado salvo
-      _restoreControllersState(savedState);
-    }
-  }
-  
-  /// Salva o estado atual de todos os controllers
-  Map<String, String> _saveControllersState() {
-    return {
-      'fullname': _fullnameController.text,
-      'bio': _bioController.text,
-      'job': _jobController.text,
-      'locality': _localityController.text,
-      'gender': _genderController.text,
-      'birthDay': _birthDayController.text,
-      'birthMonth': _birthMonthController.text,
-      'birthYear': _birthYearController.text,
-      'country': _countryController.text,
-      'instagram': _instagramController.text,
-      'languages': _languagesController.text,
-    };
-  }
-  
-  /// Restaura o estado dos controllers
-  void _restoreControllersState(Map<String, String> savedState) {
-    _fullnameController.text = savedState['fullname'] ?? '';
-    _bioController.text = savedState['bio'] ?? '';
-    _jobController.text = savedState['job'] ?? '';
-    // locality será tratado separadamente com formato especial
-    _genderController.text = savedState['gender'] ?? '';
-    _birthDayController.text = savedState['birthDay'] ?? '';
-    _birthMonthController.text = savedState['birthMonth'] ?? '';
-    _birthYearController.text = savedState['birthYear'] ?? '';
-    _countryController.text = savedState['country'] ?? '';
-    _languagesController.text = savedState['languages'] ?? '';
-    _instagramController.text = savedState['instagram'] ?? '';
-  }
-  
   /// Handler: Atualizar foto de perfil
   /// [OK] Apenas delega ao ViewModel - toda lógica foi abstraída
   Future<void> _handleUpdateProfilePhoto() async {
@@ -650,7 +565,6 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       bioHint: i18n.translate('bio_hint'),
       jobLabel: i18n.translate('job_title'),
       jobHint: i18n.translate('job_title_hint'),
-      onTapLocality: _handleOpenUpdateLocation,
       brideMode: false,
     );
   }

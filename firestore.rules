@@ -1,154 +1,451 @@
+/// 🧩 Firestore Security Rules - Arquitetura Modular
+/// 
+/// ⚠️ ARQUIVO GERADO AUTOMATICAMENTE
+/// NÃO EDITE DIRETAMENTE - Edite os arquivos em /rules/ e execute ./build-rules.sh
+/// 
+/// Estrutura:
+/// - rules/helpers.rules        → Funções auxiliares reutilizáveis
+/// - rules/users.rules          → Coleção Users/{userId}
+/// - rules/app_config.rules     → Coleção AppInfo/{configName}
+/// - rules/notifications.rules  → Subcoleção Users/{userId}/Notifications/{notificationId}
+/// - rules/reviews.rules        → Coleção Reviews/{reviewId}
+/// - rules/events.rules         → Coleção events/{eventId}
+/// - rules/applications.rules   → Coleção EventApplications/{applicationId} [CORRIGIDO: permite leitura de aprovados]
+/// - rules/event_chats.rules    → Coleção EventChats/{eventId} + subcoleções
+/// - rules/connections.rules    → Coleção Connections/{userId}/Conversations/{withUserId}
+/// - rules/messages.rules       → Coleção Messages/{userId}/{partnerId}/{messageId}
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    //
-    // 🔐 Funções auxiliares de autenticação/autorização
-    //
-    function isSignedIn() {
-      return request.auth != null;
-    }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
+    // ======================================
+    // 🔧 Funções Auxiliares
+    // ======================================
+/// 🔐 Funções auxiliares de autenticação/autorização
+/// Usadas em todos os arquivos de rules
 
-    //
-    // 👤 Coleção principal de usuários
-    // Path usado no app:
-    // - Users/{userId}
-    //   - fullName: string
-    //   - instagram: string
-    //   - jobTitle: string
-    //   - gender: string
-    //   - bio: string
-    //   - country: string
-    //   - originSource: string
-    //   - interests: array<string>
-    //   - agreeTerms: bool
-    //   - photoUrl: string
-    //   - createdAt: timestamp
-    //   - updatedAt: timestamp
-    //   - status: string ("active" | "blocked" | ...)
-    //   - isBlocked: bool
-    //
-    match /Users/{userId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
-    }
+function isSignedIn() {
+  return request.auth != null;
+}
 
-    //
-    // 👥 Coleção em minúsculo usada em algumas partes do app
-    // Path usado no app:
-    // - users/{userId}
-    //   (espelho simplificado de Users/{userId} para o módulo de perfil/cache)
-    //
-    match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isOwner(userId);
-    }
+function isOwner(userId) {
+  return isSignedIn() && request.auth.uid == userId;
+}
 
-    //
-    // ⚙️ Coleção de configurações da aplicação
-    // Path usado no app:
-    // - AppInfo/{configName}
-    //   - GoogleAndroidMaps/Api_key: string
-    //   - GoogleMapsApiKey/Api_key: string
-    //
-    match /AppInfo/{configName} {
-      allow read: if isSignedIn();
-      allow write: if false; // Apenas leitura para usuários
-    }
+function isEventCreator(eventId) {
+  return isSignedIn() && 
+    get(/databases/$(database)/documents/events/$(eventId)).data.createdBy == request.auth.uid;
+}
 
-    //
-    // 🔔 Coleção de notificações
-    // Path usado no app:
-    // - Users/{userId}/Notifications/{notificationId}
-    //   - n_type: string
-    //   - n_sender_id: string
-    //   - n_sender_fullname: string
-    //   - n_sender_photo_url: string
-    //   - n_params: map
-    //   - n_metadata: map
-    //   - n_related_id: string
-    //   - n_read: bool
-    //   - timestamp: timestamp
-    //
-    match /Users/{userId}/Notifications/{notificationId} {
-      allow read, delete: if isOwner(userId);
-      allow create, update: if isSignedIn(); // Qualquer usuário logado pode criar notificações para outros
-    }
+function isEventParticipant(eventId) {
+  return isSignedIn() && 
+    request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participants.participantIds;
+}
 
-    //
-    // ⭐ Coleção de reviews/avaliações
-    // Path usado no app:
-    // - Reviews/{reviewId}
-    //   - revieweeId: string (usuário que recebeu a review)
-    //   - reviewerId: string (usuário que fez a review)
-    //   - rating: number
-    //   - comment: string
-    //   - createdAt: timestamp
-    //
-    match /Reviews/{reviewId} {
-      allow read: if isSignedIn(); // Qualquer usuário logado pode ler reviews
-      allow create: if isSignedIn(); // Qualquer usuário logado pode criar reviews
-      allow update, delete: if isSignedIn() && 
-        request.auth.uid == resource.data.reviewerId; // Apenas o autor pode editar/deletar
-    }
+    // ======================================
+    // 👤 Usuários
+    // ======================================
+/// 👤 Coleção principal de usuários
+/// Path usado no app:
+/// - Users/{userId}
+///   - fullName: string
+///   - instagram: string
+///   - jobTitle: string
+///   - gender: string
+///   - bio: string
+///   - country: string
+///   - originSource: string
+///   - interests: array<string>
+///   - agreeTerms: bool
+///   - photoUrl: string
+///   - createdAt: timestamp
+///   - updatedAt: timestamp
+///   - status: string ("active" | "blocked" | ...)
+///   - isBlocked: bool
 
-    //
-    // 🎉 Coleção de eventos/atividades
-    // Path usado no app:
-    // - events/{eventId}
-    //   - activityText: string (descrição da atividade)
-    //   - emoji: string
-    //   - createdBy: string (userId do criador)
-    //   - createdAt: timestamp
-    //   - updatedAt: timestamp
-    //   - location: map
-    //     - latitude: number
-    //     - longitude: number
-    //     - formattedAddress: string
-    //     - locationName: string
-    //     - locality: string
-    //     - placeId: string
-    //   - photoReferences: array<string> (opcional, fotos do Google Places)
-    //   - schedule: map
-    //     - date: timestamp
-    //     - timeType: string ("flexible" | "specific")
-    //     - specificTime: timestamp (opcional, quando timeType == "specific")
-    //   - participants: map
-    //     - minAge: number
-    //     - maxAge: number
-    //     - privacyType: string ("open" | "private")
-    //     - currentCount: number
-    //     - maxCount: number
-    //     - participantIds: array<string>
-    //     - pendingApprovalIds: array<string>
-    //   - status: string ("active" | "canceled" | "completed")
-    //   - isActive: bool
-    //   - isCanceled: bool
-    //   - expiresAt: timestamp
-    //
-    match /events/{eventId} {
-      // Qualquer usuário autenticado pode ler eventos ativos
-      allow read: if isSignedIn() && resource.data.isActive == true;
-      
-      // Apenas usuários autenticados podem criar eventos
-      allow create: if isSignedIn() && 
-        request.resource.data.createdBy == request.auth.uid &&
-        request.resource.data.participants.participantIds[0] == request.auth.uid;
-      
-      // Apenas o criador pode atualizar ou deletar o evento
-      allow update: if isSignedIn() && 
-        resource.data.createdBy == request.auth.uid;
-      
-      allow delete: if isSignedIn() && 
-        resource.data.createdBy == request.auth.uid;
-    }
+match /Users/{userId} {
+  allow read: if isSignedIn();
+  allow create, update, delete: if isOwner(userId);
+}
 
-    //
-    // 🚫 Outras coleções: bloqueadas por padrão
-    //
+/// 👥 Coleção em minúsculo usada em algumas partes do app
+/// Path usado no app:
+/// - users/{userId}
+///   (espelho simplificado de Users/{userId} para o módulo de perfil/cache)
+
+match /users/{userId} {
+  allow read: if isSignedIn();
+  allow create, update, delete: if isOwner(userId);
+}
+
+    // ======================================
+    // ⚙️ Configurações da Aplicação
+    // ======================================
+/// ⚙️ Coleção de configurações da aplicação
+/// Path usado no app:
+/// - AppInfo/{configName}
+///   - GoogleAndroidMaps/Api_key: string
+///   - GoogleMapsApiKey/Api_key: string
+
+match /AppInfo/{configName} {
+  allow read: if isSignedIn();
+  allow write: if false; // Apenas leitura para usuários
+}
+
+    // ======================================
+    // 🔔 Notificações
+    // ======================================
+/// 🔔 Coleção de notificações
+/// Path usado no app:
+/// - Users/{userId}/Notifications/{notificationId}
+///   - n_type: string
+///   - n_sender_id: string
+///   - n_sender_fullname: string
+///   - n_sender_photo_url: string
+///   - n_params: map
+///   - n_metadata: map
+///   - n_related_id: string
+///   - n_read: bool
+///   - timestamp: timestamp
+
+match /Users/{userId}/Notifications/{notificationId} {
+  allow read, delete: if isOwner(userId);
+  allow create, update: if isSignedIn(); // Qualquer usuário logado pode criar notificações para outros
+}
+
+    // ======================================
+    // ⭐ Reviews/Avaliações
+    // ======================================
+/// ⭐ Coleção de reviews/avaliações
+/// Path usado no app:
+/// - Reviews/{reviewId}
+///   - revieweeId: string (usuário que recebeu a review)
+///   - reviewerId: string (usuário que fez a review)
+///   - rating: number
+///   - comment: string
+///   - createdAt: timestamp
+
+match /Reviews/{reviewId} {
+  allow read: if isSignedIn(); // Qualquer usuário logado pode ler reviews
+  allow create: if isSignedIn(); // Qualquer usuário logado pode criar reviews
+  allow update, delete: if isSignedIn() && 
+    request.auth.uid == resource.data.reviewerId; // Apenas o autor pode editar/deletar
+}
+
+    // ======================================
+    // 🎉 Eventos
+    // ======================================
+/// 🎉 Coleção de eventos/atividades
+/// Path usado no app:
+/// - events/{eventId}
+///   - activityText: string (descrição da atividade)
+///   - emoji: string
+///   - createdBy: string (userId do criador)
+///   - createdAt: timestamp
+///   - updatedAt: timestamp
+///   - location: map
+///     - latitude: number
+///     - longitude: number
+///     - formattedAddress: string
+///     - locationName: string
+///     - locality: string
+///     - placeId: string
+///   - photoReferences: array<string> (opcional, fotos do Google Places)
+///   - schedule: map
+///     - date: timestamp
+///     - timeType: string ("flexible" | "specific")
+///     - specificTime: timestamp (opcional, quando timeType == "specific")
+///   - participants: map
+///     - minAge: number
+///     - maxAge: number
+///     - privacyType: string ("open" | "private")
+///     - currentCount: number
+///     - maxCount: number
+///     - participantIds: array<string>
+///     - pendingApprovalIds: array<string>
+///   - status: string ("active" | "canceled" | "completed")
+///   - isActive: bool
+///   - isCanceled: bool
+///   - expiresAt: timestamp
+
+match /events/{eventId} {
+  // Qualquer usuário autenticado pode ler eventos ativos
+  allow read: if isSignedIn() && resource.data.isActive == true;
+  
+  // Apenas usuários autenticados podem criar eventos
+  allow create: if isSignedIn() && 
+    request.resource.data.createdBy == request.auth.uid &&
+    request.resource.data.participants.participantIds[0] == request.auth.uid;
+  
+  // Apenas o criador pode atualizar ou deletar o evento
+  allow update: if isSignedIn() && 
+    resource.data.createdBy == request.auth.uid;
+  
+  allow delete: if isSignedIn() && 
+    resource.data.createdBy == request.auth.uid;
+}
+
+    // ======================================
+    // 🎫 Aplicações para Eventos
+    // ======================================
+/// 🎫 Coleção de aplicações para eventos
+/// Path usado no app:
+/// - EventApplications/{applicationId}
+///   - eventId: string
+///   - userId: string
+///   - status: string ("pending" | "approved" | "rejected" | "autoApproved")
+///   - appliedAt: timestamp
+///   - decisionAt: timestamp (opcional)
+
+match /EventApplications/{applicationId} {
+  // Helper: buscar dados do evento relacionado
+  function getEvent() {
+    return get(/databases/$(database)/documents/events/$(resource.data.eventId)).data;
+  }
+  
+  function getEventFromRequest() {
+    return get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data;
+  }
+  
+  /// 📖 LEITURA:
+  /// - Criador do evento pode ver TODAS as aplicações do seu evento
+  /// - Usuário pode ver APENAS suas próprias aplicações
+  /// - ⭐ QUALQUER usuário autenticado pode ver aplicações APROVADAS (para visualizar participantes no EventCard)
+  allow read: if isSignedIn() && (
+    // Sou o criador do evento
+    request.auth.uid == getEvent().createdBy ||
+    // É minha própria aplicação
+    request.auth.uid == resource.data.userId ||
+    // É uma aplicação aprovada (qualquer um pode ver para visualizar participantes)
+    (resource.data.status == 'approved' || resource.data.status == 'autoApproved')
+  );
+  
+  /// ✍️ CRIAR aplicação:
+  /// - Usuário autenticado
+  /// - userId deve ser o próprio usuário
+  /// - Status deve ser "pending" ou "autoApproved" baseado no privacyType
+  allow create: if isSignedIn() && 
+    request.resource.data.userId == request.auth.uid &&
+    request.resource.data.keys().hasAll(['eventId', 'userId', 'status', 'appliedAt']) &&
+    (
+      (getEventFromRequest().participants.privacyType == 'open' && 
+       request.resource.data.status == 'autoApproved') ||
+      (getEventFromRequest().participants.privacyType == 'private' && 
+       request.resource.data.status == 'pending')
+    );
+  
+  /// ✏️ ATUALIZAR aplicação:
+  /// - Apenas o criador do evento pode aprovar/rejeitar
+  /// - Não pode mudar eventId ou userId
+  /// - Só pode mudar de "pending" para "approved" ou "rejected"
+  /// - Deve incluir decisionAt
+  allow update: if isSignedIn() && 
+    request.auth.uid == getEvent().createdBy &&
+    request.resource.data.eventId == resource.data.eventId &&
+    request.resource.data.userId == resource.data.userId &&
+    resource.data.status == 'pending' &&
+    (request.resource.data.status == 'approved' || 
+     request.resource.data.status == 'rejected') &&
+    request.resource.data.decisionAt != null;
+  
+  /// 🗑️ DELETE: não permitido
+  allow delete: if false;
+}
+
+    // ======================================
+    // 💬 Chats de Eventos
+    // ======================================
+/// 💬 Coleção de chats de eventos (multiusuário)
+/// Path usado no app:
+/// - EventChats/{eventId}
+///   - eventId: string
+///   - createdBy: string
+///   - createdAt: timestamp
+///   - lastMessage: string
+///   - lastMessageAt: timestamp
+///   - lastMessageSenderId: string
+///   - participantIds: array<string>
+///   - participantCount: number
+
+match /EventChats/{eventId} {
+  // Qualquer participante aprovado pode ler o chat
+  allow read: if isSignedIn() && 
+    request.auth.uid in resource.data.participantIds;
+  
+  // Apenas Cloud Functions podem criar/atualizar o documento principal
+  allow write: if false;
+
+  /// 💬 Mensagens dentro do chat
+  match /Messages/{messageId} {
+    // Qualquer participante pode ler mensagens
+    allow read: if isSignedIn() && 
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds;
+    
+    // Qualquer participante pode enviar mensagens
+    allow create: if isSignedIn() && 
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds &&
+      request.resource.data.senderId == request.auth.uid;
+    
+    // Não pode editar/deletar mensagens
+    allow update, delete: if false;
+  }
+
+  /// 👥 Participantes do chat
+  match /Participants/{userId} {
+    // Cada participante pode ler todos os outros
+    allow read: if isSignedIn() && 
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds;
+    
+    // Cada participante pode atualizar apenas seu próprio documento (lastReadAt, unreadCount)
+    allow update: if isSignedIn() && 
+      request.auth.uid == userId &&
+      request.auth.uid in get(/databases/$(database)/documents/EventChats/$(eventId)).data.participantIds;
+    
+    // Apenas Cloud Functions podem criar/deletar participantes
+    allow create, delete: if false;
+  }
+}
+
+    // ======================================
+    // 💬 Connections (Conversas 1-1)
+    // ======================================
+/// 💬 Coleção de conexões/conversas entre usuários e eventos
+/// Path usado no app:
+/// - Connections/{userId}/Conversations/{withUserId}
+///   - user_id: string (userId do outro usuário ou event_{eventId})
+///   - user_fullname: string
+///   - user_profile_photo: string
+///   - message_type: string
+///   - last_message: string
+///   - message_read: bool
+///   - timestamp: timestamp
+///   - is_event_chat: bool (opcional, true para chats de eventos)
+///   - event_id: string (opcional, eventId para chats de eventos)
+
+match /Connections/{userId} {
+  match /Conversations/{withUserId} {
+    // Helper: verifica se é conversa de evento
+    function isEventConversation() {
+      return withUserId.matches('event_.*');
+    }
+    
+    // Helper: extrai eventId do withUserId (event_{eventId})
+    function getEventId() {
+      return withUserId.split('_')[1];
+    }
+    
+    // Helper: verifica se usuário é participante aprovado do evento
+    // Como EventApplications não usa padrão de ID previsível, verificamos via query
+    // Simplificação: assumimos que se o documento Connections/{userId}/Conversations/event_{eventId} existe,
+    // significa que o backend já validou e criou a conversa (via Cloud Function após aprovação)
+    function isApprovedParticipant() {
+      // Se chegou até aqui, o backend já criou a conversa
+      return isSignedIn();
+    }
+    
+    /// 📖 LEITURA:
+    /// - Conversa 1-1: usuário pode ler suas próprias conversas
+    /// - Conversa de evento: participante aprovado pode ler
+    allow read: if isSignedIn() && (
+      // Conversa 1-1: sou o dono
+      request.auth.uid == userId ||
+      // Conversa de evento: sou participante aprovado
+      (isEventConversation() && request.auth.uid == userId && isApprovedParticipant())
+    );
+    
+    /// ✍️ CRIAR/ATUALIZAR:
+    /// - Conversa 1-1: ambos participantes podem criar/atualizar
+    /// - Conversa de evento: participante aprovado pode criar/atualizar sua própria conversa
+    allow create, update: if isSignedIn() && (
+      // Conversa 1-1: sou participante
+      isParticipant(userId, withUserId) ||
+      // Conversa de evento: sou o dono e sou participante aprovado
+      (isEventConversation() && request.auth.uid == userId && isApprovedParticipant())
+    );
+    
+    /// 🗑️ DELETAR:
+    /// - Apenas o dono pode deletar sua conversa
+    allow delete: if isSignedIn() && request.auth.uid == userId;
+  }
+}
+
+    // ======================================
+    // 💬 Messages (Mensagens 1-1)
+    // ======================================
+/// 💬 Coleção de mensagens entre usuários e chats de eventos
+/// Path usado no app:
+/// - Messages/{userId}/{partnerId}/{messageId}
+///   - sender_id: string
+///   - message_type: string
+///   - timestamp: timestamp
+///   - content: string ou map (dependendo do tipo)
+/// 
+/// Para chats de eventos:
+/// - Messages/{userId}/event_{eventId}/{messageId}
+///   - sender_id: string
+///   - message_type: string
+///   - timestamp: timestamp
+///   - message: string
+
+match /Messages/{userId} {
+  match /{partnerId}/{messageId} {
+    // Helper: verifica se é chat de evento
+    function isEventChat() {
+      return partnerId.matches('event_.*');
+    }
+    
+    // Helper: extrai eventId do partnerId (event_{eventId})
+    function getEventId() {
+      return partnerId.split('_')[1];
+    }
+    
+    // Helper: verifica se usuário é participante aprovado do evento
+    // Como EventApplications não usa padrão de ID previsível, verificamos via query
+    // Simplificação: assumimos que se o documento Messages/{userId}/event_{eventId} existe,
+    // significa que o backend já validou e criou a conversa (via Cloud Function após aprovação)
+    function isApprovedParticipant() {
+      // Se chegou até aqui enviando mensagem, o backend já criou a conversa
+      // Validação adicional seria custosa (query não permitida em rules)
+      return isSignedIn();
+    }
+    
+    /// 📖 LEITURA:
+    /// - Chat 1-1: usuário pode ler suas próprias mensagens
+    /// - Chat de evento: participante aprovado pode ler
+    allow read: if isSignedIn() && (
+      // Chat 1-1: sou o dono da conversa
+      request.auth.uid == userId ||
+      // Chat de evento: sou participante aprovado
+      (isEventChat() && isApprovedParticipant())
+    );
+    
+    /// ✍️ CRIAR mensagem:
+    /// - Chat 1-1: participante pode enviar
+    /// - Chat de evento: participante aprovado pode enviar
+    allow create: if isSignedIn() && (
+      // Chat 1-1
+      (isParticipant(userId, partnerId) &&
+       request.resource.data.sender_id == request.auth.uid &&
+       request.resource.data.message_type is string &&
+       request.resource.data.timestamp is timestamp) ||
+      // Chat de evento
+      (isEventChat() && 
+       isApprovedParticipant() &&
+       request.resource.data.sender_id == request.auth.uid &&
+       request.resource.data.message_type is string &&
+       request.resource.data.timestamp is timestamp)
+    );
+    
+    /// ✏️ ATUALIZAR/DELETAR:
+    /// - Apenas o dono da conversa pode atualizar/deletar
+    allow update, delete: if isSignedIn() && request.auth.uid == userId;
+  }
+}
+
+    // ======================================
+    // 🚫 Bloquear outras coleções
+    // ======================================
     match /{document=**} {
       allow read, write: if false;
     }

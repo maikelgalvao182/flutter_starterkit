@@ -3,14 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/activity_helper.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/utils/emoji_helper.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/features/home/presentation/widgets/create/suggestion_tags_view.dart';
 import 'package:partiu/features/home/presentation/widgets/controllers/create_drawer_controller.dart';
 import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
-import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
-import 'package:partiu/shared/widgets/animated_emoji.dart';
-import 'package:partiu/shared/widgets/animated_expandable.dart';
+import 'package:partiu/shared/widgets/emoji_container.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 
@@ -166,19 +165,10 @@ class _CreateDrawerState extends State<CreateDrawer> {
               ),
 
               // Container com emoji
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: GlimpseColors.lightTextField,
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                child: Center(
-                  child: AnimatedEmoji(
-                    emoji: _controller.currentEmoji,
-                    size: 40,
-                  ),
-                ),
+              EmojiContainer(
+                emoji: _controller.currentEmoji,
+                size: 80,
+                emojiSize: 40,
               ),
 
               const SizedBox(height: 24),
@@ -190,7 +180,7 @@ class _CreateDrawerState extends State<CreateDrawer> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'E aí, Partiu?',
+                      AppLocalizations.of(context).translate('create_activity_title'),
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 20,
@@ -207,7 +197,7 @@ class _CreateDrawerState extends State<CreateDrawer> {
                               size: 24,
                             )
                           : Text(
-                              'Ver sugestões',
+                              AppLocalizations.of(context).translate('see_suggestions'),
                               style: GoogleFonts.getFont(
                                 FONT_PLUS_JAKARTA_SANS,
                                 fontSize: 14,
@@ -241,7 +231,7 @@ class _CreateDrawerState extends State<CreateDrawer> {
                       }
                     },
                     decoration: InputDecoration(
-                      hintText: 'Correr no parque, tomar um chop...',
+                      hintText: AppLocalizations.of(context).translate('activity_placeholder'),
                       hintStyle: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 16,
@@ -286,7 +276,7 @@ class _CreateDrawerState extends State<CreateDrawer> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: GlimpseButton(
-                    text: 'Continuar',
+                    text: AppLocalizations.of(context).translate('continue'),
                     onPressed: _controller.canContinue
                         ? _handleCreate
                         : null,

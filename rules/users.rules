@@ -1,0 +1,32 @@
+/// 👤 Coleção principal de usuários
+/// Path usado no app:
+/// - Users/{userId}
+///   - fullName: string
+///   - instagram: string
+///   - jobTitle: string
+///   - gender: string
+///   - bio: string
+///   - country: string
+///   - originSource: string
+///   - interests: array<string>
+///   - agreeTerms: bool
+///   - photoUrl: string
+///   - createdAt: timestamp
+///   - updatedAt: timestamp
+///   - status: string ("active" | "blocked" | ...)
+///   - isBlocked: bool
+
+match /Users/{userId} {
+  allow read: if isSignedIn();
+  allow create, update, delete: if isOwner(userId);
+}
+
+/// 👥 Coleção em minúsculo usada em algumas partes do app
+/// Path usado no app:
+/// - users/{userId}
+///   (espelho simplificado de Users/{userId} para o módulo de perfil/cache)
+
+match /users/{userId} {
+  allow read: if isSignedIn();
+  allow create, update, delete: if isOwner(userId);
+}

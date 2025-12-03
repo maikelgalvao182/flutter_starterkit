@@ -132,7 +132,7 @@ class _CountrySelectorWidgetState extends State<CountrySelectorWidget> {
           child: Text(
             i18n.translate('country_label'),
             style: GlimpseStyles.fieldLabelStyle(
-              color: Theme.of(context).textTheme.titleMedium?.color,
+              color: GlimpseColors.primaryColorLight,
             ),
           ),
         ),

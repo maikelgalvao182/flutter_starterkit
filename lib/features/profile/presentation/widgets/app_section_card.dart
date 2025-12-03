@@ -161,20 +161,20 @@ class _AppSectionCardState extends State<AppSectionCard> {
             title: i18n.translate('sign_out') ?? 'Sair',
             showSpinner: _isLoggingOut,
             onTap: _isLoggingOut ? null : () async {
+              // Log out button
               setState(() {
                 _isLoggingOut = true;
               });
               
-              final navigator = Navigator.of(context);
-              
               try {
                 await _viewModel?.signOut();
                 
-                if (mounted) {
-                  navigator.popUntil((route) => route.isFirst);
-                  navigator.pushReplacement(
-                      MaterialPageRoute(builder: (_) => const SignInScreenRefactored()));
-                }
+                if (!mounted) return;
+                
+                /// Go to login screen
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const SignInScreenRefactored()));
               } catch (e) {
                 if (mounted) {
                   setState(() {

@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Script para compilar regras modulares do Firestore em um único arquivo
+# Uso: ./build-rules.sh
+
+echo "🔨 Compilando regras do Firestore..."
+
+OUTPUT_FILE="firestore.rules"
+RULES_DIR="rules"
+
+# Criar início do arquivo
+cat > "$OUTPUT_FILE" << 'EOF'
+/// 🧩 Firestore Security Rules - Arquitetura Modular
+/// 
+/// ⚠️ ARQUIVO GERADO AUTOMATICAMENTE
+/// NÃO EDITE DIRETAMENTE - Edite os arquivos em /rules/ e execute ./build-rules.sh
+/// 
+/// Estrutura:
+/// - rules/helpers.rules        → Funções auxiliares reutilizáveis
+/// - rules/users.rules          → Coleção Users/{userId}
+/// - rules/app_config.rules     → Coleção AppInfo/{configName}
+/// - rules/notifications.rules  → Subcoleção Users/{userId}/Notifications/{notificationId}
+/// - rules/reviews.rules        → Coleção Reviews/{reviewId}
+/// - rules/events.rules         → Coleção events/{eventId}
+/// - rules/applications.rules   → Coleção EventApplications/{applicationId} [CORRIGIDO: permite leitura de aprovados]
+/// - rules/event_chats.rules    → Coleção EventChats/{eventId} + subcoleções
+/// - rules/connections.rules    → Coleção Connections/{userId}/Conversations/{withUserId}
+/// - rules/messages.rules       → Coleção Messages/{userId}/{partnerId}/{messageId}
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+EOF
+
+# Adicionar conteúdo de cada arquivo de regras
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 🔧 Funções Auxiliares" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/helpers.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 👤 Usuários" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/users.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // ⚙️ Configurações da Aplicação" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/app_config.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 🔔 Notificações" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/notifications.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // ⭐ Reviews/Avaliações" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/reviews.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 🎉 Eventos" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/events.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 🎫 Aplicações para Eventos" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/applications.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 💬 Chats de Eventos" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/event_chats.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 💬 Connections (Conversas 1-1)" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/connections.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 💬 Messages (Mensagens 1-1)" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/messages.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+# Fechar o arquivo
+cat >> "$OUTPUT_FILE" << 'EOF'
+    // ======================================
+    // 🚫 Bloquear outras coleções
+    // ======================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+EOF
+
+echo "✅ Regras compiladas com sucesso em $OUTPUT_FILE"
+echo "📦 Execute: firebase deploy --only firestore:rules"

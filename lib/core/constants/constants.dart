@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 ///
 const String APP_NAME = 'WedConnex';
 const Color APP_PRIMARY_COLOR = GlimpseColors.primaryColorLight;
-const Color APP_ACCENT_COLOR = Colors.pinkAccent;
 const int ANDROID_APP_VERSION_NUMBER = 1; // Google Play Version Number
 const int IOS_APP_VERSION_NUMBER = 1; // App Store Version Number
 
@@ -17,7 +16,8 @@ const String FONT_PLUS_JAKARTA_SANS = 'Plus Jakarta Sans';
 /// GENDER CONSTANTS
 const String GENDER_MAN = 'Male';
 const String GENDER_WOMAN = 'Female';
-const String GENDER_OTHER = 'Other';
+const String GENDER_OTHER = 'Non-Binary';
+const String GENDER_ALL = 'All';
 
 
 /// List of Supported Locales
@@ -47,6 +47,8 @@ const String C_USERS = 'Users';
 const String C_NOTIFICATIONS = 'Notifications';
 const String C_CONNECTIONS = 'Connections';
 const String C_CONVERSATIONS = 'Conversations';
+const String C_MESSAGES = 'Messages';
+const String C_BLOCKED_USERS = 'BlockedUsers';
 
 
 
@@ -110,6 +112,9 @@ const String USER_FULLNAME = 'user_fullname';
 const String MESSAGE_TYPE = 'message_type';
 const String MESSAGE_READ = 'message_read';
 const String LAST_MESSAGE = 'last_message';
+const String SENDER_ID = 'sender_id';
+const String MESSAGE = 'message';
+const String IMG_LINK = 'img_link';
 
 /// FEATURE FLAGS / ACCESS GATES
 ///

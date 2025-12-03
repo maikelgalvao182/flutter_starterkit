@@ -68,7 +68,6 @@ class _InstagramWidgetState extends State<InstagramWidget> {
           style: TextStyle(
             fontSize: 14,
             color: Colors.grey.shade600,
-            fontStyle: FontStyle.italic,
           ),
         ),
       ],

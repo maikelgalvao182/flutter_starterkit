@@ -1,0 +1,20 @@
+/// 🔐 Funções auxiliares de autenticação/autorização
+/// Usadas em todos os arquivos de rules
+
+function isSignedIn() {
+  return request.auth != null;
+}
+
+function isOwner(userId) {
+  return isSignedIn() && request.auth.uid == userId;
+}
+
+function isEventCreator(eventId) {
+  return isSignedIn() && 
+    get(/databases/$(database)/documents/events/$(eventId)).data.createdBy == request.auth.uid;
+}
+
+function isEventParticipant(eventId) {
+  return isSignedIn() && 
+    request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participants.participantIds;
+}

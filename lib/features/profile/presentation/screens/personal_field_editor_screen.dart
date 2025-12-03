@@ -4,7 +4,6 @@ import 'package:partiu/features/profile/presentation/editors/bio_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/full_name_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/gender_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/job_title_editor.dart';
-import 'package:partiu/features/profile/presentation/editors/locality_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/birth_date_widget.dart';
 import 'package:partiu/features/profile/presentation/editors/languages_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/social/instagram_editor.dart';
@@ -21,7 +20,6 @@ class PersonalFieldEditorScreen extends StatefulWidget {
     this.validateSchool,
     this.validateBio,
     this.bioHint,
-    this.onTapLocality,
     super.key,
   });
 
@@ -30,7 +28,6 @@ class PersonalFieldEditorScreen extends StatefulWidget {
   final String? Function(String?)? validateSchool;
   final String? Function(String?)? validateBio;
   final String? bioHint;
-  final VoidCallback? onTapLocality;
 
   @override
   State<PersonalFieldEditorScreen> createState() => _PersonalFieldEditorScreenState();
@@ -230,10 +227,9 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
 
       case PersonalFieldType.locality:
       case PersonalFieldType.state:
-        return LocalityEditor(
-          controller: widget.controllers['locality']!,
-          onTap: widget.onTapLocality,
-        );
+        // Locality é read-only - atualizado automaticamente pelo LocationBackgroundUpdater
+        // Não deve mais abrir tela de edição
+        return const SizedBox.shrink();
 
       case PersonalFieldType.country:
         return CountrySelectorWidget(

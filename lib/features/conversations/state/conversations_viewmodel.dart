@@ -52,9 +52,13 @@ class ConversationsViewModel extends ChangeNotifier {
   ConversationNavigationService get navigationService => _navigationService;
   ConversationStateService get stateService => _stateService;
   ScrollController get scrollController => _scrollController;
-  bool get hasReceivedFirstSnapshot => _hasReceivedFirstSnapshot;
+  bool get hasReceivedFirstSnapshot {
+    _log('🔍 hasReceivedFirstSnapshot: $_hasReceivedFirstSnapshot');
+    return _hasReceivedFirstSnapshot;
+  }
   List<ConversationItem> get wsConversations => _wsConversations;
   List<ConversationItem> get filteredWsConversations {
+    _log('🔍 filteredWsConversations: _wsConversations=${_wsConversations.length}, query="$_searchQuery"');
     final q = _searchQuery;
     if (q.isEmpty) return _wsConversations;
 
@@ -90,6 +94,7 @@ class ConversationsViewModel extends ChangeNotifier {
   /// Helper para logs padronizados em debug
   void _log(String msg) {
     if (kDebugMode) {
+      print('🔍 [ConversationsVM] $msg');
     }
   }
   
@@ -208,59 +213,115 @@ class ConversationsViewModel extends ChangeNotifier {
   /// Carrega conversas existentes diretamente do Firestore (uma vez),
   /// convertendo-as para ConversationItem para preencher a lista inicial.
   Future<void> _loadInitialFromFirestore() async {
+    _log('📥 _loadInitialFromFirestore: INICIANDO');
     try {
+      _log('📥 _loadInitialFromFirestore: Chamando ConversationsApi()');
       final snapshot = await ConversationsApi().getConversationsFirstPage(limit: 20).first;
+      _log('📥 _loadInitialFromFirestore: Snapshot recebido com ${snapshot.docs.length} docs');
       final items = <ConversationItem>[];
 
       for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final otherUserId = (data[USER_ID] ?? doc.id).toString();
-        final name = (data[USER_FULLNAME] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
-        final photo = (data[USER_PROFILE_PHOTO] ?? data['other_user_photo'] ?? data['otherUserPhoto']) as String?;
-        final lastMessage = (data[LAST_MESSAGE] ?? '').toString();
+        try {
+          final data = doc.data();
+          final otherUserId = (data[USER_ID] ?? doc.id).toString();
+          final rawName = (data[USER_FULLNAME] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
+          final name = _sanitizeText(rawName);
+          final photo = (data[USER_PROFILE_PHOTO] ?? data['other_user_photo'] ?? data['otherUserPhoto']) as String?;
+          final rawLastMessage = (data[LAST_MESSAGE] ?? '').toString();
+          final lastMessage = _sanitizeText(rawLastMessage);
 
-        DateTime? ts;
-        final rawTs = data[TIMESTAMP];
-        if (rawTs is Timestamp) {
-          ts = rawTs.toDate();
-        } else if (rawTs is int) {
-          ts = DateTime.fromMillisecondsSinceEpoch(rawTs);
+          DateTime? ts;
+          final rawTs = data[TIMESTAMP];
+          if (rawTs is Timestamp) {
+            ts = rawTs.toDate();
+          } else if (rawTs is int) {
+            ts = DateTime.fromMillisecondsSinceEpoch(rawTs);
+          }
+
+          final unreadFlag = data[MESSAGE_READ];
+          final unreadCount = (data['unread_count'] as num?)?.toInt() ?? (data['unreadCount'] as num?)?.toInt() ?? 0;
+          final isRead = (unreadFlag is bool)
+              ? unreadFlag
+              : unreadCount == 0;
+
+          final isEventChat = data['is_event_chat'] == true;
+          final eventId = data['event_id']?.toString();
+
+          items.add(
+            ConversationItem(
+              id: doc.id,
+              userId: otherUserId,
+              userFullname: name.isNotEmpty ? name : 'Unknown',
+              userPhotoUrl: photo,
+              lastMessage: lastMessage,
+              lastMessageType: data[MESSAGE_TYPE]?.toString(),
+              lastMessageAt: ts,
+              unreadCount: unreadCount,
+              isRead: isRead,
+              isEventChat: isEventChat,
+              eventId: eventId,
+            ),
+          );
+        } catch (e) {
+          _log('⚠️ Erro ao processar conversa ${doc.id}: $e');
+          // Continua para próxima conversa
         }
-
-        final unreadFlag = data[MESSAGE_READ];
-        final unreadCount = (data['unread_count'] as num?)?.toInt() ?? (data['unreadCount'] as num?)?.toInt() ?? 0;
-        final isRead = (unreadFlag is bool)
-            ? unreadFlag
-            : unreadCount == 0;
-
-        items.add(
-          ConversationItem(
-            id: doc.id,
-            userId: otherUserId,
-            userFullname: name.isNotEmpty ? name : 'Unknown',
-            userPhotoUrl: photo,
-            lastMessage: lastMessage,
-            lastMessageType: data[MESSAGE_TYPE]?.toString(),
-            lastMessageAt: ts,
-            unreadCount: unreadCount,
-            isRead: isRead,
-          ),
-        );
       }
 
+      _log('📥 _loadInitialFromFirestore: Processados ${items.length} items');
       if (items.isNotEmpty && _wsConversations.isEmpty) {
         _wsConversations = items;
+        _log('📥 _loadInitialFromFirestore: _wsConversations atualizado com ${items.length} items');
       }
-    } catch (_) {
-      // Falhas silenciosas: não devem quebrar a UI
+    } catch (e, stack) {
+      _log('❌ _loadInitialFromFirestore: ERRO - $e');
+      _log('❌ Stack: $stack');
     } finally {
       // Garante que o skeleton não fique travado em casos
       // onde não há conversas (lista vazia) ou em erro silencioso.
       if (!_hasReceivedFirstSnapshot) {
         _hasReceivedFirstSnapshot = true;
+        _log('📥 _loadInitialFromFirestore: FINALIZANDO - _hasReceivedFirstSnapshot = true');
         notifyListeners();
       }
     }
+  }
+
+  /// Remove caracteres inválidos UTF-16 (emojis problemáticos)
+  String _sanitizeText(String text) {
+    if (text.isEmpty) return text;
+    
+    // Remove caracteres surrogates órfãos e outros problemas UTF-16
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      final code = text.codeUnitAt(i);
+      
+      // High surrogate (0xD800-0xDBFF) deve ser seguido por low surrogate
+      if (code >= 0xD800 && code <= 0xDBFF) {
+        if (i + 1 < text.length) {
+          final nextCode = text.codeUnitAt(i + 1);
+          // Verifica se o próximo é low surrogate (0xDC00-0xDFFF)
+          if (nextCode >= 0xDC00 && nextCode <= 0xDFFF) {
+            buffer.write(text[i]);
+            buffer.write(text[i + 1]);
+            i++; // Pula o próximo
+            continue;
+          }
+        }
+        // High surrogate órfão - substitui por espaço
+        buffer.write(' ');
+      }
+      // Low surrogate órfão (0xDC00-0xDFFF) - substitui por espaço
+      else if (code >= 0xDC00 && code <= 0xDFFF) {
+        buffer.write(' ');
+      }
+      // Caractere normal
+      else {
+        buffer.write(text[i]);
+      }
+    }
+    
+    return buffer.toString().trim();
   }
 
   /// Listen to pagination service changes

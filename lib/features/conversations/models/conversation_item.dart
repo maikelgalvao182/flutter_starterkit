@@ -8,6 +8,8 @@ class ConversationItem {
   final DateTime? lastMessageAt;
   final int unreadCount;
   final bool isRead;
+  final bool isEventChat; // Se é um chat de evento
+  final String? eventId; // ID do evento (quando isEventChat = true)
 
   ConversationItem({
     required this.id,
@@ -19,6 +21,8 @@ class ConversationItem {
     this.lastMessageAt,
     this.unreadCount = 0,
     this.isRead = true,
+    this.isEventChat = false,
+    this.eventId,
   });
 
   factory ConversationItem.fromJson(Map<String, dynamic> json) {
@@ -84,6 +88,10 @@ class ConversationItem {
         ? readFlag
         : unreadCount == 0; // fallback: any unreadCount > 0 => not read
 
+    // Event chat fields
+    final isEventChat = json['is_event_chat'] == true || json['isEventChat'] == true;
+    final eventId = (json['event_id'] ?? json['eventId'])?.toString();
+
     return ConversationItem(
       id: id,
       userId: userId,
@@ -94,6 +102,8 @@ class ConversationItem {
       lastMessageAt: parsedTs,
       unreadCount: unreadCount,
       isRead: isRead,
+      isEventChat: isEventChat,
+      eventId: eventId,
     );
   }
 
@@ -108,6 +118,8 @@ class ConversationItem {
       'lastMessageAt': lastMessageAt?.toIso8601String(),
       'unreadCount': unreadCount,
       'isRead': isRead,
+      'isEventChat': isEventChat,
+      'eventId': eventId,
     };
   }
 }

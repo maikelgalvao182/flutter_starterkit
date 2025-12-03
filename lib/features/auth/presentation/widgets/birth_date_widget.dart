@@ -48,7 +48,9 @@ class BirthDateWidget extends StatelessWidget {
             children: [
               Text(
                 i18n.translate('birth_date'),
-                style: GlimpseStyles.fieldLabelStyle(),
+                style: GlimpseStyles.fieldLabelStyle(
+                  color: GlimpseColors.primaryColorLight,
+                ),
               ),
               if (age != null && age >= 0)
                 Text(
@@ -70,7 +72,7 @@ class BirthDateWidget extends StatelessWidget {
           minYear: 1960,
           maxYear: DateTime.now().year,
           // hintText agora é gerado automaticamente baseado no locale
-          // en: MM-DD-YYYY, pt/es: DD-MM-YYYY
+          // en: MM-DD-YYYY, pt/es: DD-MM-AAAA
         ),
       ],
     );

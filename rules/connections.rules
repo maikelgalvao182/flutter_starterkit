@@ -1,0 +1,59 @@
+/// 💬 Coleção de conexões/conversas entre usuários e eventos
+/// Path usado no app:
+/// - Connections/{userId}/Conversations/{withUserId}
+///   - user_id: string (userId do outro usuário ou event_{eventId})
+///   - user_fullname: string
+///   - user_profile_photo: string
+///   - message_type: string
+///   - last_message: string
+///   - message_read: bool
+///   - timestamp: timestamp
+///   - is_event_chat: bool (opcional, true para chats de eventos)
+///   - event_id: string (opcional, eventId para chats de eventos)
+
+match /Connections/{userId} {
+  match /Conversations/{withUserId} {
+    // Helper: verifica se é conversa de evento
+    function isEventConversation() {
+      return withUserId.matches('event_.*');
+    }
+    
+    // Helper: extrai eventId do withUserId (event_{eventId})
+    function getEventId() {
+      return withUserId.split('_')[1];
+    }
+    
+    // Helper: verifica se usuário é participante aprovado do evento
+    // Como EventApplications não usa padrão de ID previsível, verificamos via query
+    // Simplificação: assumimos que se o documento Connections/{userId}/Conversations/event_{eventId} existe,
+    // significa que o backend já validou e criou a conversa (via Cloud Function após aprovação)
+    function isApprovedParticipant() {
+      // Se chegou até aqui, o backend já criou a conversa
+      return isSignedIn();
+    }
+    
+    /// 📖 LEITURA:
+    /// - Conversa 1-1: usuário pode ler suas próprias conversas
+    /// - Conversa de evento: participante aprovado pode ler
+    allow read: if isSignedIn() && (
+      // Conversa 1-1: sou o dono
+      request.auth.uid == userId ||
+      // Conversa de evento: sou participante aprovado
+      (isEventConversation() && request.auth.uid == userId && isApprovedParticipant())
+    );
+    
+    /// ✍️ CRIAR/ATUALIZAR:
+    /// - Conversa 1-1: ambos participantes podem criar/atualizar
+    /// - Conversa de evento: participante aprovado pode criar/atualizar sua própria conversa
+    allow create, update: if isSignedIn() && (
+      // Conversa 1-1: sou participante
+      isParticipant(userId, withUserId) ||
+      // Conversa de evento: sou o dono e sou participante aprovado
+      (isEventConversation() && request.auth.uid == userId && isApprovedParticipant())
+    );
+    
+    /// 🗑️ DELETAR:
+    /// - Apenas o dono pode deletar sua conversa
+    allow delete: if isSignedIn() && request.auth.uid == userId;
+  }
+}

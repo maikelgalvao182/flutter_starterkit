@@ -269,7 +269,7 @@ class User {
     final urls = <String>[];
     for (int i = 0; i < 9; i++) {
       final key = 'image_$i';
-      final value = userGallery![key];
+      final value = userGallery?[key];
       
       if (value == null) {
         urls.add('');

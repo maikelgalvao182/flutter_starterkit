@@ -109,6 +109,7 @@ class LocationRepository implements LocationRepositoryInterface {
       AppLogger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', tag: 'LocationRepository');
       
       // ✅ REST API: Update location via backend
+      // Adiciona timestamp para tracking de usuários ativos
       final result = await _locationApi.updateLocation(
         userId: userId,
         latitude: latitude,
@@ -117,6 +118,12 @@ class LocationRepository implements LocationRepositoryInterface {
         locality: locality,
         state: state,
       );
+      
+      // TODO: Se o backend não adicionar automaticamente, descomentar:
+      // await FirebaseFirestore.instance
+      //     .collection('Users')
+      //     .doc(userId)
+      //     .update({'locationUpdatedAt': FieldValue.serverTimestamp()});
 
       if (!result.success) {
         AppLogger.error('❌ API returned error: ${result.error?.message}', tag: 'LocationRepository');

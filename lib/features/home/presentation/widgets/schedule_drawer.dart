@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/presentation/widgets/controllers/schedule_drawer_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/horizontal_week_calendar.dart';
@@ -141,7 +142,7 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
                         // Título centralizado
                         Expanded(
                           child: Text(
-                            'Quando vai rolar?',
+                            AppLocalizations.of(context).translate('when_activity_title'),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.getFont(
                               FONT_PLUS_JAKARTA_SANS,
@@ -228,7 +229,7 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: GlimpseButton(
-                  text: 'Continuar',
+                  text: AppLocalizations.of(context).translate('continue'),
                   onPressed: _controller.canContinue ? _handleContinue : null,
                 ),
               ),

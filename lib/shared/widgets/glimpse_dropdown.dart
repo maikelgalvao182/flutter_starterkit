@@ -67,10 +67,11 @@ class _GlimpseDropdownState extends State<GlimpseDropdown> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               widget.labelText,
-              style: widget.labelStyle ?? TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+              style: widget.labelStyle ?? GoogleFonts.getFont(
+                FONT_PLUS_JAKARTA_SANS,
+                color: GlimpseColors.primaryColorLight,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
               ),
             ),
           ),

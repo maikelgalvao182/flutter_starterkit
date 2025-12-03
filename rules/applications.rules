@@ -1,0 +1,63 @@
+/// 🎫 Coleção de aplicações para eventos
+/// Path usado no app:
+/// - EventApplications/{applicationId}
+///   - eventId: string
+///   - userId: string
+///   - status: string ("pending" | "approved" | "rejected" | "autoApproved")
+///   - appliedAt: timestamp
+///   - decisionAt: timestamp (opcional)
+
+match /EventApplications/{applicationId} {
+  // Helper: buscar dados do evento relacionado
+  function getEvent() {
+    return get(/databases/$(database)/documents/events/$(resource.data.eventId)).data;
+  }
+  
+  function getEventFromRequest() {
+    return get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data;
+  }
+  
+  /// 📖 LEITURA:
+  /// - Criador do evento pode ver TODAS as aplicações do seu evento
+  /// - Usuário pode ver APENAS suas próprias aplicações
+  /// - ⭐ QUALQUER usuário autenticado pode ver aplicações APROVADAS (para visualizar participantes no EventCard)
+  allow read: if isSignedIn() && (
+    // Sou o criador do evento
+    request.auth.uid == getEvent().createdBy ||
+    // É minha própria aplicação
+    request.auth.uid == resource.data.userId ||
+    // É uma aplicação aprovada (qualquer um pode ver para visualizar participantes)
+    (resource.data.status == 'approved' || resource.data.status == 'autoApproved')
+  );
+  
+  /// ✍️ CRIAR aplicação:
+  /// - Usuário autenticado
+  /// - userId deve ser o próprio usuário
+  /// - Status deve ser "pending" ou "autoApproved" baseado no privacyType
+  allow create: if isSignedIn() && 
+    request.resource.data.userId == request.auth.uid &&
+    request.resource.data.keys().hasAll(['eventId', 'userId', 'status', 'appliedAt']) &&
+    (
+      (getEventFromRequest().participants.privacyType == 'open' && 
+       request.resource.data.status == 'autoApproved') ||
+      (getEventFromRequest().participants.privacyType == 'private' && 
+       request.resource.data.status == 'pending')
+    );
+  
+  /// ✏️ ATUALIZAR aplicação:
+  /// - Apenas o criador do evento pode aprovar/rejeitar
+  /// - Não pode mudar eventId ou userId
+  /// - Só pode mudar de "pending" para "approved" ou "rejected"
+  /// - Deve incluir decisionAt
+  allow update: if isSignedIn() && 
+    request.auth.uid == getEvent().createdBy &&
+    request.resource.data.eventId == resource.data.eventId &&
+    request.resource.data.userId == resource.data.userId &&
+    resource.data.status == 'pending' &&
+    (request.resource.data.status == 'approved' || 
+     request.resource.data.status == 'rejected') &&
+    request.resource.data.decisionAt != null;
+  
+  /// 🗑️ DELETE: não permitido
+  allow delete: if false;
+}

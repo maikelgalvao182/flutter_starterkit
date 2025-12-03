@@ -24,11 +24,11 @@ class TagVendor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Quando selecionado: borda 1px primary + fundo primaryLight
-    // Quando não selecionado: borda cinza + fundo transparente
+    // Quando selecionado: borda 1px primaryLight + fundo primaryLight
+    // Quando não selecionado: borda borderColorLight + fundo transparente
     final defaultBorderColor = isSelected
-        ? GlimpseColors.primary
-        : GlimpseColors.primaryColorLight;
+        ? GlimpseColors.primaryLight
+        : GlimpseColors.borderColorLight;
 
     final bgColor = isSelected
         ? GlimpseColors.primaryLight

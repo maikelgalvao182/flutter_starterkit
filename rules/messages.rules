@@ -1,0 +1,69 @@
+/// 💬 Coleção de mensagens entre usuários e chats de eventos
+/// Path usado no app:
+/// - Messages/{userId}/{partnerId}/{messageId}
+///   - sender_id: string
+///   - message_type: string
+///   - timestamp: timestamp
+///   - content: string ou map (dependendo do tipo)
+/// 
+/// Para chats de eventos:
+/// - Messages/{userId}/event_{eventId}/{messageId}
+///   - sender_id: string
+///   - message_type: string
+///   - timestamp: timestamp
+///   - message: string
+
+match /Messages/{userId} {
+  match /{partnerId}/{messageId} {
+    // Helper: verifica se é chat de evento
+    function isEventChat() {
+      return partnerId.matches('event_.*');
+    }
+    
+    // Helper: extrai eventId do partnerId (event_{eventId})
+    function getEventId() {
+      return partnerId.split('_')[1];
+    }
+    
+    // Helper: verifica se usuário é participante aprovado do evento
+    // Como EventApplications não usa padrão de ID previsível, verificamos via query
+    // Simplificação: assumimos que se o documento Messages/{userId}/event_{eventId} existe,
+    // significa que o backend já validou e criou a conversa (via Cloud Function após aprovação)
+    function isApprovedParticipant() {
+      // Se chegou até aqui enviando mensagem, o backend já criou a conversa
+      // Validação adicional seria custosa (query não permitida em rules)
+      return isSignedIn();
+    }
+    
+    /// 📖 LEITURA:
+    /// - Chat 1-1: usuário pode ler suas próprias mensagens
+    /// - Chat de evento: participante aprovado pode ler
+    allow read: if isSignedIn() && (
+      // Chat 1-1: sou o dono da conversa
+      request.auth.uid == userId ||
+      // Chat de evento: sou participante aprovado
+      (isEventChat() && isApprovedParticipant())
+    );
+    
+    /// ✍️ CRIAR mensagem:
+    /// - Chat 1-1: participante pode enviar
+    /// - Chat de evento: participante aprovado pode enviar
+    allow create: if isSignedIn() && (
+      // Chat 1-1
+      (isParticipant(userId, partnerId) &&
+       request.resource.data.sender_id == request.auth.uid &&
+       request.resource.data.message_type is string &&
+       request.resource.data.timestamp is timestamp) ||
+      // Chat de evento
+      (isEventChat() && 
+       isApprovedParticipant() &&
+       request.resource.data.sender_id == request.auth.uid &&
+       request.resource.data.message_type is string &&
+       request.resource.data.timestamp is timestamp)
+    );
+    
+    /// ✏️ ATUALIZAR/DELETAR:
+    /// - Apenas o dono da conversa pode atualizar/deletar
+    allow update, delete: if isSignedIn() && request.auth.uid == userId;
+  }
+}

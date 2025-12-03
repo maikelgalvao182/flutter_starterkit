@@ -98,10 +98,6 @@ class _LanguagesEditorState extends State<LanguagesEditor> {
                     return Container(
                       decoration: BoxDecoration(
                         color: GlimpseColors.primaryLight,
-                        border: Border.all(
-                          color: GlimpseColors.primary,
-                          width: 1,
-                        ),
                         borderRadius: BorderRadius.circular(100),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

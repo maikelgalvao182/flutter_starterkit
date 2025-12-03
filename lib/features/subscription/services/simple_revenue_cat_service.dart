@@ -167,6 +167,7 @@ class SimpleRevenueCatService {
     if (!_initialized) await initialize();
 
     AppLogger.info('Iniciando compra: ${package.storeProduct.identifier}');
+    // ignore: deprecated_member_use
     final result = await Purchases.purchaseStoreProduct(package.storeProduct);
 
     _lastInfo = result.customerInfo;

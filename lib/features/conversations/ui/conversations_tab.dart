@@ -1,11 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
-import 'package:partiu/features/conversations/utils/conversation_styles.dart';
 import 'package:partiu/features/conversations/widgets/conversation_stream_widget.dart';
-import 'package:partiu/features/conversations/widgets/conversations_header.dart';
 import 'package:partiu/core/services/auth_state_service.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
+import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,16 +20,19 @@ class ConversationsTab extends StatelessWidget {
     return Consumer<ConversationsViewModel>(
       builder: (context, viewModel, _) {
         final i18n = AppLocalizations.of(context);
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final isGuest = AuthStateService.instance.isGuest;
 
         return Scaffold(
-          backgroundColor: ConversationStyles.backgroundColor(),
+          backgroundColor: Colors.white, // Cor branca fixa
           body: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const ConversationsHeader(),
-                const SizedBox(height: ConversationStyles.headerSpacing),
+                GlimpseTabAppBar(
+                  title: i18n.translate('conversations'),
+                ),
+                const SizedBox(height: 8),
                 Expanded(
                   child: isGuest
                       // Guest: show Conversations UI empty state

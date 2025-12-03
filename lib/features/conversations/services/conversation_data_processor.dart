@@ -38,6 +38,7 @@ class ConversationDataProcessor {
     // Prioritize fields that typically have valid URLs
     final candidates = <dynamic>[
       data['profileImageURL'],
+      data['emoji'],
       data['user_profile_photo'],
       data['photo_url'],
       data['user_photo_link'],
@@ -230,7 +231,8 @@ class ConversationDataProcessor {
     required bool isVipEffective,
     required AppLocalizations i18n,
   }) async {
-    final fullNameRaw = (data['user_fullname'] ??
+    final fullNameRaw = (data['activityText'] ??
+            data['user_fullname'] ??
             data['other_user_name'] ??
             data['otherUserName'] ??
             data['user_name'] ??
@@ -238,7 +240,11 @@ class ConversationDataProcessor {
         .toString()
         .trim();
     final photoUrl = extractPhotoUrl(data);
-    final otherUserId = (data['user_id'] ??
+    // Para eventos, usar event_id. Para conversas normais, user_id
+    final isEventChat = data['is_event_chat'] == true || data['event_id'] != null;
+    final otherUserId = isEventChat 
+        ? 'event_${data['event_id']}'
+        : (data['user_id'] ??
             data['other_user_id'] ??
             data['otherUserId'] ??
             data['uid'] ??
@@ -306,7 +312,8 @@ class ConversationDataProcessor {
     required bool isVipEffective,
     required AppLocalizations i18n,
   }) {
-    final fullNameRaw = (data['user_fullname'] ??
+    final fullNameRaw = (data['activityText'] ??
+            data['user_fullname'] ??
             data['other_user_name'] ??
             data['otherUserName'] ??
             data['user_name'] ??
@@ -314,7 +321,11 @@ class ConversationDataProcessor {
         .toString()
         .trim();
     final photoUrl = extractPhotoUrl(data);
-    final otherUserId = (data['user_id'] ??
+    // Para eventos, usar event_id. Para conversas normais, user_id
+    final isEventChat = data['is_event_chat'] == true || data['event_id'] != null;
+    final otherUserId = isEventChat 
+        ? 'event_${data['event_id']}'
+        : (data['user_id'] ??
             data['other_user_id'] ??
             data['otherUserId'] ??
             data['uid'] ??

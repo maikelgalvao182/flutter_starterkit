@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:partiu/features/home/presentation/screens/conversations_tab.dart';
+import 'package:partiu/features/conversations/ui/conversations_tab.dart';
 import 'package:partiu/features/home/presentation/screens/discover_tab.dart';
 import 'package:partiu/features/home/presentation/screens/matches_tab.dart';
 import 'package:partiu/features/home/presentation/screens/profile_tab.dart';
