@@ -2,10 +2,12 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/chat/widgets/image_lightbox.dart';
+import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
 
 /// Componente de bolha de mensagem no estilo do Glimpse
 class GlimpseChatBubble extends StatelessWidget {
@@ -18,6 +20,9 @@ class GlimpseChatBubble extends StatelessWidget {
     this.type,
     this.params,
     this.messageId,
+    this.avatarUrl,
+    this.fullName,
+    this.senderId,
   });
   final String message;
   final bool isUserSender;
@@ -28,6 +33,9 @@ class GlimpseChatBubble extends StatelessWidget {
   final String? type;
   final Map<String, dynamic>? params;
   final String? messageId;
+  final String? avatarUrl;
+  final String? fullName;
+  final String? senderId;
 
   /// Processa markdown simples (**texto** → negrito)
   List<TextSpan> _parseMarkdown(String text, TextStyle baseStyle) {
@@ -63,6 +71,38 @@ class GlimpseChatBubble extends StatelessWidget {
     }
     
     return spans.isNotEmpty ? spans : [TextSpan(text: text, style: baseStyle)];
+  }
+
+  Widget _buildSenderName(BuildContext context) {
+    if (isUserSender) return const SizedBox.shrink();
+
+    final style = GoogleFonts.getFont(
+      FONT_PLUS_JAKARTA_SANS,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: GlimpseColors.textSubTitle,
+    );
+
+    if (fullName != null && fullName!.isNotEmpty) {
+      return Text(fullName!, style: style);
+    }
+
+    if (senderId != null && senderId!.isNotEmpty) {
+      return FutureBuilder<Map<String, dynamic>?>(
+        future: UserRepository().getUserById(senderId!),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            final name = snapshot.data!['fullName'] as String? ?? '';
+            if (name.isNotEmpty) {
+              return Text(name, style: style);
+            }
+          }
+          return const SizedBox.shrink();
+        },
+      );
+    }
+    
+    return const SizedBox.shrink();
   }
 
   @override
@@ -112,16 +152,43 @@ class GlimpseChatBubble extends StatelessWidget {
             ? MainAxisAlignment.center
             : (isUserSender ? MainAxisAlignment.end : MainAxisAlignment.start),
         crossAxisAlignment:
-            isSystem ? CrossAxisAlignment.center : CrossAxisAlignment.end,
+            isSystem ? CrossAxisAlignment.center : (isUserSender ? CrossAxisAlignment.end : CrossAxisAlignment.start),
         children: [
           if (!isUserSender && !isSystem) ...[
-            const SizedBox(width: 8),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(-10 * (1 - value), 0),
+                    child: child,
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: StableAvatar(
+                  userId: senderId ?? '',
+                  photoUrl: avatarUrl,
+                  size: 32,
+                  enableNavigation: true,
+                ),
+              ),
+            ),
           ],
           
           Flexible(
             child: Column(
               crossAxisAlignment: isUserSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
+                if (!isUserSender && !isSystem)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 4),
+                    child: _buildSenderName(context),
+                  ),
                 // Bolha de mensagem
                 GestureDetector(
                   onTap: (imageUrl != null && imageUrl!.isNotEmpty)
@@ -147,13 +214,13 @@ class GlimpseChatBubble extends StatelessWidget {
                         ? Colors.transparent // Cor transparente para imagens
                         : bubbleColor,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(18),
-                      topRight: const Radius.circular(18),
-                      bottomLeft: isSystem
+                      topLeft: isSystem
                           ? const Radius.circular(18)
                           : (isUserSender
                               ? const Radius.circular(18)
                               : const Radius.circular(4)),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: const Radius.circular(18),
                       bottomRight: isSystem
                           ? const Radius.circular(18)
                           : (isUserSender

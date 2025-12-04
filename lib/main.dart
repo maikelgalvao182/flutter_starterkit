@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_country_selector/flutter_country_selector.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,12 +17,22 @@ import 'package:partiu/core/services/location_background_updater.dart'; // Locat
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
 import 'package:brazilian_locations/brazilian_locations.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Travar orientação em portrait
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+  
   // Inicializar BrazilianLocations
   await BrazilianLocations.initialize();
+  
+  // Configurar locales para timeago
+  timeago.setLocaleMessages('pt', timeago.PtBrMessages());
+  timeago.setLocaleMessages('es', timeago.EsMessages());
   
   // Inicializar Firebase
   await Firebase.initializeApp(
@@ -152,6 +163,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0, // Remove efeito cinza ao rolar
+          surfaceTintColor: Colors.transparent, // Remove overlay Material 3
+        ),
       ),
     );
   }

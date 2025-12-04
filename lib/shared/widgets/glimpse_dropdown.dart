@@ -15,6 +15,7 @@ class GlimpseDropdown extends StatefulWidget {
     this.searchEnabled = false,
     this.suffixIconPath,
     this.enabled = true,
+    this.itemBuilder,
   });
   final String labelText;
   final String hintText;
@@ -25,6 +26,7 @@ class GlimpseDropdown extends StatefulWidget {
   final bool searchEnabled;
   final String? suffixIconPath;
   final bool enabled;
+  final String Function(String)? itemBuilder;
 
   @override
   State<GlimpseDropdown> createState() => _GlimpseDropdownState();
@@ -88,6 +90,29 @@ class _GlimpseDropdownState extends State<GlimpseDropdown> {
                 futureRequest: _getFakeRequestData,
                 hintText: widget.hintText,
                 items: widget.items,
+                listItemBuilder: widget.itemBuilder != null
+                    ? (context, item, isSelected, onItemSelect) {
+                        return Text(
+                          widget.itemBuilder!(item),
+                          style: GoogleFonts.getFont(
+                            FONT_PLUS_JAKARTA_SANS,
+                            fontSize: 16,
+                            color: isSelected 
+                                ? GlimpseColors.primaryColorLight
+                                : GlimpseColors.textSubTitle,
+                          ),
+                        );
+                      }
+                    : null,
+                headerBuilder: widget.itemBuilder != null
+                    ? (context, selectedItem, isSelected) => Text(
+                        widget.itemBuilder!(selectedItem),
+                        style: GoogleFonts.getFont(
+                          FONT_PLUS_JAKARTA_SANS,
+                          fontSize: 16,
+                        ),
+                      )
+                    : null,
                 onChanged: (value) {
                   setState(() {
                     _selectedValue = value;
@@ -102,7 +127,30 @@ class _GlimpseDropdownState extends State<GlimpseDropdown> {
                 ),
                 hintText: widget.hintText,
                 items: widget.items,
-                initialItem: widget.items.contains(_selectedValue) ? _selectedValue : null,
+                initialItem: _selectedValue,
+                listItemBuilder: widget.itemBuilder != null
+                    ? (context, item, isSelected, onItemSelect) {
+                        return Text(
+                          widget.itemBuilder!(item),
+                          style: GoogleFonts.getFont(
+                            FONT_PLUS_JAKARTA_SANS,
+                            fontSize: 16,
+                            color: isSelected 
+                                ? GlimpseColors.primaryColorLight
+                                : GlimpseColors.textSubTitle,
+                          ),
+                        );
+                      }
+                    : null,
+                headerBuilder: widget.itemBuilder != null
+                    ? (context, selectedItem, isSelected) => Text(
+                        widget.itemBuilder!(selectedItem),
+                        style: GoogleFonts.getFont(
+                          FONT_PLUS_JAKARTA_SANS,
+                          fontSize: 16,
+                        ),
+                      )
+                    : null,
                 onChanged: (value) {
                   setState(() {
                     _selectedValue = value;

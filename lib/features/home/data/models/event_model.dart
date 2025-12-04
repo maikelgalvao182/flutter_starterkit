@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 /// Modelo simplificado de evento para exibição no mapa
 class EventModel {
@@ -40,6 +41,14 @@ class EventModel {
 
   /// Factory para criar EventModel a partir de um Map
   factory EventModel.fromMap(Map<String, dynamic> map, String id) {
+    // DEBUG: Ver o que está vindo no map
+    if (!map.containsKey('privacyType')) {
+      debugPrint('⚠️ EventModel.fromMap: privacyType AUSENTE no map do evento $id');
+      debugPrint('   Campos disponíveis: ${map.keys.toList()}');
+    } else {
+      debugPrint('✅ EventModel.fromMap: privacyType = ${map['privacyType']} (evento $id)');
+    }
+    
     // Tentar extrair coordenadas da raiz ou do objeto location
     final location = map['location'] as Map<String, dynamic>?;
     final lat = (map['latitude'] as num?)?.toDouble() ?? 
@@ -107,7 +116,8 @@ class EventModel {
       isAvailable: map['isAvailable'] as bool? ?? true,
       creatorFullName: map['creatorFullName'] as String?,
       scheduleDate: scheduleDate,
-      privacyType: map['privacyType'] as String?,
+      // Se privacyType não existe, usar "open" como padrão (todos eventos são abertos por padrão)
+      privacyType: map['privacyType'] as String? ?? 'open',
       participants: null, // Não vem do map inicial
     );
   }

@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/models/user.dart';
+import 'package:partiu/helpers/app_localizations.dart' as helpers;
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/chat/models/message.dart';
 import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/screens/chat/widgets/glimpse_chat_bubble.dart';
 import 'package:partiu/shared/widgets/my_circular_progress.dart';
+import 'package:partiu/shared/widgets/auto_scroll_list_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -20,6 +23,9 @@ class _ProcessedMessage {
     required this.isSystem, this.imageUrl,
     this.type,
     this.params,
+    this.senderId,
+    this.avatarUrl,
+    this.fullName,
   });
   final String id;
   final String message;
@@ -30,6 +36,9 @@ class _ProcessedMessage {
   final bool isSystem;
   final String? type;
   final Map<String, dynamic>? params;
+  final String? senderId;
+  final String? avatarUrl;
+  final String? fullName;
 }
 
 class MessageListWidget extends StatefulWidget {
@@ -49,6 +58,82 @@ class MessageListWidget extends StatefulWidget {
 class _MessageListWidgetState extends State<MessageListWidget> {
   // Cache para mensagens processadas
   final Map<String, _ProcessedMessage> _messageCache = {};
+  
+  // State for messages
+  List<Message>? _messages;
+  bool _isLoading = true;
+  String? _error;
+  StreamSubscription? _subscription;
+  int _retryCount = 0;
+  static const int _maxRetries = 15;
+
+  @override
+  void initState() {
+    super.initState();
+    _initStream();
+  }
+
+  @override
+  void didUpdateWidget(MessageListWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.remoteUserId != widget.remoteUserId) {
+      _subscription?.cancel();
+      _messageCache.clear();
+      _messages = null;
+      _isLoading = true;
+      _error = null;
+      _retryCount = 0;
+      _initStream();
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _initStream() {
+    _subscription?.cancel();
+    
+    debugPrint("🔄 MessageListWidget: Initializing stream for ${widget.remoteUserId} (Attempt ${_retryCount + 1})");
+    
+    _subscription = widget.chatService.getMessages(widget.remoteUserId).listen(
+      (messages) {
+        debugPrint("📋 MessageListWidget: Received ${messages.length} messages");
+        if (mounted) {
+          setState(() {
+            _messages = messages;
+            _isLoading = false;
+            _error = null;
+            _retryCount = 0; // Reset retries on success
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint("❌ MessageListWidget: Stream error: $error");
+        
+        // Check for permission denied
+        final isPermissionError = error.toString().contains('permission-denied') || 
+                                  error.toString().contains('PERMISSION_DENIED');
+                                  
+        if (isPermissionError && _retryCount < _maxRetries) {
+          debugPrint("⏳ MessageListWidget: Permission denied. Retrying in 1s... (${_retryCount + 1}/$_maxRetries)");
+          _retryCount++;
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) _initStream();
+          });
+        } else {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _error = error.toString();
+            });
+          }
+        }
+      },
+    );
+  }
   
   // Pre-processar mensagens para evitar processamento no build
   List<_ProcessedMessage> _processMessages(
@@ -72,11 +157,16 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       var messageTime = '';
       try {
         if (message.timestamp != null) {
-          // Use current locale for time formatting
-          messageTime = timeago.format(message.timestamp!, locale: currentLocale);
+          // Use current locale from AppLocalizations for time formatting
+          final localeCode = helpers.AppLocalizations.currentLocale ?? 'en';
+          final locale = localeCode == 'pt' ? 'pt_BR' : localeCode;
+          messageTime = timeago.format(message.timestamp!, locale: locale);
         }
       } catch (e) {
-        // Ignore timestamp formatting errors
+        // Fallback to default locale if error
+        if (message.timestamp != null) {
+          messageTime = timeago.format(message.timestamp!);
+        }
       }
       
       // Debug logs temporários
@@ -93,6 +183,19 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       final isSender = message.senderId == AppState.currentUserId;
       
       print('  - ✅ FINAL DECISION: isSender = $isSender');
+
+      // Determine avatar/name for received messages
+      String? avatarUrl;
+      String? fullName;
+      
+      if (!isSender) {
+        // If 1-1 chat (not event), use remoteUser info
+        if (!widget.remoteUserId.startsWith('event_')) {
+           avatarUrl = widget.remoteUser.profilePhotoUrl;
+           fullName = widget.remoteUser.fullName;
+        }
+        // For event chat, we rely on StableAvatar fetching by senderId
+      }
       
       final processedMessage = _ProcessedMessage(
         id: docId,
@@ -104,6 +207,9 @@ class _MessageListWidgetState extends State<MessageListWidget> {
         isSystem: message.type == 'system',
         type: message.type,
         params: message.params,
+        senderId: message.senderId,
+        avatarUrl: avatarUrl,
+        fullName: fullName,
       );
       
       // Adicionar ao cache
@@ -118,66 +224,86 @@ class _MessageListWidgetState extends State<MessageListWidget> {
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
     
-    return StreamBuilder<List<Message>>(
-      stream: widget.chatService.getMessages(widget.remoteUserId),
-      builder: (context, snapshot) {
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        debugPrint("🔄 MessageListWidget rebuild at $timestamp");
-        debugPrint("   - hasData: ${snapshot.hasData}");
-        debugPrint("   - connectionState: ${snapshot.connectionState}");
-        debugPrint("   - hasError: ${snapshot.hasError}");
-        if (snapshot.hasError) debugPrint("   - error: ${snapshot.error}");
-        
-        // Check data
-        if (!snapshot.hasData) {
-          debugPrint("⏳ No data yet, showing loading spinner");
-          return const Center(child: MyCircularProgress());
-        }
-        
-        final messageCount = snapshot.data!.length;
-        final messageIds = snapshot.data!.map((m) {
-          final text = m.text ?? '';
-          final preview = text.length > 10 ? text.substring(0, 10) : text;
-          return '${m.id}:$preview';
-        }).join(', ');
-        debugPrint("📋 Received $messageCount messages from stream");
-        debugPrint("   - Message IDs: $messageIds");
+    // Show error if any (and not retrying)
+    if (_error != null) {
+       return Center(
+         child: Column(
+           mainAxisAlignment: MainAxisAlignment.center,
+           children: [
+             const Icon(Icons.error_outline, color: Colors.red, size: 48),
+             const SizedBox(height: 16),
+             Text(
+               i18n.translate('error') + ': ' + _error!,
+               textAlign: TextAlign.center,
+               style: const TextStyle(color: Colors.grey),
+             ),
+             TextButton(
+               onPressed: () {
+                 setState(() {
+                   _isLoading = true;
+                   _error = null;
+                   _retryCount = 0;
+                 });
+                 _initStream();
+               },
+               child: Text(i18n.translate('retry')),
+             )
+           ],
+         ),
+       );
+    }
 
-        // Para chat estilo WhatsApp que inicia nas mensagens mais recentes:
-        // - Mensagens vêm do Firestore em ordem ascending (msg1, msg2, msg3, msg4, msg5)
-        // - .reversed.toList() inverte para (msg5, msg4, msg3, msg2, msg1)
-        // - reverse: true no ListView faz a lista crescer de baixo para cima
-        // - Resultado: mensagens mais recentes aparecem na parte inferior e o chat inicia lá
-        final messages = snapshot.data!.reversed.toList();
-        final processedMessages = _processMessages(messages, i18n);
+    // Show loading
+    if (_isLoading || _messages == null) {
+      debugPrint("⏳ No data yet, showing loading spinner");
+      return const Center(child: MyCircularProgress());
+    }
+    
+    final messageCount = _messages!.length;
+    debugPrint("📋 Rendering $messageCount messages");
 
-        return ListView.builder(
-          controller: widget.messagesController,
-          // Usando BouncingScrollPhysics com configuração personalizada para efeito mais suave
-          physics: const BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.fast),
-          reverse: true, // ListView invertido: cresce de baixo para cima (mensagens novas embaixo)
-          itemCount: processedMessages.length,
-          itemBuilder: (context, index) {
-            final processedMsg = processedMessages[index];
-            
-            // Usar RepaintBoundary para isolar repinturas
-            return RepaintBoundary(
-              key: ValueKey(processedMsg.id), // Key apropriada para performance
-              child: GlimpseChatBubble(
-                message: processedMsg.message,
-                isUserSender: processedMsg.isUserSender,
-                time: processedMsg.time,
-                isRead: processedMsg.isRead,
-                imageUrl: processedMsg.imageUrl,
-                isSystem: processedMsg.isSystem,
-                type: processedMsg.type,
-                params: processedMsg.params,
-                messageId: processedMsg.id,
-              ),
-            );
-          },
-        );
-      },
+    // Para chat estilo WhatsApp que inicia nas mensagens mais recentes:
+    // - Mensagens vêm do Firestore em ordem ascending (msg1, msg2, msg3, msg4, msg5)
+    // - reverse: true no ListView faz a lista crescer de baixo para cima automaticamente
+    // - Resultado: mensagens mais recentes aparecem na parte inferior e o chat inicia lá
+    final processedMessages = _processMessages(_messages!, i18n);
+
+    return AutoScrollListHandler(
+      controller: widget.messagesController,
+      itemCount: processedMessages.length,
+      isReverse: true,
+      child: ListView.builder(
+        key: ValueKey(processedMessages.length),
+        controller: widget.messagesController,
+        // Usando BouncingScrollPhysics com configuração personalizada para efeito mais suave
+        physics: const BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.fast),
+        reverse: true, // ListView invertido: cresce de baixo para cima (mensagens novas embaixo)
+        itemCount: processedMessages.length,
+        itemBuilder: (context, index) {
+          // Com reverse: true, precisamos acessar o índice inverso
+          final reversedIndex = processedMessages.length - 1 - index;
+          final processedMsg = processedMessages[reversedIndex];
+          
+          // Usar RepaintBoundary para isolar repinturas
+          return RepaintBoundary(
+            key: ValueKey(processedMsg.id), // Key apropriada para performance
+            child: GlimpseChatBubble(
+              message: processedMsg.message,
+              isUserSender: processedMsg.isUserSender,
+              time: processedMsg.time,
+              isRead: processedMsg.isRead,
+              imageUrl: processedMsg.imageUrl,
+              isSystem: processedMsg.isSystem,
+              type: processedMsg.type,
+              params: processedMsg.params,
+              messageId: processedMsg.id,
+              senderId: processedMsg.senderId,
+              avatarUrl: processedMsg.avatarUrl,
+              fullName: processedMsg.fullName,
+            ),
+          );
+        },
+      ),
     );
   }
 }

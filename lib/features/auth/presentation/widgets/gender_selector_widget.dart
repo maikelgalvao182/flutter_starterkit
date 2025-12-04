@@ -19,6 +19,14 @@ class GenderSelectorWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
     
+    // Mapeamento constante -> chave de tradução
+    final genderTranslationMap = {
+      GENDER_MAN: i18n.translate('gender_male'),
+      GENDER_WOMAN: i18n.translate('gender_female'),
+      GENDER_OTHER: i18n.translate('gender_non_binary'),
+    };
+    
+    // Lista de opções traduzidas
     final genderOptions = [
       GENDER_MAN,
       GENDER_WOMAN,
@@ -31,6 +39,8 @@ class GenderSelectorWidget extends StatelessWidget {
       items: genderOptions,
       selectedValue: initialGender.isNotEmpty ? initialGender : null,
       onChanged: onGenderChanged,
+      // Usar itemBuilder para exibir traduzido
+      itemBuilder: (item) => genderTranslationMap[item] ?? item,
     );
   }
 }

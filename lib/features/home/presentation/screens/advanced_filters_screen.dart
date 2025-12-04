@@ -15,6 +15,7 @@ import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/services/location/radius_controller.dart';
 import 'package:partiu/services/location/location_query_service.dart';
+import 'package:partiu/services/location/advanced_filters_controller.dart';
 
 /// Advanced Filters Screen (filtros avançados para descoberta de atividades)
 class AdvancedFiltersScreen extends StatefulWidget {
@@ -27,8 +28,9 @@ class AdvancedFiltersScreen extends StatefulWidget {
 class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   // Controllers
   late final RadiusController _radiusController;
+  late final AdvancedFiltersController _filtersController;
   
-  // Filtros
+  // Filtros (agora sincronizados com o controller)
   String? _selectedGender = 'all';
   RangeValues _ageRange = const RangeValues(MIN_AGE, MAX_AGE);
   bool _isVerified = false;
@@ -42,7 +44,28 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   void initState() {
     super.initState();
     _radiusController = RadiusController();
+    _filtersController = AdvancedFiltersController();
+    _filtersController.addListener(_onFiltersLoaded);
+    
+    // Carregar dados salvos
+    _radiusController.loadFromFirestore();
+    _filtersController.loadFromFirestore();
+    
     _loadUserInterests();
+  }
+  
+  void _onFiltersLoaded() {
+    if (_filtersController.isLoading) return;
+    
+    // Sincronizar estado local com filtros carregados
+    setState(() {
+      _selectedGender = _filtersController.gender;
+      _ageRange = RangeValues(
+        _filtersController.minAge.toDouble(),
+        _filtersController.maxAge.toDouble(),
+      );
+      _isVerified = _filtersController.isVerified;
+    });
   }
   
   void _loadUserInterests() {
@@ -70,7 +93,10 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
       final interestsNotifier = UserStore.instance.getInterestsNotifier(_currentUserId!);
       interestsNotifier.removeListener(_onInterestsChanged);
     }
-    // Não fazer dispose do controller - ele é singleton
+    // Remove listener dos filtros
+    _filtersController.removeListener(_onFiltersLoaded);
+    _filtersController.dispose();
+    // Não fazer dispose do radiusController - ele é singleton
     super.dispose();
   }
 
@@ -174,24 +200,57 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     );
   }
 
-  void _applyFilters() {
-    // 1. Criar objeto de filtros unificado
+  Future<void> _applyFilters() async {
+    // 🔍 DEBUG: Verificar raio ANTES de salvar
+    debugPrint('🔍 _applyFilters: radiusKm DO CONTROLLER = ${_radiusController.radiusKm}');
+    
+    // 1. Salvar raio imediatamente (Aguardar persistência antes de atualizar filtros)
+    await _radiusController.saveImmediately();
+    
+    // 🔍 DEBUG: Verificar raio DEPOIS de salvar
+    debugPrint('🔍 _applyFilters: radiusKm SALVO NO FIRESTORE');
+    
+    // 2. Atualizar filtros no controller
+    debugPrint('🔍 _applyFilters: Atualizando controller com:');
+    debugPrint('   - gender: $_selectedGender (${_selectedGender.runtimeType})');
+    debugPrint('   - ageRange: ${_ageRange.start.round()}-${_ageRange.end.round()} (start: ${_ageRange.start.runtimeType}, end: ${_ageRange.end.runtimeType})');
+    debugPrint('   - verified: $_isVerified (${_isVerified.runtimeType})');
+    
+    _filtersController.gender = _selectedGender;
+    _filtersController.setAgeRange(
+      _ageRange.start.round(),
+      _ageRange.end.round(),
+    );
+    _filtersController.isVerified = _isVerified;
+    
+    debugPrint('🔍 _applyFilters: Valores no controller após atualização:');
+    debugPrint('   - gender: ${_filtersController.gender}');
+    debugPrint('   - minAge: ${_filtersController.minAge}');
+    debugPrint('   - maxAge: ${_filtersController.maxAge}');
+    debugPrint('   - isVerified: ${_filtersController.isVerified}');
+    
+    // 3. Salvar filtros no Firestore
+    await _filtersController.saveToFirestore();
+    
+    // 4. Criar objeto de filtros unificado (AGORA INCLUI RAIO)
     final filters = EventFilterOptions(
       gender: _selectedGender,
       minAge: _ageRange.start.round(),
       maxAge: _ageRange.end.round(),
       isVerified: _isVerified,
       interests: _selectedInterests.toList(),
+      radiusKm: _radiusController.radiusKm, // ✅ PASSAR RAIO NOS FILTROS
     );
 
-    // 2. Atualizar serviço orquestrador (LocationQueryService)
+    debugPrint('🔍 _applyFilters: Objeto filters criado com radiusKm = ${filters.radiusKm}');
+
+    // 5. Atualizar serviço orquestrador (LocationQueryService)
     // Isso dispara o fluxo: Bounding Box -> Fetch Creators -> Filter -> Isolate
     LocationQueryService().updateFilters(filters);
     
-    // 3. Salvar raio imediatamente
-    _radiusController.saveImmediately();
-    
-    // 4. Fechar
-    Navigator.pop(context, true);
+    // 6. Fechar
+    if (mounted) {
+      Navigator.pop(context, true);
+    }
   }
 }

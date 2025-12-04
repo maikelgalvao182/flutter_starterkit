@@ -31,7 +31,7 @@ class ConversationDisplayData {
 /// Service responsible for processing conversation data for display
 class ConversationDataProcessor {
   static const int _maxMessageLength = 30;
-  static const int _truncateLength = 35;
+  static const int _truncateLength = 30;
 
   /// Extract photo URL from conversation data with fallback chain
   static String extractPhotoUrl(Map<String, dynamic> data) {

@@ -3,100 +3,72 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/services/location/location_stream_controller.dart';
 
-/// Controller para gerenciar o raio de busca com debounce
-/// 
-/// Responsabilidades:
-/// - Controlar valor do raio
-/// - Debounce para evitar queries excessivas
-/// - Persistir no Firestore
-/// - Notificar listeners
+/// Controller para gerenciar o raio de busca com debounce,
+/// agora SEM sobrescrever outros filtros dentro de advancedSettings.
 class RadiusController extends ChangeNotifier {
-  /// Valor atual do raio em km
   double _radiusKm = DEFAULT_RADIUS_KM;
 
-  /// Valor mínimo do raio
   static const double minRadius = MIN_RADIUS_KM;
-
-  /// Valor máximo do raio
   static const double maxRadius = MAX_RADIUS_KM;
 
-  /// Duração do debounce (500ms)
   static const Duration debounceDuration = Duration(milliseconds: 500);
 
-  /// Timer para debounce
   Timer? _debounceTimer;
-
-  /// Flag de loading
   bool _isUpdating = false;
 
-  /// Stream controller para broadcasts
   final _radiusStreamController = StreamController<double>.broadcast();
 
-  RadiusController() {
-    _loadFromFirestore();
-  }
+  RadiusController();
 
-  /// Getter do raio atual
   double get radiusKm => _radiusKm;
-
-  /// Getter de loading
   bool get isUpdating => _isUpdating;
 
-  /// Stream de mudanças de raio
   Stream<double> get radiusStream => _radiusStreamController.stream;
 
-  /// Atualiza o raio com debounce
-  /// 
-  /// Só persiste no Firestore após 500ms sem mudanças
-  void updateRadius(double newRadius) {
-    // Validar limites
-    if (newRadius < minRadius || newRadius > maxRadius) {
-      return;
-    }
-
-    // Atualizar valor local imediatamente
-    _radiusKm = newRadius;
-    notifyListeners();
-
-    // Cancelar timer anterior
-    _debounceTimer?.cancel();
-
-    // Criar novo timer
-    _debounceTimer = Timer(debounceDuration, () {
-      _saveToFirestore();
-    });
-  }
-
-  /// Carrega o raio do Firestore
-  Future<void> _loadFromFirestore() async {
+  /// Carrega o valor do Firestore — sempre usado externamente,
+  /// e NÃO no construtor (para evitar race condition).
+  Future<void> loadFromFirestore() async {
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) return;
 
       final userDoc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection('Users')
           .doc(userId)
           .get();
 
-      if (userDoc.exists && userDoc.data() != null) {
-        final data = userDoc.data()!;
-        final savedRadius = data['radiusKm'] as double?;
+      if (!userDoc.exists) return;
 
-        if (savedRadius != null &&
-            savedRadius >= minRadius &&
-            savedRadius <= maxRadius) {
-          _radiusKm = savedRadius;
-          notifyListeners();
-          _radiusStreamController.add(_radiusKm);
-        }
+      final data = userDoc.data();
+      if (data == null) return;
+
+      final settings = data['advancedSettings'] as Map<String, dynamic>?;
+
+      final savedRadius = settings?['radiusKm'] as num?;
+      if (savedRadius != null) {
+        _radiusKm = savedRadius.toDouble();
+        notifyListeners();
+        _radiusStreamController.add(_radiusKm);
       }
     } catch (e) {
       debugPrint('❌ RadiusController: Erro ao carregar raio: $e');
     }
   }
 
-  /// Salva o raio no Firestore
+  /// Atualiza o raio com debounce
+  void updateRadius(double newRadius) {
+    if (newRadius < minRadius || newRadius > maxRadius) return;
+
+    _radiusKm = newRadius;
+    notifyListeners();
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(debounceDuration, () => _saveToFirestore());
+  }
+
+  /// Salva apenas radiusKm usando MERGE
   Future<void> _saveToFirestore() async {
     if (_isUpdating) return;
 
@@ -107,29 +79,18 @@ class RadiusController extends ChangeNotifier {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) return;
 
-      final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
-      
-      // Verificar se documento existe
-      final docSnapshot = await userRef.get();
-      
-      if (docSnapshot.exists) {
-        // Atualizar documento existente
-        await userRef.update({
-          'radiusKm': _radiusKm,
-          'radiusUpdatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        // Criar documento com dados mínimos
-        await userRef.set({
-          'radiusKm': _radiusKm,
-          'radiusUpdatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
+      final userRef = FirebaseFirestore.instance.collection('Users').doc(userId);
 
-      // Emitir evento no stream
+      // Usar update() com dot notation para atualizar apenas radiusKm
+      // SEM substituir outros campos do map advancedSettings
+      await userRef.update({
+        'advancedSettings.radiusKm': _radiusKm,
+        'advancedSettings.radiusUpdatedAt': FieldValue.serverTimestamp(),
+      });
+
       _radiusStreamController.add(_radiusKm);
+      LocationStreamController().emitRadiusChange(_radiusKm);
 
-      debugPrint('✅ RadiusController: Raio atualizado para $_radiusKm km');
     } catch (e) {
       debugPrint('❌ RadiusController: Erro ao salvar raio: $e');
     } finally {
@@ -138,15 +99,9 @@ class RadiusController extends ChangeNotifier {
     }
   }
 
-  /// Força salvamento imediato (sem debounce)
   Future<void> saveImmediately() async {
     _debounceTimer?.cancel();
     await _saveToFirestore();
-  }
-
-  /// Reseta para valor padrão
-  void reset() {
-    updateRadius(25.0);
   }
 
   @override

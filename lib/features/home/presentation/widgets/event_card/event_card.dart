@@ -60,45 +60,55 @@ class _EventCardState extends State<EventCard> {
 
   /// Lida com o press do botão baseado no estado atual
   Future<void> _handleButtonPress() async {
+    debugPrint('🔘 EventCard._handleButtonPress iniciado');
+    debugPrint('   - isCreator: ${_controller.isCreator}');
+    debugPrint('   - isApproved: ${_controller.isApproved}');
+    debugPrint('   - hasApplied: ${_controller.hasApplied}');
+    debugPrint('   - privacyType: ${_controller.privacyType}');
+    
     // Se é o criador, mostrar lista de participantes (TODO)
     if (_controller.isCreator) {
+      debugPrint('✅ Usuário é criador, chamando onActionPressed');
       widget.onActionPressed();
       return;
     }
 
     // Se já foi aprovado, entrar no chat
     if (_controller.isApproved) {
+      debugPrint('✅ Usuário aprovado, chamando onActionPressed para entrar no chat');
       widget.onActionPressed();
       return;
     }
 
     // Se ainda não aplicou, aplicar agora
     if (!_controller.hasApplied) {
+      debugPrint('🔄 Aplicando para o evento...');
       try {
         await _controller.applyToEvent();
+        debugPrint('✅ Aplicação realizada com sucesso!');
+        debugPrint('   - isApproved após aplicar: ${_controller.isApproved}');
+        debugPrint('   - isPending após aplicar: ${_controller.isPending}');
         
-        // Mostrar feedback
-        if (mounted) {
-          final message = _controller.isApproved
-              ? AppLocalizations.of(context).translate('accepted_entering_chat')
-              : AppLocalizations.of(context).translate('request_sent_awaiting');
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
-          );
-          
-          // Se foi auto-aprovado (evento aberto), entrar no chat
-          if (_controller.isApproved) {
-            widget.onActionPressed();
-          }
+        // Se foi auto-aprovado (evento aberto), entrar no chat
+        if (_controller.isApproved) {
+          debugPrint('✅ Auto-aprovado (evento aberto), chamando onActionPressed');
+          widget.onActionPressed();
+        } else {
+          debugPrint('⏳ Aplicação pendente de aprovação');
         }
       } catch (e) {
+        debugPrint('❌ Erro ao aplicar: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).translate('error_applying').replaceAll('{error}', e.toString()))),
+            SnackBar(
+              content: Text('Erro ao aplicar: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
+    } else {
+      debugPrint('⚠️ Usuário já aplicou anteriormente');
     }
   }
 

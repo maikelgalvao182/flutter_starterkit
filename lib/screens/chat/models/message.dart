@@ -23,10 +23,14 @@ class Message {
       final timestampField = data['timestamp'];
       if (timestampField is Timestamp) {
         timestamp = timestampField.toDate();
+      } else if (timestampField == null) {
+        // 🕒 Fallback para escritas locais (latency compensation)
+        // Quando escrevemos localmente, o timestamp do servidor ainda é null
+        timestamp = DateTime.now();
       }
     } catch (e) {
-      // Se houver erro ao converter timestamp, deixar null
-      timestamp = null;
+      // Se houver erro ao converter timestamp, usar agora como fallback
+      timestamp = DateTime.now();
     }
 
     final senderId = data['sender_id'] as String?;

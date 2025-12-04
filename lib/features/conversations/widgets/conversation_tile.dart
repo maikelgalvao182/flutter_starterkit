@@ -160,8 +160,8 @@ class ConversationTile extends StatelessWidget {
                 
                 // Formata usando TimeAgoHelper centralizado
                 timeAgoText = TimeAgoHelper.format(
+                  context,
                   timestamp: timestampValue,
-                  locale: i18n.translate('lang'),
                 );
               }
               

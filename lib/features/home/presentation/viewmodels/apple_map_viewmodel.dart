@@ -123,17 +123,14 @@ class AppleMapViewModel extends ChangeNotifier {
       final locationResult = await _locationService.getUserLocation();
       _lastLocation = locationResult.location;
 
-      // 2. Inicializar dados do usuário no Firestore se necessário
-      // Isso garante que os campos latitude, longitude e radiusKm existem
-      await _locationQueryService.initializeUserLocation(
-        latitude: _lastLocation!.latitude,
-        longitude: _lastLocation!.longitude,
-      );
+      // REMOVIDO: initializeUserLocation() - não é mais necessário
+      // O RadiusController e LocationQueryService já garantem que os dados existem
+      // Chamar isso aqui sobrescreve o radiusKm salvo pelo usuário com o valor padrão!
 
-      // 3. Buscar eventos (LocationQueryService - otimizado com bounding box)
+      // 2. Buscar eventos (LocationQueryService - otimizado com bounding box)
       final eventsWithDistance = await _locationQueryService.getEventsWithinRadiusOnce();
 
-      // 4. Converter para EventModel
+      // 3. Converter para EventModel
       _events = eventsWithDistance.map((eventWithDistance) {
         return EventModel.fromMap(
           eventWithDistance.eventData,
@@ -141,10 +138,10 @@ class AppleMapViewModel extends ChangeNotifier {
         );
       }).toList();
 
-      // 5. Enriquecer com distância e disponibilidade (lógica centralizada)
+      // 4. Enriquecer com distância e disponibilidade (lógica centralizada)
       await _enrichEvents();
 
-      // 6. Gerar markers com callback de tap
+      // 5. Gerar markers com callback de tap
       final markers = await _markerService.buildEventAnnotations(
         _events,
         onTap: onMarkerTap != null ? (eventId) {

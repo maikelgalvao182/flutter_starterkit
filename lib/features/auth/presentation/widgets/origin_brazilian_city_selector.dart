@@ -73,11 +73,13 @@ class _OriginBrazilianCitySelectorState extends State<OriginBrazilianCitySelecto
           currentCity: _selectedCity ?? 'Cidade',
           showStates: true,
           showCities: true,
-          showDropdownLabel: false, // Oculta labels internos pois já temos o nosso
+          showDropdownLabel: false,
           stateSearchPlaceholder: 'Buscar Estado',
           citySearchPlaceholder: 'Buscar Cidade',
           stateDropdownLabel: 'Selecione o Estado',
           cityDropdownLabel: 'Selecione a Cidade',
+          
+          // Dropdown principal - fundo lightTextField (cinza claro)
           dropdownDecoration: BoxDecoration(
             color: GlimpseColors.lightTextField,
             borderRadius: BorderRadius.circular(12),
@@ -86,27 +88,39 @@ class _OriginBrazilianCitySelectorState extends State<OriginBrazilianCitySelecto
             color: GlimpseColors.lightTextField.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
           ),
+          
+          // Padding interno do dropdown (valor em double)
+          dropdownPadding: 16,
+          
+          // Texto do heading (valor selecionado)
           dropdownHeadingStyle: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w400,
             color: GlimpseColors.primaryColorLight,
+            height: 1.4,
           ),
+          
+          // Itens da lista
           dropdownItemStyle: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
-            fontSize: 14,
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
             color: GlimpseColors.textSubTitle,
           ),
+          
+          // Item selecionado na lista
           selectedItemStyle: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
-            fontSize: 14,
+            fontSize: 16,
             color: GlimpseColors.primary,
             fontWeight: FontWeight.w600,
           ),
+          
           onStateChanged: (state) {
             setState(() {
               _selectedState = state;
-              _selectedCity = null; // Reseta cidade ao mudar estado
+              _selectedCity = null;
             });
             _updateValue();
           },

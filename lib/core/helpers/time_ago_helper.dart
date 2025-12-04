@@ -1,51 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:timeago/timeago.dart' as timeago;
+import 'package:flutter/material.dart';
 
 /// Helper centralizado para formatação de "time ago" (tempo relativo)
 /// 
+/// Usa as chaves de internacionalização do projeto para garantir consistência.
 /// Suporta:
 /// - Timestamp do Firestore e DateTime
-/// - Múltiplos locales (en, pt, es)
-/// - Abreviações opcionais (minutes → min, minutos → min)
-/// - Comportamento consistente em toda a aplicação
+/// - Múltiplos locales via AppLocalizations
+/// - Formatação consistente em toda a aplicação
 /// 
 /// Exemplos:
 /// ```dart
-/// // Com abreviações (padrão)
-/// TimeAgoHelper.format(timestamp: myTimestamp) // "5 min ago"
-/// 
-/// // Sem abreviações
-/// TimeAgoHelper.format(timestamp: myTimestamp, abbreviated: false) // "5 minutes ago"
-/// 
-/// // Com locale específico
-/// TimeAgoHelper.format(timestamp: myTimestamp, locale: 'pt') // "há 5 min"
+/// TimeAgoHelper.format(context, timestamp: myTimestamp) // "agora mesmo", "há 5 minutos"
 /// ```
 class TimeAgoHelper {
   
-  /// Formata timestamp em texto "time ago" (tempo relativo)
+  /// Formata timestamp em texto "time ago" (tempo relativo) usando chaves de i18n
   /// 
+  /// [context] - BuildContext para acessar AppLocalizations
   /// [timestamp] - Timestamp do Firestore ou DateTime
-  /// [locale] - Locale para formatação ('en', 'pt', 'es'). Se null, usa AppLocalizations.currentLocale
-  /// [abbreviated] - Se true, abrevia "minutes" → "min", "minutos" → "min" (padrão: true)
   /// 
   /// Retorna:
-  /// - String formatada (ex: "5 min ago", "há 5 min", "hace 5 min")
+  /// - String localizada (ex: "agora mesmo", "há 5 minutos", "há 2 horas")
   /// - String vazia se timestamp for inválido
-  static String format({
-    required dynamic timestamp,
-    String? locale,
-    bool abbreviated = true,
-  }) {
-    // Detectar locale (ordem: parâmetro > AppLocalizations > fallback 'en')
-    var effectiveLocale = locale;
-    if (effectiveLocale == null || effectiveLocale.isEmpty) {
-      effectiveLocale = AppLocalizations.currentLocale;
-    }
-    if (effectiveLocale == null || effectiveLocale.isEmpty) {
-      effectiveLocale = 'en';
-    }
-    
+  static String format(BuildContext context, {required dynamic timestamp}) {
     // Converter timestamp para DateTime
     DateTime dateTime;
     if (timestamp is Timestamp) {
@@ -59,56 +38,77 @@ class TimeAgoHelper {
       return '';
     }
     
-    // Formatar usando biblioteca timeago
-    var formatted = timeago.format(dateTime, locale: effectiveLocale);
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    final i18n = AppLocalizations.of(context);
     
-    // Aplicar abreviações se solicitado
-    if (abbreviated) {
-      formatted = _applyAbbreviations(formatted);
+    // Menos de 1 minuto
+    if (difference.inMinutes < 1) {
+      return i18n.translate('just_now');
     }
     
-    return formatted;
+    // Minutos (1-59)
+    if (difference.inMinutes < 60) {
+      return i18n.translate('minutes_ago').replaceAll('{count}', difference.inMinutes.toString());
+    }
+    
+    // Horas (1-23)
+    if (difference.inHours < 24) {
+      return i18n.translate('hours_ago').replaceAll('{count}', difference.inHours.toString());
+    }
+    
+    // Dias (1-29)
+    if (difference.inDays < 30) {
+      return i18n.translate('days_ago').replaceAll('{count}', difference.inDays.toString());
+    }
+    
+    // Meses (aproximado - 1-11)
+    final months = (difference.inDays / 30).floor();
+    if (months < 12) {
+      return i18n.translate('months_ago').replaceAll('{count}', months.toString());
+    }
+    
+    // Anos
+    final years = (difference.inDays / 365).floor();
+    return i18n.translate('years_ago').replaceAll('{count}', years.toString());
   }
   
-  /// Aplica abreviações multilíngue para palavras comuns
+  /// Formata timestamp com contexto (método legado - mantém compatibilidade)
   /// 
-  /// Substitui:
-  /// - 🇺🇸 "minutes" / "minute" → "min"
-  /// - 🇧🇷 "minutos" / "minuto" → "min"
-  /// - 🇪🇸 "minutos" / "minuto" → "min"
-  static String _applyAbbreviations(String text) {
-    final replacements = <String, String>{
-      // English
-      'minutes': 'min',
-      'minute': 'min',
-      'Minutes': 'min',
-      'Minute': 'min',
-      // Portuguese
-      'minutos': 'min',
-      'minuto': 'min',
-      'Minutos': 'min',
-      'Minuto': 'min',
-    };
-    
-    var result = text;
-    replacements.forEach((key, value) {
-      result = result.replaceAll(key, value);
-    });
-    
-    return result;
-  }
-  
-  /// Formata timestamp com abreviações (atalho)
-  /// 
-  /// Equivalente a: `format(timestamp: timestamp, abbreviated: true)`
+  /// @deprecated Use format(context, timestamp: timestamp) instead
   static String formatAbbreviated(dynamic timestamp, {String? locale}) {
-    return format(timestamp: timestamp, locale: locale);
+    // Retorna formato básico sem internacionalização para compatibilidade
+    // Recomendado migrar para o novo método format(context, timestamp: timestamp)
+    if (timestamp == null) return '';
+    
+    DateTime dateTime;
+    if (timestamp is Timestamp) {
+      dateTime = timestamp.toDate();
+    } else if (timestamp is DateTime) {
+      dateTime = timestamp;
+    } else {
+      return '';
+    }
+    
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) return 'just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes} min ago';
+    if (difference.inHours < 24) return '${difference.inHours} h ago';
+    if (difference.inDays < 30) return '${difference.inDays} d ago';
+    
+    final months = (difference.inDays / 30).floor();
+    if (months < 12) return '$months mo ago';
+    
+    final years = (difference.inDays / 365).floor();
+    return '$years y ago';
   }
   
-  /// Formata timestamp sem abreviações (atalho)
+  /// Formata timestamp sem abreviações (método legado - mantém compatibilidade)
   /// 
-  /// Equivalente a: `format(timestamp: timestamp, abbreviated: false)`
+  /// @deprecated Use format(context, timestamp: timestamp) instead
   static String formatFull(dynamic timestamp, {String? locale}) {
-    return format(timestamp: timestamp, locale: locale, abbreviated: false);
+    return formatAbbreviated(timestamp, locale: locale);
   }
 }

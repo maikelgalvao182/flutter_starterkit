@@ -329,8 +329,8 @@ class ChatAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
                                 ?? data['timestamp'];
                             
                             timeAgoText = TimeAgoHelper.format(
+                              context,
                               timestamp: timestampValue,
-                              locale: i18n.translate('lang'),
                             );
                           }
                           if (timeAgoText.isEmpty) return const SizedBox.shrink();

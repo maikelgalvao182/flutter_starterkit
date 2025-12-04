@@ -45,7 +45,19 @@ class EventCardController extends ChangeNotifier {
         _applicationRepo = applicationRepo ?? EventApplicationRepository(),
         _eventRepo = eventRepo ?? EventRepository(),
         _userRepo = userRepo ?? UserRepository() {
+    debugPrint('🏗️ EventCardController construtor iniciado');
+    debugPrint('   - eventId: $eventId');
+    debugPrint('   - preloadedEvent: ${preloadedEvent != null ? "SIM" : "NÃO"}');
+    
     if (_preloadedEvent != null) {
+      debugPrint('📦 Usando dados pré-carregados:');
+      debugPrint('   - emoji: ${_preloadedEvent!.emoji}');
+      debugPrint('   - title: ${_preloadedEvent!.title}');
+      debugPrint('   - locationName: ${_preloadedEvent!.locationName}');
+      debugPrint('   - creatorFullName: ${_preloadedEvent!.creatorFullName}');
+      debugPrint('   - privacyType: ${_preloadedEvent!.privacyType}');
+      debugPrint('   - createdBy: ${_preloadedEvent!.createdBy}');
+      
       _emoji = _preloadedEvent!.emoji;
       _activityText = _preloadedEvent!.title;
       _locationName = _preloadedEvent!.locationName;
@@ -57,6 +69,12 @@ class EventCardController extends ChangeNotifier {
       if (_preloadedEvent!.participants != null) {
         _approvedParticipants = _preloadedEvent!.participants!;
       }
+      
+      debugPrint('✅ Dados do controller após construtor:');
+      debugPrint('   - _privacyType: $_privacyType');
+      debugPrint('   - _creatorId: $_creatorId');
+    } else {
+      debugPrint('⚠️ Nenhum evento pré-carregado, será necessário buscar do Firestore');
     }
   }
 
@@ -123,6 +141,9 @@ class EventCardController extends ChangeNotifier {
   /// 
   /// Se o evento já foi pré-carregado, usa os dados enriquecidos e apenas busca dados adicionais
   Future<void> load() async {
+    debugPrint('🔄 EventCardController.load() iniciado');
+    debugPrint('   - _privacyType ANTES de load: $_privacyType');
+    
     try {
       // Se temos evento pré-carregado, usar esses dados (evita query do Firestore)
       if (_preloadedEvent != null) {
@@ -130,8 +151,11 @@ class EventCardController extends ChangeNotifier {
         debugPrint('✨ EventCard usando dados pré-carregados (sem query Firestore)');
       } else {
         // Fallback: buscar do Firestore (fluxo antigo)
+        debugPrint('⚠️ Sem dados pré-carregados, buscando do Firestore...');
         await _loadEventData();
       }
+      
+      debugPrint('   - _privacyType APÓS carregar evento: $_privacyType');
       
       await _loadUserApplication();
       
@@ -141,10 +165,13 @@ class EventCardController extends ChangeNotifier {
       }
       
       _loaded = true;
+      debugPrint('✅ EventCardController.load() finalizado com sucesso');
+      debugPrint('   - _privacyType FINAL: $_privacyType');
       notifyListeners();
     } catch (e) {
       _error = 'Erro ao carregar dados: $e';
       _loaded = false;
+      debugPrint('❌ EventCardController.load() falhou: $e');
       notifyListeners();
     }
   }
@@ -191,10 +218,23 @@ class EventCardController extends ChangeNotifier {
   
   /// Aplica para participar do evento
   Future<void> applyToEvent() async {
-    if (_isApplying || hasApplied || _privacyType == null) return;
+    debugPrint('🔄 EventCardController.applyToEvent iniciado');
+    debugPrint('   - isApplying: $_isApplying');
+    debugPrint('   - hasApplied: $hasApplied');
+    debugPrint('   - privacyType: $_privacyType');
+    
+    if (_isApplying || hasApplied || _privacyType == null) {
+      debugPrint('⚠️ Aplicação cancelada: isApplying=$_isApplying, hasApplied=$hasApplied, privacyType=$_privacyType');
+      return;
+    }
     
     final userId = _auth.currentUser?.uid;
-    if (userId == null) throw Exception('Usuário não autenticado');
+    if (userId == null) {
+      debugPrint('❌ Usuário não autenticado');
+      throw Exception('Usuário não autenticado');
+    }
+    
+    debugPrint('✅ Pré-condições OK, criando aplicação...');
     
     try {
       _isApplying = true;
@@ -206,16 +246,25 @@ class EventCardController extends ChangeNotifier {
         eventPrivacyType: _privacyType!,
       );
       
+      debugPrint('✅ Aplicação criada no Firestore: $applicationId');
+      
       // Recarregar aplicação
+      debugPrint('🔄 Recarregando aplicação do usuário...');
       await _loadUserApplication();
       
-      debugPrint('✅ Aplicação criada com sucesso: $applicationId');
+      debugPrint('✅ Aplicação recarregada:');
+      debugPrint('   - hasApplied: $hasApplied');
+      debugPrint('   - isApproved: $isApproved');
+      debugPrint('   - isPending: $isPending');
+      debugPrint('   - status: ${_userApplication?.status.value}');
+      
     } catch (e) {
       debugPrint('❌ Erro ao aplicar: $e');
       rethrow;
     } finally {
       _isApplying = false;
       notifyListeners();
+      debugPrint('🏁 applyToEvent finalizado');
     }
   }
 

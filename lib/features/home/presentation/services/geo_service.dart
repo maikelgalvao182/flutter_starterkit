@@ -15,13 +15,8 @@ class GeoService {
     if (userId == null) return null;
 
     try {
-      // Tenta buscar da coleção Users (Maiúsculo - onde estão os dados completos)
+      // Buscar da coleção Users (onde estão os dados completos)
       var doc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
-      
-      if (!doc.exists) {
-        // Fallback para users (minúsculo)
-        doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-      }
 
       if (!doc.exists) return null;
 

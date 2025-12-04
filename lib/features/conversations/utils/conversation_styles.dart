@@ -201,7 +201,7 @@ class ConversationStyles {
   static Color unreadChipBg() => GlimpseColors.primaryColorLight;
 
   /// Cor do divider entre conversas
-  static Color dividerColor() => GlimpseColors.borderColorLight;
+  static Color dividerColor() => GlimpseColors.lightTextField;
 
   /// Cor do ícone de busca no header
   static Color searchIconColor() => GlimpseColors.textSubTitle;

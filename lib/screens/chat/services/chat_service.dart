@@ -58,7 +58,7 @@ class ChatService {
     
     // Direct Firestore stream as fallback
     return FirebaseFirestore.instance
-        .collection('users')
+        .collection('Users')
         .doc(userId)
         .snapshots()
         .map((doc) => chat_user_model.UserModel.fromMap(doc.data() ?? {}, doc.id));

@@ -124,7 +124,7 @@ class _GlimpseChatInputState extends State<GlimpseChatInput> {
                   color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
                 ),
                 decoration: InputDecoration(
-                  hintText: i18n.translate('type_a_message'),
+                  hintText: i18n.translate('type_message'),
                   hintStyle: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
