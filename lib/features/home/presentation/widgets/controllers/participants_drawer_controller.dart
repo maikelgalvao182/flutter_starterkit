@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/features/home/presentation/widgets/participants/privacy_type_selector.dart';
 
 /// Controller para gerenciar o estado do ParticipantsDrawer
 class ParticipantsDrawerController extends ChangeNotifier {
-  double _minAge = 18;
-  double _maxAge = 80;
+  double _minAge = MIN_AGE;
+  double _maxAge = DEFAULT_MAX_AGE_PARTICIPANTS;
   PrivacyType? _selectedPrivacyType;
   bool _isPeoplePickerExpanded = false;
   int _maxParticipants = 0; // 0 = Aberto, 1-20 = específico
@@ -55,8 +56,8 @@ class ParticipantsDrawerController extends ChangeNotifier {
   }
 
   void clear() {
-    _minAge = 18;
-    _maxAge = 80;
+    _minAge = MIN_AGE;
+    _maxAge = DEFAULT_MAX_AGE_PARTICIPANTS;
     _selectedPrivacyType = null;
     _isPeoplePickerExpanded = false;
     _maxParticipants = 0;

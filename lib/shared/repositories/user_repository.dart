@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:partiu/shared/models/user_model.dart';
 
 /// Repository centralizado para queries da coleção Users
 /// 
@@ -164,6 +165,22 @@ class UserRepository {
     } catch (e) {
       debugPrint('❌ Erro ao verificar existência do usuário $userId: $e');
       return false;
+    }
+  }
+
+  /// Busca o usuário mais recente cadastrado
+  Future<UserModel?> getMostRecentUser() async {
+    try {
+      final snap = await _usersCollection
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) return null;
+      return UserModel.fromFirestore(snap.docs.first);
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar usuário mais recente: $e');
+      return null;
     }
   }
 }

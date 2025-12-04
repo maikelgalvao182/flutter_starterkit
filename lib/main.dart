@@ -15,9 +15,13 @@ import 'package:partiu/core/services/location_service.dart';
 import 'package:partiu/core/services/location_background_updater.dart'; // LocationSyncScheduler
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
+import 'package:brazilian_locations/brazilian_locations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar BrazilianLocations
+  await BrazilianLocations.initialize();
   
   // Inicializar Firebase
   await Firebase.initializeApp(

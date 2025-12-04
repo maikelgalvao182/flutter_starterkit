@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/features/home/data/models/event_application_model.dart';
+import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
@@ -13,6 +14,7 @@ class EventCardController extends ChangeNotifier {
   final EventRepository _eventRepo;
   final UserRepository _userRepo;
   final String eventId;
+  final EventModel? _preloadedEvent; // Evento pré-carregado (opcional)
 
   String? _creatorFullName;
   String? _locationName;
@@ -33,11 +35,13 @@ class EventCardController extends ChangeNotifier {
 
   EventCardController({
     required this.eventId,
+    EventModel? preloadedEvent,
     FirebaseAuth? auth,
     EventApplicationRepository? applicationRepo,
     EventRepository? eventRepo,
     UserRepository? userRepo,
-  })  : _auth = auth ?? FirebaseAuth.instance,
+  })  : _preloadedEvent = preloadedEvent,
+        _auth = auth ?? FirebaseAuth.instance,
         _applicationRepo = applicationRepo ?? EventApplicationRepository(),
         _eventRepo = eventRepo ?? EventRepository(),
         _userRepo = userRepo ?? UserRepository();
@@ -87,9 +91,26 @@ class EventCardController extends ChangeNotifier {
   }
 
   /// Carrega dados do evento de forma assíncrona (ANTES de abrir o widget)
+  /// 
+  /// Se o evento já foi pré-carregado, usa os dados enriquecidos e apenas busca dados adicionais
   Future<void> load() async {
     try {
-      await _loadEventData();
+      // Se temos evento pré-carregado, usar esses dados (evita query do Firestore)
+      if (_preloadedEvent != null) {
+        _emoji = _preloadedEvent!.emoji;
+        _activityText = _preloadedEvent!.title;
+        _locationName = _preloadedEvent!.locationName;
+        _creatorFullName = _preloadedEvent!.creatorFullName;
+        _scheduleDate = _preloadedEvent!.scheduleDate;
+        _privacyType = _preloadedEvent!.privacyType;
+        _creatorId = _preloadedEvent!.createdBy;
+        
+        debugPrint('✨ EventCard usando dados pré-carregados (sem query Firestore)');
+      } else {
+        // Fallback: buscar do Firestore (fluxo antigo)
+        await _loadEventData();
+      }
+      
       await _loadUserApplication();
       await _loadApprovedParticipants();
       _loaded = true;

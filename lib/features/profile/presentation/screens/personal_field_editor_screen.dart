@@ -8,7 +8,7 @@ import 'package:partiu/features/profile/presentation/editors/birth_date_widget.d
 import 'package:partiu/features/profile/presentation/editors/languages_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/social/instagram_editor.dart';
 import 'package:partiu/features/profile/presentation/models/personal_field_type.dart';
-import 'package:partiu/features/auth/presentation/widgets/country_selector_widget.dart';
+import 'package:partiu/features/auth/presentation/widgets/origin_brazilian_city_selector.dart';
 import 'package:flutter/material.dart';
 
 /// Tela genérica de edição de campo pessoal no formato Instagram/TikTok
@@ -232,13 +232,13 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
         return const SizedBox.shrink();
 
       case PersonalFieldType.country:
-        return CountrySelectorWidget(
-          initialCountry: widget.controllers['country']!.text.trim().isEmpty 
+        return OriginBrazilianCitySelector(
+          initialValue: widget.controllers['country']!.text.trim().isEmpty 
               ? null 
               : widget.controllers['country']!.text.trim(),
-          onCountryChanged: (country) {
-            if (country != null) {
-              widget.controllers['country']!.text = country;
+          onChanged: (value) {
+            if (value != null) {
+              widget.controllers['country']!.text = value;
             }
           },
         );

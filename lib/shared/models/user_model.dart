@@ -9,6 +9,7 @@ class UserModel {
   final String? email;
   final String? photoUrl;
   final String userType; // 'vendor' ou 'bride'
+  final List<String> interests;
   
   const UserModel({
     required this.userId,
@@ -16,6 +17,7 @@ class UserModel {
     this.email,
     this.photoUrl,
     this.userType = 'vendor',
+    this.interests = const [],
   });
   
   factory UserModel.fromFirebaseUser(firebase_auth.User user) {
@@ -36,6 +38,7 @@ class UserModel {
       email: data['email'] as String?,
       photoUrl: data['photoUrl'] as String?,
       userType: data['userType'] as String? ?? 'vendor',
+      interests: List<String>.from(data['interests'] ?? []),
     );
   }
   
@@ -47,6 +50,7 @@ class UserModel {
       email: map['email'] as String?,
       photoUrl: map['photoUrl'] as String?,
       userType: map['userType'] as String? ?? 'vendor',
+      interests: List<String>.from(map['interests'] ?? []),
     );
   }
   

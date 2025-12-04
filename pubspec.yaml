@@ -119,6 +119,7 @@ dependencies:
   go_router: ^17.0.0
   circle_flags: ^5.0.1
   modal_bottom_sheet: ^3.0.0
+  brazilian_locations: ^3.4.1
 
 dev_dependencies:
   freezed: ^2.5.7

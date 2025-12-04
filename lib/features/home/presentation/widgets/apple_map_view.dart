@@ -2,6 +2,7 @@ import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/core/models/user.dart';
+import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
@@ -119,12 +120,15 @@ class AppleMapViewState extends State<AppleMapView> {
   }
 
   /// Callback quando usuário toca em um marker
-  void _onMarkerTap(String eventId) async {
-    // Criar controller e carregar dados ANTES de abrir o dialog
-    final controller = EventCardController(eventId: eventId);
+  void _onMarkerTap(EventModel event) async {
+    // Criar controller com evento pré-carregado (evita query Firestore)
+    final controller = EventCardController(
+      eventId: event.id,
+      preloadedEvent: event,
+    );
     
     try {
-      // Aguardar o carregamento completo dos dados
+      // Aguardar o carregamento dos dados adicionais (applications, participants)
       await controller.load();
       
       // Verificar se os dados foram carregados com sucesso
@@ -157,22 +161,14 @@ class AppleMapViewState extends State<AppleMapView> {
             
             // Se for o criador ou estiver aprovado, navegar para o chat
             if (controller.isCreator || controller.isApproved) {
-              // Buscar dados do evento para pegar o nome
-              final eventDoc = await FirebaseFirestore.instance
-                  .collection('events')
-                  .doc(eventId)
-                  .get();
-              
-              if (!eventDoc.exists) return;
-              
-              final eventData = eventDoc.data()!;
-              final eventName = eventData['activityText'] as String? ?? 'Evento';
-              final emoji = eventData['emoji'] as String? ?? '🎉';
+              // Usar dados do evento pré-carregado
+              final eventName = event.title;
+              final emoji = event.emoji;
               
               // ✅ CORRIGIDO: Usar event_${eventId} (igual ao backend e conversation_navigation_service)
               // Criar User com dados do evento usando campos corretos do SessionManager
               final chatUser = User.fromDocument({
-                'userId': 'event_$eventId',  // ✅ Prefixo event_ para consistência
+                'userId': 'event_${event.id}',  // ✅ Prefixo event_ para consistência
                 'fullName': eventName,
                 'profilePhotoUrl': emoji,
                 'gender': '',
@@ -201,7 +197,7 @@ class AppleMapViewState extends State<AppleMapView> {
                   builder: (context) => ChatScreenRefactored(
                     user: chatUser,
                     isEvent: true,
-                    eventId: eventId,
+                    eventId: event.id,
                   ),
                 ),
               );

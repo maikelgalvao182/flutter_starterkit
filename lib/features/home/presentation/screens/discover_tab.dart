@@ -5,6 +5,8 @@ import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/list_button.dart';
 import 'package:partiu/features/home/presentation/widgets/list_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/navigate_to_user_button.dart';
+import 'package:partiu/features/home/presentation/widgets/people_button.dart';
+import 'package:partiu/features/home/presentation/screens/find_people_screen.dart';
 
 /// Tela de descoberta (Tab 0)
 /// Exibe mapa interativo com atividades próximas
@@ -40,12 +42,29 @@ class _DiscoverTabState extends State<DiscoverTab> {
     _discoverKey.currentState?.centerOnUser();
   }
 
+  void _showPeopleNearby() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const FindPeopleScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         // Mapa Apple Maps
         DiscoverScreen(key: _discoverKey),
+        
+        // Botão "Perto de você" (canto superior direito)
+        Positioned(
+          top: 16,
+          right: 16,
+          child: PeopleButton(
+            onPressed: _showPeopleNearby,
+          ),
+        ),
         
         // Botão de centralizar no usuário
         Positioned(

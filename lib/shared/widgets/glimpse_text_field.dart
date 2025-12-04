@@ -5,29 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 
-/// Formatter para capitalizar apenas a primeira letra do texto completo
-class CapitalizeFirstLetterFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) {
-      return newValue;
-    }
-
-    var formattedText = newValue.text;
-    if (formattedText.isNotEmpty) {
-      formattedText = formattedText[0].toUpperCase() + formattedText.substring(1);
-    }
-
-    return newValue.copyWith(
-      text: formattedText,
-      selection: newValue.selection,
-    );
-  }
-}
-
 /// Campo de texto estilo Glimpse para ser reutilizado em todas as telas
 class GlimpseTextField extends StatefulWidget {
 
@@ -181,9 +158,7 @@ class _GlimpseTextFieldState extends State<GlimpseTextField> {
                               textCapitalization: widget.capitalizeFirstLetter
                                   ? TextCapitalization.sentences
                                   : widget.textCapitalization,
-                              inputFormatters: [
-                                ...?widget.inputFormatters,
-                              ],
+                              inputFormatters: widget.inputFormatters,
                               onChanged: widget.onChanged,
                               maxLines: null,
                               minLines: null,
@@ -236,9 +211,7 @@ class _GlimpseTextFieldState extends State<GlimpseTextField> {
                           textCapitalization: widget.capitalizeFirstLetter
                               ? TextCapitalization.sentences
                               : widget.textCapitalization,
-                          inputFormatters: [
-                            ...?widget.inputFormatters,
-                          ],
+                          inputFormatters: widget.inputFormatters,
                           onChanged: widget.onChanged,
                           maxLines: widget.maxLines,
                           minLines: widget.minLines,

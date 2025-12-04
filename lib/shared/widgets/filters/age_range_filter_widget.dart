@@ -52,9 +52,9 @@ class AgeRangeFilterWidget extends StatelessWidget {
           ),
           child: RangeSlider(
             values: ageRange,
-            min: 18,
-            max: 100,
-            divisions: 82,
+            min: MIN_AGE,
+            max: MAX_AGE,
+            divisions: (MAX_AGE - MIN_AGE).toInt(),
             onChanged: onChanged,
           ),
         ),

@@ -1252,6 +1252,8 @@ PODS:
   - BoringSSL-GRPC/Implementation (0.0.37):
     - BoringSSL-GRPC/Interface (= 0.0.37)
   - BoringSSL-GRPC/Interface (0.0.37)
+  - brazilian_locations (0.0.1):
+    - Flutter
   - cloud_firestore (6.1.0):
     - Firebase/Firestore (= 12.4.0)
     - firebase_core
@@ -1724,6 +1726,7 @@ PODS:
 DEPENDENCIES:
   - agora_rtc_engine (from `.symlinks/plugins/agora_rtc_engine/ios`)
   - apple_maps_flutter (from `.symlinks/plugins/apple_maps_flutter/ios`)
+  - brazilian_locations (from `.symlinks/plugins/brazilian_locations/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - cloud_functions (from `.symlinks/plugins/cloud_functions/ios`)
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
@@ -1827,6 +1830,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/agora_rtc_engine/ios"
   apple_maps_flutter:
     :path: ".symlinks/plugins/apple_maps_flutter/ios"
+  brazilian_locations:
+    :path: ".symlinks/plugins/brazilian_locations/ios"
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
   cloud_functions:
@@ -1912,6 +1917,7 @@ SPEC CHECKSUMS:
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   apple_maps_flutter: 2237d66a8e242082a2d88134af372f7b3375d7a6
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
+  brazilian_locations: 06e8510b67ce11746d4adbfca54eb28d92ca4cc2
   cloud_firestore: 7a6d8a533ec7418a7fe46b3a5dabf55661a5b298
   cloud_functions: 56bcd60d299724f6366c2d95b706a003f0badcca
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd

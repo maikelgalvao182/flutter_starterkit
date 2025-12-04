@@ -7,6 +7,11 @@ class EventModel {
   final double lng;
   final String title;
   final String? locationName;
+  final double? distanceKm;
+  final bool isAvailable;
+  final String? creatorFullName;
+  final DateTime? scheduleDate;
+  final String? privacyType;
 
   EventModel({
     required this.id,
@@ -16,6 +21,11 @@ class EventModel {
     required this.lng,
     required this.title,
     this.locationName,
+    this.distanceKm,
+    this.isAvailable = true,
+    this.creatorFullName,
+    this.scheduleDate,
+    this.privacyType,
   });
 
   /// Factory para criar EventModel a partir de um Map
@@ -32,6 +42,16 @@ class EventModel {
     final locationName = map['locationName'] as String? ?? 
                          location?['locationName'] as String?;
 
+    // Parse scheduleDate
+    DateTime? scheduleDate;
+    if (map['scheduleDate'] != null) {
+      try {
+        scheduleDate = DateTime.parse(map['scheduleDate'] as String);
+      } catch (_) {
+        scheduleDate = null;
+      }
+    }
+
     return EventModel(
       id: id,
       emoji: map['emoji'] as String? ?? '🎉',
@@ -40,6 +60,42 @@ class EventModel {
       lng: lng,
       title: map['activityText'] as String? ?? '',
       locationName: locationName,
+      distanceKm: (map['distanceKm'] as num?)?.toDouble(),
+      isAvailable: map['isAvailable'] as bool? ?? true,
+      creatorFullName: map['creatorFullName'] as String?,
+      scheduleDate: scheduleDate,
+      privacyType: map['privacyType'] as String?,
+    );
+  }
+
+  /// Cria uma cópia com campos atualizados
+  EventModel copyWith({
+    String? id,
+    String? emoji,
+    String? createdBy,
+    double? lat,
+    double? lng,
+    String? title,
+    String? locationName,
+    double? distanceKm,
+    bool? isAvailable,
+    String? creatorFullName,
+    DateTime? scheduleDate,
+    String? privacyType,
+  }) {
+    return EventModel(
+      id: id ?? this.id,
+      emoji: emoji ?? this.emoji,
+      createdBy: createdBy ?? this.createdBy,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      title: title ?? this.title,
+      locationName: locationName ?? this.locationName,
+      distanceKm: distanceKm ?? this.distanceKm,
+      isAvailable: isAvailable ?? this.isAvailable,
+      creatorFullName: creatorFullName ?? this.creatorFullName,
+      scheduleDate: scheduleDate ?? this.scheduleDate,
+      privacyType: privacyType ?? this.privacyType,
     );
   }
 }

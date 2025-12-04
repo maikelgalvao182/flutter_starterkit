@@ -78,7 +78,7 @@ class EventMarkerService {
   /// 2. Avatar pin (pequeno, acima - z-index 1)
   /// 
   /// Parâmetros:
-  /// - [events]: Lista de eventos
+  /// - [events]: Lista de eventos já enriquecidos com distância e disponibilidade
   /// - [onTap]: Callback quando annotation é tocada (recebe eventId)
   /// 
   /// Retorna:
@@ -102,6 +102,10 @@ class EventMarkerService {
             anchor: const Offset(0.5, 1.0), // Ancorado no fundo
             zIndex: 0, // Camada de baixo
             onTap: onTap != null ? () => onTap(event.id) : null,
+            infoWindow: InfoWindow(
+              title: event.title,
+              snippet: event.locationName,
+            ),
           ),
         );
 

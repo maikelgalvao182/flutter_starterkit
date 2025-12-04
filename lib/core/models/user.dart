@@ -101,6 +101,8 @@ class User {
     this.languages,
     this.photoUrl,
     this.from,
+    this.distance,
+    this.commonInterests,
   });
 
   /// Safe empty user to avoid LateInitializationError before auth finishes
@@ -129,6 +131,8 @@ class User {
       userTotalLikes: 0,
       userTotalVisits: 0,
       isUserOnline: false,
+      distance: null,
+      commonInterests: null,
     );
   }
 
@@ -209,6 +213,8 @@ class User {
       languages: doc['languages'],
       photoUrl: doc['photoUrl'],
       from: doc['from'],
+      distance: (doc['distance'] as num?)?.toDouble(),
+      commonInterests: (doc['commonInterests'] as List?)?.cast<String>(),
     );
   }
   
@@ -242,6 +248,8 @@ class User {
   final String? languages;
   final String? photoUrl;
   final String? from; // País de origem
+  final double? distance; // Distância em km do usuário atual
+  final List<String>? commonInterests; // Interesses em comum com o usuário logado
 
   /// Badge de verificação
   bool get isVerified => userIsVerified;

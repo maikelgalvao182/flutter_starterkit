@@ -16,6 +16,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/features/auth/presentation/widgets/origin_brazilian_city_selector.dart';
 
 /// Wizard de cadastro - Fluxo VENDOR apenas
 /// 
@@ -292,7 +293,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
       case SignupWizardStep.bio:
         return i18n.translate('bio');
       case SignupWizardStep.country:
-        return i18n.translate('country');
+        return 'Onde você nasceu?';
       case SignupWizardStep.interests:
         return i18n.translate('select_interests');
       case SignupWizardStep.origin:
@@ -321,7 +322,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
       case SignupWizardStep.bio:
         return i18n.translate('bio_placeholder');
       case SignupWizardStep.country:
-        return i18n.translate('select_country');
+        return 'Selecione sua cidade e estado de nascimento';
       case SignupWizardStep.interests:
         return i18n.translate('select_activity_categories');
       case SignupWizardStep.origin:
@@ -515,9 +516,9 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
           color: Colors.white,
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: CountrySelectorWidget(
-              initialCountry: _cadastroViewModel.country,
-              onCountryChanged: _cadastroViewModel.setCountry,
+            child: OriginBrazilianCitySelector(
+              initialValue: _cadastroViewModel.country,
+              onChanged: _cadastroViewModel.setCountry,
             ),
           ),
         );

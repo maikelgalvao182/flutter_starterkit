@@ -155,3 +155,59 @@ const bool USE_MILES = true; // Toggle here
 /// Precomputed mile -> km conversions for exact UI limits (avoid floating drift)
 const double kMi100InKm = 160.934; // 100 miles in km
 const double kMi200InKm = 321.868; // 200 miles in km
+
+/// ========================================
+/// === DISTANCE & RADIUS ARCHITECTURE ===
+/// ========================================
+/// 
+/// CONCEITOS:
+/// 
+/// 1. RADIUS (Raio de Busca)
+///    - Controla quantos eventos são BUSCADOS do Firestore
+///    - Usuário pode ajustar de 1km a 100km via slider
+///    - Afeta performance da query (raio maior = mais eventos para processar)
+/// 
+/// 2. AVAILABILITY DISTANCE (Distância de Disponibilidade)
+///    - Controla quais eventos o usuário pode VER/ACESSAR
+///    - Free: apenas eventos dentro de 30km (campo isAvailable)
+///    - Premium: todos eventos dentro do raio de busca
+/// 
+/// EXEMPLO PRÁTICO:
+/// - Usuário Free com raio de 50km:
+///   • Busca eventos até 50km (radius)
+///   • Vê apenas eventos até 30km (availability)
+///   • Eventos de 31-50km aparecem com blur/paywall
+/// 
+/// - Usuário Premium com raio de 50km:
+///   • Busca eventos até 50km (radius)
+///   • Vê todos eventos até 50km (availability ilimitada)
+/// 
+/// BENEFÍCIO:
+/// Permite que usuários free "vejam o que estão perdendo" sem sobrecarregar
+/// o servidor com queries desnecessárias.
+
+/// === EVENT AVAILABILITY DISTANCE LIMITS ===
+/// Maximum distance (in km) that free users can see events
+/// Premium users have unlimited distance access
+const double FREE_ACCOUNT_MAX_EVENT_DISTANCE_KM = 30.0;
+
+/// === RADIUS FILTER LIMITS ===
+/// Minimum radius for event search (in km)
+const double MIN_RADIUS_KM = 1.0;
+
+/// Maximum radius for event search (in km)
+/// Free and Premium users can search up to this limit
+const double MAX_RADIUS_KM = 30.0;
+
+/// Default radius when user first opens the app (in km)
+const double DEFAULT_RADIUS_KM = 25.0;
+
+/// === AGE FILTER LIMITS ===
+/// Minimum age for event participation and filters
+const double MIN_AGE = 18.0;
+
+/// Maximum age for event filters
+const double MAX_AGE = 60.0;
+
+/// Default maximum age for participants drawer
+const double DEFAULT_MAX_AGE_PARTICIPANTS = 36.0;

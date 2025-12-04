@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:partiu/core/constants/constants.dart';
 
 /// Controller para gerenciar o raio de busca com debounce
 /// 
@@ -12,13 +13,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// - Notificar listeners
 class RadiusController extends ChangeNotifier {
   /// Valor atual do raio em km
-  double _radiusKm = 25.0;
+  double _radiusKm = DEFAULT_RADIUS_KM;
 
   /// Valor mínimo do raio
-  static const double minRadius = 1.0;
+  static const double minRadius = MIN_RADIUS_KM;
 
   /// Valor máximo do raio
-  static const double maxRadius = 100.0;
+  static const double maxRadius = MAX_RADIUS_KM;
 
   /// Duração do debounce (500ms)
   static const Duration debounceDuration = Duration(milliseconds: 500);
