@@ -9,6 +9,9 @@ class EventModel {
   final double lng;
   final String title;
   final String? locationName;
+  final String? formattedAddress;
+  final String? placeId;
+  final List<String>? photoReferences;
   final double? distanceKm;
   final bool isAvailable;
   final String? creatorFullName;
@@ -24,6 +27,9 @@ class EventModel {
     required this.lng,
     required this.title,
     this.locationName,
+    this.formattedAddress,
+    this.placeId,
+    this.photoReferences,
     this.distanceKm,
     this.isAvailable = true,
     this.creatorFullName,
@@ -45,6 +51,19 @@ class EventModel {
     
     final locationName = map['locationName'] as String? ?? 
                          location?['locationName'] as String?;
+    
+    final formattedAddress = map['formattedAddress'] as String? ??
+                            location?['formattedAddress'] as String?;
+    
+    final placeId = map['placeId'] as String? ??
+                   location?['placeId'] as String?;
+    
+    // Parse photoReferences
+    List<String>? photoReferences;
+    final photoRefs = map['photoReferences'] as List<dynamic>?;
+    if (photoRefs != null) {
+      photoReferences = photoRefs.map((e) => e.toString()).toList();
+    }
 
     // Parse scheduleDate
     DateTime? scheduleDate;
@@ -81,6 +100,9 @@ class EventModel {
       lng: lng,
       title: map['activityText'] as String? ?? '',
       locationName: locationName,
+      formattedAddress: formattedAddress,
+      placeId: placeId,
+      photoReferences: photoReferences,
       distanceKm: (map['distanceKm'] as num?)?.toDouble(),
       isAvailable: map['isAvailable'] as bool? ?? true,
       creatorFullName: map['creatorFullName'] as String?,
@@ -99,6 +121,9 @@ class EventModel {
     double? lng,
     String? title,
     String? locationName,
+    String? formattedAddress,
+    String? placeId,
+    List<String>? photoReferences,
     double? distanceKm,
     bool? isAvailable,
     String? creatorFullName,
@@ -114,6 +139,9 @@ class EventModel {
       lng: lng ?? this.lng,
       title: title ?? this.title,
       locationName: locationName ?? this.locationName,
+      formattedAddress: formattedAddress ?? this.formattedAddress,
+      placeId: placeId ?? this.placeId,
+      photoReferences: photoReferences ?? this.photoReferences,
       distanceKm: distanceKm ?? this.distanceKm,
       isAvailable: isAvailable ?? this.isAvailable,
       creatorFullName: creatorFullName ?? this.creatorFullName,

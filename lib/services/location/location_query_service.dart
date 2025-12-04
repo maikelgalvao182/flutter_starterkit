@@ -68,6 +68,9 @@ class LocationQueryService {
     debugPrint('🔄 LocationQueryService: Filtros atualizados');
     _invalidateEventsCache();
     _loadAndEmitEvents();
+    
+    // Emitir reload para notificar outros listeners (ex: AppleMapViewModel)
+    LocationStreamController().emitReload();
   }
 
   /// Busca eventos dentro do raio - versão única (sem stream)

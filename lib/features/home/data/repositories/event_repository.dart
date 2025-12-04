@@ -76,6 +76,46 @@ class EventRepository {
     }
   }
 
+  /// Busca dados de localização de um evento (para place card)
+  /// 
+  /// Retorna:
+  /// - locationName
+  /// - formattedAddress
+  /// - latitude
+  /// - longitude
+  /// - locality
+  /// - placeId
+  /// - photoReferences (array de URLs)
+  Future<Map<String, dynamic>?> getEventLocationInfo(String eventId) async {
+    try {
+      final doc = await _eventsCollection.doc(eventId).get();
+      
+      if (!doc.exists) {
+        return null;
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      final locationData = data['location'] as Map<String, dynamic>?;
+      
+      if (locationData == null) {
+        return null;
+      }
+
+      return {
+        'locationName': locationData['locationName'] as String?,
+        'formattedAddress': locationData['formattedAddress'] as String?,
+        'latitude': locationData['latitude'] as double?,
+        'longitude': locationData['longitude'] as double?,
+        'locality': locationData['locality'] as String?,
+        'placeId': locationData['placeId'] as String?,
+        'photoReferences': data['photoReferences'] as List<dynamic>?,
+      };
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar info de localização do evento $eventId: $e');
+      return null;
+    }
+  }
+
   /// Busca dados completos de um evento (incluindo campos aninhados parseados)
   Future<Map<String, dynamic>?> getEventFullInfo(String eventId) async {
     try {

@@ -56,6 +56,9 @@ class AppleMapViewModel extends ChangeNotifier {
 
   /// Subscription para mudanças de raio
   StreamSubscription<double>? _radiusSubscription;
+  
+  /// Subscription para mudanças de filtros/reload
+  StreamSubscription<void>? _reloadSubscription;
 
   AppleMapViewModel({
     EventMapRepository? eventRepository,
@@ -81,6 +84,13 @@ class AppleMapViewModel extends ChangeNotifier {
     _radiusSubscription = _streamController.radiusStream.listen((radiusKm) {
       debugPrint('🗺️ AppleMapViewModel: Raio atualizado para $radiusKm km');
       // Recarregar eventos com novo raio
+      loadNearbyEvents();
+    });
+    
+    // Listener para mudanças de filtros (reload)
+    _reloadSubscription = _streamController.reloadStream.listen((_) {
+      debugPrint('🗺️ AppleMapViewModel: Reload solicitado (filtros mudaram)');
+      // Recarregar eventos com novos filtros
       loadNearbyEvents();
     });
   }
@@ -330,6 +340,7 @@ class AppleMapViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _radiusSubscription?.cancel();
+    _reloadSubscription?.cancel();
     _markerService.clearCache();
     super.dispose();
   }

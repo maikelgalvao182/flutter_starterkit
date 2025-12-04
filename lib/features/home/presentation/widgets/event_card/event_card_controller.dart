@@ -85,6 +85,21 @@ class EventCardController extends ChangeNotifier {
   List<Map<String, dynamic>> get approvedParticipants => _approvedParticipants;
   int get participantsCount => _approvedParticipants.length;
   
+  /// Retorna dados de localização para preload no PlaceCard
+  /// Inclui visitantes aprovados para exibição imediata
+  Map<String, dynamic>? get locationData {
+    if (_preloadedEvent == null) return null;
+    
+    return {
+      'locationName': _preloadedEvent!.locationName,
+      'formattedAddress': _preloadedEvent!.formattedAddress,
+      'placeId': _preloadedEvent!.placeId,
+      'photoReferences': _preloadedEvent!.photoReferences,
+      'visitors': _approvedParticipants.take(3).toList(), // Primeiros 3 visitantes
+      'totalVisitorsCount': _approvedParticipants.length,
+    };
+  }
+  
   /// Texto do botão baseado no estado
   String get buttonText {
     if (isCreator) return 'view_participants';

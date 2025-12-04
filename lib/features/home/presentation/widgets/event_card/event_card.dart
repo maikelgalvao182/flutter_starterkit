@@ -8,6 +8,7 @@ import 'package:partiu/features/home/presentation/widgets/event_card/event_card_
 import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
 import 'package:partiu/shared/widgets/emoji_container.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
+import 'package:partiu/shared/widgets/place_details_modal.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 
 /// Card de evento que exibe informações do criador e localização
@@ -132,8 +133,16 @@ class _EventCardState extends State<EventCard> {
     return DateFormat('HH:mm').format(date);
   }
 
-  /// Constrói texto formatado em uma única linha corrida com quebra:
-  /// "fullName quer activityText em locationName no dia date às horário"
+  /// Abre modal com informações do local
+  void _showPlaceDetails() {
+    PlaceDetailsModal.show(
+      context,
+      _controller.eventId,
+      preloadedData: _controller.locationData,
+    );
+  }
+
+  /// Constrói texto formatado em uma única linha corrida com quebra:rio"
   Widget _buildFormattedText() {
     final fullName = _controller.creatorFullName ?? '';
     final activityText = _controller.activityText ?? '';
@@ -143,70 +152,109 @@ class _EventCardState extends State<EventCard> {
     final dateText = scheduleDate != null ? _formatDate(scheduleDate) : '';
     final timeText = scheduleDate != null ? _formatTime(scheduleDate) : '';
 
-    return RichText(
-      textAlign: TextAlign.center,
-      // maxLines removido para permitir que o texto ocupe quantas linhas forem necessárias
-      text: TextSpan(
-        style: GoogleFonts.getFont(
-          FONT_PLUS_JAKARTA_SANS,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        // Parte 1: Nome + Atividade
+        Text(
+          fullName,
+          style: GoogleFonts.getFont(
+            FONT_PLUS_JAKARTA_SANS,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: GlimpseColors.primary,
+          ),
         ),
-        children: [
-          // Parte 1: Nome + Atividade
-          TextSpan(
-            text: fullName,
-            style: const TextStyle(color: GlimpseColors.primary),
+        Text(
+          ' quer ',
+          style: GoogleFonts.getFont(
+            FONT_PLUS_JAKARTA_SANS,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: GlimpseColors.textSubTitle,
           ),
-          const TextSpan(
-            text: ' quer ',
-            style: TextStyle(color: GlimpseColors.textSubTitle),
+        ),
+        Text(
+          activityText,
+          style: GoogleFonts.getFont(
+            FONT_PLUS_JAKARTA_SANS,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: GlimpseColors.primaryColorLight,
           ),
-          TextSpan(
-            text: activityText,
-            style: const TextStyle(color: GlimpseColors.primaryColorLight),
-          ),
-          
-          // Parte 2: Local
-          if (locationName.isNotEmpty) ...[
-            const TextSpan(
-              text: ' em ',
-              style: TextStyle(color: GlimpseColors.textSubTitle),
+        ),
+        
+        // Parte 2: Local (clicável)
+        if (locationName.isNotEmpty) ...[
+          Text(
+            ' em ',
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.textSubTitle,
             ),
-            TextSpan(
-              text: locationName,
-              style: const TextStyle(
+          ),
+          GestureDetector(
+            onTap: _showPlaceDetails,
+            child: Text(
+              locationName,
+              style: GoogleFonts.getFont(
+                FONT_PLUS_JAKARTA_SANS,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
                 color: GlimpseColors.primary,
                 decoration: TextDecoration.underline,
               ),
             ),
-          ],
-
-          // Parte 3: Data
-          if (dateText.isNotEmpty) ...[
-            TextSpan(
-              text: dateText.startsWith('dia ') ? ' no ' : ' ',
-              style: const TextStyle(color: GlimpseColors.textSubTitle),
-            ),
-            TextSpan(
-              text: dateText,
-              style: const TextStyle(color: GlimpseColors.textSubTitle),
-            ),
-          ],
-
-          // Parte 4: Horário
-          if (timeText.isNotEmpty) ...[
-            const TextSpan(
-              text: ' às ',
-              style: TextStyle(color: GlimpseColors.textSubTitle),
-            ),
-            TextSpan(
-              text: timeText,
-              style: const TextStyle(color: GlimpseColors.textSubTitle),
-            ),
-          ],
+          ),
         ],
-      ),
+
+        // Parte 3: Data
+        if (dateText.isNotEmpty) ...[
+          Text(
+            dateText.startsWith('dia ') ? ' no ' : ' ',
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.textSubTitle,
+            ),
+          ),
+          Text(
+            dateText,
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.textSubTitle,
+            ),
+          ),
+        ],
+
+        // Parte 4: Horário
+        if (timeText.isNotEmpty) ...[
+          Text(
+            ' às ',
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.textSubTitle,
+            ),
+          ),
+          Text(
+            timeText,
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.textSubTitle,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

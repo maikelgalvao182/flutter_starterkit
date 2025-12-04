@@ -17,8 +17,11 @@ class GlimpseButton extends StatelessWidget {
     this.textColor,
     this.width,
   this.height = 48,
+    this.fontSize = 16,
+    this.fontWeight = FontWeight.w700,
     this.outline = false,
     this.isProcessing = false,
+    this.noPadding = false,
   });
   final String text;
   final VoidCallback? onTap;
@@ -27,8 +30,11 @@ class GlimpseButton extends StatelessWidget {
   final Color? textColor;
   final double? width;
   final double height;
+  final double fontSize;
+  final FontWeight fontWeight;
   final bool outline;
   final bool isProcessing;
+  final bool noPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +58,7 @@ class GlimpseButton extends StatelessWidget {
     : (textColor ?? Colors.white);
     
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: noPadding ? EdgeInsets.zero : const EdgeInsets.symmetric(vertical: 10),
       child: GestureDetector(
         onTap: isEnabled ? () {
           HapticFeedback.lightImpact();
@@ -85,9 +91,9 @@ class GlimpseButton extends StatelessWidget {
                       Text(
                         i18n.translate('processing'),
                         style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                          fontWeight: FontWeight.w700,
+                          fontWeight: fontWeight,
                           color: effectiveTextColor,
-                          fontSize: 16,
+                          fontSize: fontSize,
                         ),
                       ),
                     ],
@@ -95,9 +101,9 @@ class GlimpseButton extends StatelessWidget {
                 : Text(
                     text,
                     style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                      fontWeight: FontWeight.w700,
+                      fontWeight: fontWeight,
                       color: effectiveTextColor,
-                      fontSize: 16,
+                      fontSize: fontSize,
                     ),
                     textAlign: TextAlign.center,
                   ),

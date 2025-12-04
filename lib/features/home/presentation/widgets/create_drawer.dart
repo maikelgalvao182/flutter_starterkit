@@ -119,8 +119,8 @@ class _CreateDrawerState extends State<CreateDrawer> {
         borderRadius: _controller.isSuggestionMode 
             ? BorderRadius.zero 
             : const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
               ),
       ),
       clipBehavior: Clip.antiAlias,
