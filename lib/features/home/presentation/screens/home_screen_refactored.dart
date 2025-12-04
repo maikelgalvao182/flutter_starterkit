@@ -7,13 +7,19 @@ import 'package:partiu/features/home/presentation/screens/ranking_tab.dart';
 import 'package:partiu/features/home/presentation/widgets/home_app_bar.dart';
 import 'package:partiu/features/home/presentation/widgets/home_bottom_navigation_bar.dart';
 import 'package:partiu/shared/widgets/auth_protected_wrapper.dart';
+import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
 
 
 /// Tela principal do app com navegação por tabs
 class HomeScreenRefactored extends StatefulWidget {
-  const HomeScreenRefactored({super.key, this.initialIndex = 0});
+  const HomeScreenRefactored({
+    super.key, 
+    this.initialIndex = 0,
+    required this.mapViewModel,
+  });
 
   final int initialIndex;
+  final AppleMapViewModel mapViewModel;
 
   @override
   State<HomeScreenRefactored> createState() => _HomeScreenRefactoredState();
@@ -43,7 +49,7 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   Widget _buildPage(int index) {
     switch (index) {
       case 0:
-        return const DiscoverTab();
+        return DiscoverTab(mapViewModel: widget.mapViewModel);
       case 1:
         return const MatchesTab();
       case 2:
@@ -82,6 +88,12 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
       _ensurePage(index); // Lazy instantiate target page
       _selectedIndex = index;
     });
+  }
+
+  @override
+  void dispose() {
+    widget.mapViewModel.dispose();
+    super.dispose();
   }
 
   @override

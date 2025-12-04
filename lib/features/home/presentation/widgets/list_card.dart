@@ -71,97 +71,99 @@ class _ListCardState extends State<ListCard> {
     }
   }
 
-  /// Constrói a pilha de avatares: Emoji (Criador) + Participantes + Contador
+  /// Constrói a pilha de avatares simplificada e unificada
   Widget _buildParticipantsStack() {
     final emoji = _controller.emoji ?? ListEmojiAvatar.defaultEmoji;
     final participants = _controller.recentParticipants;
     final totalCount = _controller.totalParticipantsCount;
     
-    final displayCount = participants.length > 5 ? 5 : participants.length;
+    // Configurações unificadas de tamanho e estilo
+    const double size = 40.0;
+    const double border = 2.0;
+    const double offset = 28.0; // Distância visual entre os itens
+    
+    final displayCount = participants.length > 4 ? 4 : participants.length;
     final hasCounter = totalCount > 0;
     
-    const double emojiAvatarSize = 46.0;
-    const double participantSize = 46.0;
-    const double counterSize = 52.0;
-    const double overlapOffset = 30.0;
+    // Lista de itens para empilhar
+    final List<Widget> items = [];
     
-    // Largura total = Emoji + (Participantes * Offset) + (Contador * Offset)
-    double totalWidth = emojiAvatarSize;
-    if (displayCount > 0) {
-       totalWidth += (displayCount * overlapOffset);
+    // 1. Emoji (Criador)
+    items.add(
+      Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: border),
+          color: Colors.white,
+        ),
+        child: ClipOval(
+          child: ListEmojiAvatar(
+            emoji: emoji,
+            eventId: _controller.eventId,
+            size: size,
+            emojiSize: 20,
+          ),
+        ),
+      ),
+    );
+    
+    // 2. Participantes
+    for (int i = 0; i < displayCount; i++) {
+      items.add(
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: border),
+          ),
+          child: StableAvatar(
+            userId: participants[i]['userId'] as String,
+            photoUrl: participants[i]['photoUrl'] as String?,
+            size: size,
+            borderRadius: BorderRadius.circular(999),
+            enableNavigation: true,
+          ),
+        ),
+      );
     }
+    
+    // 3. Contador
     if (hasCounter) {
-      totalWidth += overlapOffset;
+      items.add(
+        Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: GlimpseColors.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: border),
+          ),
+          child: Text(
+            '+$totalCount',
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
     }
 
     return SizedBox(
-      height: emojiAvatarSize,
-      width: totalWidth,
+      height: size,
+      width: size + (items.length - 1) * offset,
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
-          // 1. Emoji Avatar (Base - Esquerda - Primeiro da lista)
-          Positioned(
-            left: 0,
-            top: 0,
-            child: ListEmojiAvatar(
-              emoji: emoji,
-              eventId: _controller.eventId,
-              size: emojiAvatarSize,
-              emojiSize: 28,
-            ),
-          ),
-          
-          // 2. Participantes (Sobrepondo da esquerda para a direita)
-          for (int i = 0; i < displayCount; i++)
+          for (int i = 0; i < items.length; i++)
             Positioned(
-              left: emojiAvatarSize - (emojiAvatarSize - overlapOffset) + (i * overlapOffset),
-              top: (emojiAvatarSize - participantSize) / 2,
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2,
-                  ),
-                ),
-                child: StableAvatar(
-                  userId: participants[i]['userId'] as String,
-                  photoUrl: participants[i]['photoUrl'] as String?,
-                  size: participantSize,
-                  borderRadius: BorderRadius.circular(999),
-                  enableNavigation: true,
-                ),
-              ),
-            ),
-            
-          // 3. Contador (Último da pilha)
-          if (hasCounter)
-            Positioned(
-              left: emojiAvatarSize - (emojiAvatarSize - overlapOffset) + (displayCount * overlapOffset),
-              top: 0,
-              child: Container(
-                width: counterSize,
-                height: counterSize,
-                decoration: BoxDecoration(
-                  color: GlimpseColors.primaryLight,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '+$totalCount',
-                  style: GoogleFonts.getFont(
-                    FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: GlimpseColors.primaryColorLight,
-                  ),
-                ),
-              ),
+              left: i * offset,
+              child: items[i],
             ),
         ],
       ),

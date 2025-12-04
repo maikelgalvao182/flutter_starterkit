@@ -46,7 +46,8 @@ class _PeopleButtonState extends State<PeopleButton> {
         // Vamos mostrar o avatar do user mais recente se existir.
 
         return Material(
-          elevation: 4,
+          elevation: 8,
+          shadowColor: Colors.black.withOpacity(0.3),
           borderRadius: BorderRadius.circular(100),
           child: InkWell(
             onTap: widget.onPressed,

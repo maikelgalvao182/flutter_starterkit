@@ -133,7 +133,7 @@ class _EventCardState extends State<EventCard> {
   }
 
   /// Constrói texto formatado em uma única linha corrida com quebra:
-  /// "fullName quer activityText em locationName, no dia date às horário"
+  /// "fullName quer activityText em locationName no dia date às horário"
   Widget _buildFormattedText() {
     final fullName = _controller.creatorFullName ?? '';
     final activityText = _controller.activityText ?? '';
@@ -145,8 +145,7 @@ class _EventCardState extends State<EventCard> {
 
     return RichText(
       textAlign: TextAlign.center,
-      maxLines: 4,
-      overflow: TextOverflow.ellipsis,
+      // maxLines removido para permitir que o texto ocupe quantas linhas forem necessárias
       text: TextSpan(
         style: GoogleFonts.getFont(
           FONT_PLUS_JAKARTA_SANS,
@@ -168,64 +167,43 @@ class _EventCardState extends State<EventCard> {
             style: const TextStyle(color: GlimpseColors.primaryColorLight),
           ),
           
-          // Parte 2: Local + Data + Horário (se houver data)
-          if (scheduleDate != null) ...[
+          // Parte 2: Local
+          if (locationName.isNotEmpty) ...[
             const TextSpan(
-              text: ' ',
-            ),
-            const TextSpan(
-              text: 'em ',
-              style: TextStyle(
-                color: GlimpseColors.textSubTitle,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+              text: ' em ',
+              style: TextStyle(color: GlimpseColors.textSubTitle),
             ),
             TextSpan(
               text: locationName,
               style: const TextStyle(
                 color: GlimpseColors.primary,
                 decoration: TextDecoration.underline,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
               ),
             ),
-            if (dateText.isNotEmpty) ...[
-              TextSpan(
-                text: dateText.startsWith('dia ') ? ', no ' : ', ',
-                style: const TextStyle(
-                  color: GlimpseColors.textSubTitle,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              TextSpan(
-                text: dateText,
-                style: const TextStyle(
-                  color: GlimpseColors.textSubTitle,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            if (timeText.isNotEmpty) ...[
-              const TextSpan(
-                text: ' às ',
-                style: TextStyle(
-                  color: GlimpseColors.textSubTitle,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              TextSpan(
-                text: timeText,
-                style: const TextStyle(
-                  color: GlimpseColors.textSubTitle,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          ],
+
+          // Parte 3: Data
+          if (dateText.isNotEmpty) ...[
+            TextSpan(
+              text: dateText.startsWith('dia ') ? ' no ' : ' ',
+              style: const TextStyle(color: GlimpseColors.textSubTitle),
+            ),
+            TextSpan(
+              text: dateText,
+              style: const TextStyle(color: GlimpseColors.textSubTitle),
+            ),
+          ],
+
+          // Parte 4: Horário
+          if (timeText.isNotEmpty) ...[
+            const TextSpan(
+              text: ' às ',
+              style: TextStyle(color: GlimpseColors.textSubTitle),
+            ),
+            TextSpan(
+              text: timeText,
+              style: const TextStyle(color: GlimpseColors.textSubTitle),
+            ),
           ],
         ],
       ),
@@ -264,7 +242,7 @@ class _EventCardState extends State<EventCard> {
 
     return Column(
       children: [
-        const SizedBox(height: 24), // 24px entre texto e participantes
+        const SizedBox(height: 12), // 12px entre contador e avatares
         
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -385,7 +363,7 @@ class _EventCardState extends State<EventCard> {
           maxWidth: 500,
           minWidth: 300,
         ),
-        height: 350,
+        // Altura fixa removida para se adaptar ao conteúdo
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -395,12 +373,14 @@ class _EventCardState extends State<EventCard> {
           clipBehavior: Clip.none,
           children: [
             Column(
+              mainAxisSize: MainAxisSize.min, // Ocupar apenas o espaço necessário
               children: [
                 const SizedBox(height: 56), // Espaço para o emoji no topo (40px emoji + 16px espaço)
 
                 // Error state
                 if (_controller.error != null)
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Center(
                       child: Text(
                         _controller.error!,
@@ -414,21 +394,21 @@ class _EventCardState extends State<EventCard> {
 
                 // Success state
                 else if (_controller.hasData) ...[
-                  // Contador de participantes
-                  _buildParticipantsCounter(),
-                  
-                  const SizedBox(height: 12),
-                  
                   // Subtitle (formatted text)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: _buildFormattedText(),
                   ),
                   
+                  const SizedBox(height: 24), // Espaçamento após o texto
+                  
+                  // Contador de participantes
+                  _buildParticipantsCounter(),
+                  
                   // Lista de participantes (avatares)
                   _buildParticipantsAvatars(),
                   
-                  const Spacer(),
+                  const SizedBox(height: 24), // Espaçamento fixo antes do botão
 
                   // Action button fixo no bottom
                   SizedBox(
@@ -460,7 +440,8 @@ class _EventCardState extends State<EventCard> {
                   ),
                 ] else
                   // No data state
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Center(
                       child: Text(
                         AppLocalizations.of(context).translate('no_data_available'),

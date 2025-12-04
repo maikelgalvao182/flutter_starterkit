@@ -61,15 +61,15 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   // Handle User Auth - chama o fluxo de verificação de conta
   void _checkUserAccount() {
     _signInViewModel.authUserAccount(
-      updateLocationScreen: () => _nextScreenAndClearStack(const UpdateLocationScreenRouter()),
+      updateLocationScreen: () => context.go(AppRoutes.updateLocation),
       signUpScreen: () {
         // Reset loading state before navigation
         _emailAuthViewModel.setLoading(false);
-                      // Navega para próxima tela (cadastro)
-              _nextScreenKeepStack(const SignupWizardScreen());
+        // Navega para próxima tela (cadastro)
+        context.push(AppRoutes.signupWizard);
       },
-      homeScreen: () => _nextScreenAndClearStack(const HomeScreenRefactored()),
-      blockedScreen: () => _nextScreenAndClearStack(const BlockedAccountScreenRouter()),
+      homeScreen: () => context.go(AppRoutes.home),
+      blockedScreen: () => context.go(AppRoutes.blocked),
     );
   }
 

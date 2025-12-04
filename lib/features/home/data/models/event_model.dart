@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Modelo simplificado de evento para exibição no mapa
 class EventModel {
   final String id;
@@ -12,6 +14,7 @@ class EventModel {
   final String? creatorFullName;
   final DateTime? scheduleDate;
   final String? privacyType;
+  final List<Map<String, dynamic>>? participants;
 
   EventModel({
     required this.id,
@@ -26,6 +29,7 @@ class EventModel {
     this.creatorFullName,
     this.scheduleDate,
     this.privacyType,
+    this.participants,
   });
 
   /// Factory para criar EventModel a partir de um Map
@@ -44,11 +48,28 @@ class EventModel {
 
     // Parse scheduleDate
     DateTime? scheduleDate;
-    if (map['scheduleDate'] != null) {
+    
+    // 1. Se já vier como DateTime (ex: de repositórios que já converteram)
+    if (map['scheduleDate'] is DateTime) {
+      scheduleDate = map['scheduleDate'] as DateTime;
+    }
+    // 2. Se vier como String (ex: JSON/ISO8601)
+    else if (map['scheduleDate'] is String) {
       try {
         scheduleDate = DateTime.parse(map['scheduleDate'] as String);
-      } catch (_) {
-        scheduleDate = null;
+      } catch (_) {}
+    }
+    // 3. Se vier na estrutura raw do Firestore (schedule map com date Timestamp)
+    else if (map['schedule'] is Map) {
+      final scheduleMap = map['schedule'] as Map<String, dynamic>;
+      final dateField = scheduleMap['date'];
+      
+      if (dateField is Timestamp) {
+        scheduleDate = dateField.toDate();
+      } else if (dateField is String) {
+        try {
+          scheduleDate = DateTime.parse(dateField);
+        } catch (_) {}
       }
     }
 
@@ -65,6 +86,7 @@ class EventModel {
       creatorFullName: map['creatorFullName'] as String?,
       scheduleDate: scheduleDate,
       privacyType: map['privacyType'] as String?,
+      participants: null, // Não vem do map inicial
     );
   }
 
@@ -82,6 +104,7 @@ class EventModel {
     String? creatorFullName,
     DateTime? scheduleDate,
     String? privacyType,
+    List<Map<String, dynamic>>? participants,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -96,6 +119,7 @@ class EventModel {
       creatorFullName: creatorFullName ?? this.creatorFullName,
       scheduleDate: scheduleDate ?? this.scheduleDate,
       privacyType: privacyType ?? this.privacyType,
+      participants: participants ?? this.participants,
     );
   }
 }

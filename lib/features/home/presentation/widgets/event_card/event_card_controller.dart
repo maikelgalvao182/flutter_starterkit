@@ -44,7 +44,21 @@ class EventCardController extends ChangeNotifier {
         _auth = auth ?? FirebaseAuth.instance,
         _applicationRepo = applicationRepo ?? EventApplicationRepository(),
         _eventRepo = eventRepo ?? EventRepository(),
-        _userRepo = userRepo ?? UserRepository();
+        _userRepo = userRepo ?? UserRepository() {
+    if (_preloadedEvent != null) {
+      _emoji = _preloadedEvent!.emoji;
+      _activityText = _preloadedEvent!.title;
+      _locationName = _preloadedEvent!.locationName;
+      _creatorFullName = _preloadedEvent!.creatorFullName;
+      _scheduleDate = _preloadedEvent!.scheduleDate;
+      _privacyType = _preloadedEvent!.privacyType;
+      _creatorId = _preloadedEvent!.createdBy;
+      
+      if (_preloadedEvent!.participants != null) {
+        _approvedParticipants = _preloadedEvent!.participants!;
+      }
+    }
+  }
 
   // Getters
   String? get creatorFullName => _creatorFullName;
@@ -56,7 +70,7 @@ class EventCardController extends ChangeNotifier {
   String? get creatorId => _creatorId;
   bool get isLoading => !_loaded && _error == null;
   String? get error => _error;
-  bool get hasData => _loaded && _error == null && _creatorFullName != null && _locationName != null && _activityText != null;
+  bool get hasData => _error == null && _creatorFullName != null && _locationName != null && _activityText != null;
   
   // Application getters
   EventApplicationModel? get userApplication => _userApplication;
@@ -97,14 +111,7 @@ class EventCardController extends ChangeNotifier {
     try {
       // Se temos evento pré-carregado, usar esses dados (evita query do Firestore)
       if (_preloadedEvent != null) {
-        _emoji = _preloadedEvent!.emoji;
-        _activityText = _preloadedEvent!.title;
-        _locationName = _preloadedEvent!.locationName;
-        _creatorFullName = _preloadedEvent!.creatorFullName;
-        _scheduleDate = _preloadedEvent!.scheduleDate;
-        _privacyType = _preloadedEvent!.privacyType;
-        _creatorId = _preloadedEvent!.createdBy;
-        
+        // Dados já inicializados no construtor
         debugPrint('✨ EventCard usando dados pré-carregados (sem query Firestore)');
       } else {
         // Fallback: buscar do Firestore (fluxo antigo)
@@ -112,7 +119,12 @@ class EventCardController extends ChangeNotifier {
       }
       
       await _loadUserApplication();
-      await _loadApprovedParticipants();
+      
+      // Carregar participantes apenas se não vieram pré-carregados
+      if (_preloadedEvent?.participants == null) {
+        await _loadApprovedParticipants();
+      }
+      
       _loaded = true;
       notifyListeners();
     } catch (e) {

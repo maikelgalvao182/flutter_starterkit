@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/features/home/presentation/widgets/apple_map_view.dart';
+import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
 
 /// Tela de descoberta de atividades com mapa interativo
 /// 
 /// Esta tela exibe um mapa Apple Maps com a localização do usuário.
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key, this.onCenterUserRequested});
+  const DiscoverScreen({
+    super.key, 
+    this.onCenterUserRequested,
+    required this.mapViewModel,
+  });
 
   final VoidCallback? onCenterUserRequested;
+  final AppleMapViewModel mapViewModel;
 
   @override
   State<DiscoverScreen> createState() => DiscoverScreenState();
@@ -29,7 +35,10 @@ class DiscoverScreenState extends State<DiscoverScreen> {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
-      child: AppleMapView(key: _mapKey),
+      child: AppleMapView(
+        key: _mapKey,
+        viewModel: widget.mapViewModel,
+      ),
     );
   }
 

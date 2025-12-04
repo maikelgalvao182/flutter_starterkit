@@ -13,19 +13,31 @@ class CreateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton(
-      heroTag: 'create_activity_button',
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        onPressed();
-      },
-      backgroundColor: GlimpseColors.primary,
-      elevation: 2,
-      shape: const CircleBorder(),
-      child: const Icon(
-        Icons.add,
-        color: Colors.white,
-        size: 28,
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton(
+        heroTag: 'create_activity_button',
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onPressed();
+        },
+        backgroundColor: GlimpseColors.primary,
+        elevation: 0, // Elevation handled by Container shadow
+        shape: const CircleBorder(),
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
+          size: 28,
+        ),
       ),
     );
   }

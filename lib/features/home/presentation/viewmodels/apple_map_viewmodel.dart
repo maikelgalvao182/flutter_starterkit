@@ -6,6 +6,7 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/geo_distance_helper.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/repositories/event_map_repository.dart';
+import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/services/user_location_service.dart';
 import 'package:partiu/features/home/presentation/services/event_marker_service.dart';
 import 'package:partiu/services/location/location_query_service.dart';
@@ -28,6 +29,7 @@ class AppleMapViewModel extends ChangeNotifier {
   final LocationQueryService _locationQueryService;
   final LocationStreamController _streamController;
   final UserRepository _userRepository;
+  final EventApplicationRepository _applicationRepository;
 
   /// Markers atualmente exibidos no mapa
   Set<Annotation> _eventMarkers = {};
@@ -36,6 +38,10 @@ class AppleMapViewModel extends ChangeNotifier {
   /// Estado de carregamento
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  /// Estado de mapa pronto (localização + eventos + markers carregados)
+  bool _mapReady = false;
+  bool get mapReady => _mapReady;
 
   /// Última localização obtida
   LatLng? _lastLocation;
@@ -51,10 +57,6 @@ class AppleMapViewModel extends ChangeNotifier {
   /// Subscription para mudanças de raio
   StreamSubscription<double>? _radiusSubscription;
 
-  /// Cache de nomes de criadores para evitar N+1 queries
-  /// Key: userId, Value: fullName
-  final Map<String, String?> _creatorNameCache = {};
-
   AppleMapViewModel({
     EventMapRepository? eventRepository,
     UserLocationService? locationService,
@@ -62,13 +64,15 @@ class AppleMapViewModel extends ChangeNotifier {
     LocationQueryService? locationQueryService,
     LocationStreamController? streamController,
     UserRepository? userRepository,
+    EventApplicationRepository? applicationRepository,
     this.onMarkerTap,
   })  : _eventRepository = eventRepository ?? EventMapRepository(),
         _locationService = locationService ?? UserLocationService(),
         _markerService = markerService ?? EventMarkerService(),
         _locationQueryService = locationQueryService ?? LocationQueryService(),
         _streamController = streamController ?? LocationStreamController(),
-        _userRepository = userRepository ?? UserRepository() {
+        _userRepository = userRepository ?? UserRepository(),
+        _applicationRepository = applicationRepository ?? EventApplicationRepository() {
     _initializeRadiusListener();
   }
 
@@ -86,6 +90,8 @@ class AppleMapViewModel extends ChangeNotifier {
   /// Deve ser chamado após o mapa estar pronto
   Future<void> initialize() async {
     await _markerService.preloadDefaultPins();
+    // Carregar eventos iniciais
+    await loadNearbyEvents();
   }
 
   /// Carrega eventos próximos à localização do usuário
@@ -132,13 +138,21 @@ class AppleMapViewModel extends ChangeNotifier {
       final markers = await _markerService.buildEventAnnotations(
         _events,
         onTap: onMarkerTap != null ? (eventId) {
+          debugPrint('🟡 ViewModel onTap callback called for: $eventId');
           final event = _events.firstWhere((e) => e.id == eventId);
+          debugPrint('🟡 Event found, calling onMarkerTap: ${event.title}');
           onMarkerTap!(event);
         } : null,
       );
       _eventMarkers = markers;
 
       debugPrint('🗺️ AppleMapViewModel: ${_events.length} eventos carregados');
+      debugPrint('🗺️ Markers criados: ${markers.length}');
+      debugPrint('🗺️ onMarkerTap callback configurado: ${onMarkerTap != null}');
+      
+      // SOMENTE AQUI o mapa está realmente pronto
+      _setMapReady(true);
+      
       notifyListeners();
     } catch (e) {
       debugPrint('❌ AppleMapViewModel: Erro ao carregar eventos: $e');
@@ -155,7 +169,7 @@ class AppleMapViewModel extends ChangeNotifier {
   /// IMPORTANTE: Esta é a ÚNICA fonte de verdade para calcular:
   /// - distanceKm: Distância do evento para o usuário
   /// - isAvailable: Se o usuário pode ver o evento (premium OU dentro de 30km)
-  /// - creatorFullName: Nome completo do criador (se disponível)
+  /// - creatorFullName: Usa dados desnormalizados do Firestore (OTIMIZAÇÃO: elimina N+1 queries)
   /// 
   /// Os repositórios (EventMapRepository, LocationQueryService) NÃO devem
   /// incluir esses campos - toda lógica de enriquecimento fica aqui no ViewModel
@@ -169,9 +183,9 @@ class AppleMapViewModel extends ChangeNotifier {
     final currentUserDoc = await _userRepository.getUserById(currentUserId);
     final isPremium = currentUserDoc?['hasPremium'] as bool? ?? false;
 
-    // Enriquecer cada evento
-    _events = await Future.wait(_events.map((event) async {
-      // 1. Calcular distância do evento para o usuário
+    // Enriquecer cada evento (agora assíncrono para buscar nomes faltantes)
+    final enrichedEvents = await Future.wait(_events.map((event) async {
+      // 1. Calcular distância do evento para o usuário (Haversine - ~2ms por evento)
       final distance = GeoDistanceHelper.distanceInKm(
         _lastLocation!.latitude,
         _lastLocation!.longitude,
@@ -185,27 +199,36 @@ class AppleMapViewModel extends ChangeNotifier {
         distanceKm: distance,
       );
 
-      // 3. Buscar nome do criador (opcional, para enriquecer card) com cache
-      String? creatorName;
-      if (!_creatorNameCache.containsKey(event.createdBy)) {
+      // 3. Garantir que creatorFullName esteja presente
+      // Se não vier desnormalizado, buscar sob demanda
+      String? creatorFullName = event.creatorFullName;
+      if (creatorFullName == null && event.createdBy.isNotEmpty) {
         try {
-          final creator = await _userRepository.getUserById(event.createdBy);
-          _creatorNameCache[event.createdBy] = 
-              creator?['fullName'] as String? ?? creator?['name'] as String?;
+          final userDoc = await _userRepository.getUserBasicInfo(event.createdBy);
+          creatorFullName = userDoc?['fullName'];
         } catch (e) {
-          debugPrint('⚠️ Erro ao buscar criador do evento ${event.id}: $e');
-          _creatorNameCache[event.createdBy] = null;
+          debugPrint('⚠️ Erro ao buscar nome do criador para evento ${event.id}: $e');
         }
       }
-      creatorName = _creatorNameCache[event.createdBy];
 
-      // 4. Retornar evento enriquecido
+      // 4. Buscar participantes aprovados (avatares e nomes)
+      List<Map<String, dynamic>>? participants;
+      try {
+        participants = await _applicationRepository.getApprovedApplicationsWithUserData(event.id);
+      } catch (e) {
+        debugPrint('⚠️ Erro ao buscar participantes para evento ${event.id}: $e');
+      }
+
+      // 5. Retornar evento enriquecido
       return event.copyWith(
         distanceKm: distance,
         isAvailable: isAvailable,
-        creatorFullName: creatorName,
+        creatorFullName: creatorFullName,
+        participants: participants,
       );
     }));
+    
+    _events = enrichedEvents;
 
     debugPrint('✨ Enriquecidos ${_events.length} eventos com distância e disponibilidade');
   }
@@ -293,17 +316,21 @@ class AppleMapViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Define estado de mapa pronto
+  void _setMapReady(bool value) {
+    _mapReady = value;
+    notifyListeners();
+  }
+
   /// Limpa cache de markers
   void clearCache() {
     _markerService.clearCache();
-    _creatorNameCache.clear();
   }
 
   @override
   void dispose() {
     _radiusSubscription?.cancel();
     _markerService.clearCache();
-    _creatorNameCache.clear();
     super.dispose();
   }
 }

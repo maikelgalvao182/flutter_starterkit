@@ -1,5 +1,6 @@
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
@@ -22,7 +23,12 @@ import 'package:partiu/screens/chat/chat_screen_refactored.dart';
 /// - UserLocationService (localização)
 /// - AvatarService (avatares)
 class AppleMapView extends StatefulWidget {
-  const AppleMapView({super.key});
+  final AppleMapViewModel viewModel;
+
+  const AppleMapView({
+    super.key,
+    required this.viewModel,
+  });
 
   @override
   State<AppleMapView> createState() => AppleMapViewState();
@@ -36,41 +42,40 @@ class AppleMapViewState extends State<AppleMapView> {
   /// Controller do mapa Apple Maps
   AppleMapController? _mapController;
 
-  /// ViewModel para gerenciar estado e lógica
-  late final AppleMapViewModel _viewModel;
-
   @override
   void initState() {
     super.initState();
-    _viewModel = AppleMapViewModel(
-      onMarkerTap: _onMarkerTap,
-    );
-    _initializeMap();
-  }
-
-  /// Inicializa o mapa e carrega dados
-  Future<void> _initializeMap() async {
-    await _viewModel.initialize();
+    // Configurar callback de tap no ViewModel recebido
+    debugPrint('🔴 AppleMapView: Configurando callback onMarkerTap');
+    widget.viewModel.onMarkerTap = _onMarkerTap;
+    debugPrint('🔴 AppleMapView: Callback configurado? ${widget.viewModel.onMarkerTap != null}');
+    
+    // Agora que o callback está configurado, carregar eventos
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('🔴 AppleMapView: Carregando eventos APÓS callback configurado');
+      widget.viewModel.loadNearbyEvents();
+    });
   }
 
   /// Callback quando o mapa é criado
   void _onMapCreated(AppleMapController controller) {
     _mapController = controller;
 
-    // Mover câmera e carregar eventos
-    _moveCameraToUserLocation();
-
-    // Carregar eventos após posicionar câmera
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) {
-        _viewModel.loadNearbyEvents();
-      }
-    });
+    // Mover câmera para localização inicial (já carregada)
+    if (widget.viewModel.lastLocation != null) {
+      _moveCameraTo(
+        widget.viewModel.lastLocation!.latitude,
+        widget.viewModel.lastLocation!.longitude,
+        zoom: 15.0,
+      );
+    } else {
+      _moveCameraToUserLocation();
+    }
   }
 
   /// Move a câmera para a localização do usuário
   Future<void> _moveCameraToUserLocation() async {
-    final result = await _viewModel.getUserLocation();
+    final result = await widget.viewModel.getUserLocation();
 
     // Exibir mensagem de erro se houver
     if (result.hasError && mounted) {
@@ -120,98 +125,86 @@ class AppleMapViewState extends State<AppleMapView> {
   }
 
   /// Callback quando usuário toca em um marker
-  void _onMarkerTap(EventModel event) async {
+  void _onMarkerTap(EventModel event) {
+    debugPrint('🔴 AppleMapView._onMarkerTap called for: ${event.id} - ${event.title}');
+    
     // Criar controller com evento pré-carregado (evita query Firestore)
     final controller = EventCardController(
       eventId: event.id,
       preloadedEvent: event,
     );
     
-    try {
-      // Aguardar o carregamento dos dados adicionais (applications, participants)
-      await controller.load();
-      
-      // Verificar se os dados foram carregados com sucesso
-      if (!controller.hasData) {
-        if (mounted) {
-          _showMessage(controller.error ?? 'Erro ao carregar evento');
-        }
-        return;
-      }
-      
-      // Agora sim, abrir o dialog com todos os dados prontos
-      if (!mounted) return;
-      
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        useSafeArea: true,
-        constraints: const BoxConstraints(
-          maxWidth: 500,
-        ),
-        builder: (context) => EventCard(
-          controller: controller,
-          onActionPressed: () async {
-            // Capturar o navigator antes de fechar o modal
-            final navigator = Navigator.of(context);
+    debugPrint('🔴 Controller criado, iniciando load()');
+    // Iniciar carregamento dos dados adicionais em background
+    controller.load();
+    
+    debugPrint('🔴 Abrindo showModalBottomSheet');
+    // Abrir o card imediatamente (sem aguardar load)
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: const BoxConstraints(
+        maxWidth: 500,
+      ),
+      builder: (context) => EventCard(
+        controller: controller,
+        onActionPressed: () async {
+          // Capturar o navigator antes de fechar o modal
+          final navigator = Navigator.of(context);
+          
+          // Fechar o card
+          navigator.pop();
+          
+          // Se for o criador ou estiver aprovado, navegar para o chat
+          if (controller.isCreator || controller.isApproved) {
+            // Usar dados do evento pré-carregado
+            final eventName = event.title;
+            final emoji = event.emoji;
             
-            // Fechar o card
-            navigator.pop();
+            // Criar User com dados do evento usando campos corretos do SessionManager
+            final chatUser = User.fromDocument({
+              'userId': 'event_${event.id}',
+              'fullName': eventName,
+              'profilePhotoUrl': emoji,
+              'gender': '',
+              'birthDay': 1,
+              'birthMonth': 1,
+              'birthYear': 2000,
+              'jobTitle': '',
+              'bio': '',
+              'country': '',
+              'locality': '',
+              'latitude': 0.0,
+              'longitude': 0.0,
+              'status': 'active',
+              'level': '',
+              'isVerified': false,
+              'registrationDate': DateTime.now().toIso8601String(),
+              'lastLoginDate': DateTime.now().toIso8601String(),
+              'totalLikes': 0,
+              'totalVisits': 0,
+              'isOnline': false,
+            });
             
-            // Se for o criador ou estiver aprovado, navegar para o chat
-            if (controller.isCreator || controller.isApproved) {
-              // Usar dados do evento pré-carregado
-              final eventName = event.title;
-              final emoji = event.emoji;
-              
-              // ✅ CORRIGIDO: Usar event_${eventId} (igual ao backend e conversation_navigation_service)
-              // Criar User com dados do evento usando campos corretos do SessionManager
-              final chatUser = User.fromDocument({
-                'userId': 'event_${event.id}',  // ✅ Prefixo event_ para consistência
-                'fullName': eventName,
-                'profilePhotoUrl': emoji,
-                'gender': '',
-                'birthDay': 1,
-                'birthMonth': 1,
-                'birthYear': 2000,
-                'jobTitle': '',
-                'bio': '',
-                'country': '',
-                'locality': '',
-                'latitude': 0.0,
-                'longitude': 0.0,
-                'status': 'active',
-                'level': '',
-                'isVerified': false,
-                'registrationDate': DateTime.now().toIso8601String(),
-                'lastLoginDate': DateTime.now().toIso8601String(),
-                'totalLikes': 0,
-                'totalVisits': 0,
-                'isOnline': false,
-              });
-              
-              // Usar o navigator capturado anteriormente
-              navigator.push(
-                MaterialPageRoute(
-                  builder: (context) => ChatScreenRefactored(
-                    user: chatUser,
-                    isEvent: true,
-                    eventId: event.id,
-                  ),
+            // Usar o navigator capturado anteriormente
+            navigator.push(
+              MaterialPageRoute(
+                builder: (context) => ChatScreenRefactored(
+                  user: chatUser,
+                  isEvent: true,
+                  eventId: event.id,
                 ),
-              );
-            }
-            
-            controller.dispose();
-          },
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
-        _showMessage('Erro ao carregar evento');
-      }
-    }
+              ),
+            );
+          }
+        },
+      ),
+    ).whenComplete(() {
+      // Garantir limpeza do controller ao fechar o modal
+      controller.dispose();
+    });
   }
 
   @override
@@ -219,8 +212,9 @@ class AppleMapViewState extends State<AppleMapView> {
     // Widget limpo - apenas UI
     // Toda lógica delegada ao ViewModel
     return ListenableBuilder(
-      listenable: _viewModel,
+      listenable: widget.viewModel,
       builder: (context, _) {
+        // Mapa totalmente pronto: localização + eventos + markers carregados
         return AppleMap(
           // Callback de criação
           onMapCreated: _onMapCreated,
@@ -232,7 +226,7 @@ class AppleMapViewState extends State<AppleMapView> {
           ),
 
           // Markers fornecidos pelo ViewModel
-          annotations: _viewModel.eventMarkers,
+          annotations: widget.viewModel.eventMarkers,
 
           // Configurações do mapa
           myLocationEnabled: true,
@@ -249,7 +243,7 @@ class AppleMapViewState extends State<AppleMapView> {
 
   @override
   void dispose() {
-    _viewModel.dispose();
+    // Não fazemos dispose do ViewModel aqui pois ele vem de fora
     _mapController = null;
     super.dispose();
   }

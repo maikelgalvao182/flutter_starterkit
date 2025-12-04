@@ -59,24 +59,36 @@ class _NavigateToUserButtonState extends State<NavigateToUserButton>
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton(
-      heroTag: 'navigate_to_user_button',
-      onPressed: _handlePress,
-      backgroundColor: Colors.white,
-      elevation: 2,
-      shape: const CircleBorder(),
-      child: AnimatedBuilder(
-        animation: _rotationAnimation,
-        builder: (context, child) {
-          return Transform.rotate(
-            angle: _rotationAnimation.value * 2 * 3.14159, // 360 graus em radianos
-            child: child,
-          );
-        },
-        child: const Icon(
-          Iconsax.direct_up,
-          color: GlimpseColors.primaryColorLight,
-          size: 28,
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: FloatingActionButton(
+        heroTag: 'navigate_to_user_button',
+        onPressed: _handlePress,
+        backgroundColor: Colors.white,
+        elevation: 0, // Elevation handled by Container shadow
+        shape: const CircleBorder(),
+        child: AnimatedBuilder(
+          animation: _rotationAnimation,
+          builder: (context, child) {
+            return Transform.rotate(
+              angle: _rotationAnimation.value * 2 * 3.14159, // 360 graus em radianos
+              child: child,
+            );
+          },
+          child: const Icon(
+            Iconsax.direct_up,
+            color: GlimpseColors.primaryColorLight,
+            size: 28,
+          ),
         ),
       ),
     );

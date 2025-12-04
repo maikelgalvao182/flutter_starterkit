@@ -101,11 +101,10 @@ class EventMarkerService {
             icon: emojiPin,
             anchor: const Offset(0.5, 1.0), // Ancorado no fundo
             zIndex: 0, // Camada de baixo
-            onTap: onTap != null ? () => onTap(event.id) : null,
-            infoWindow: InfoWindow(
-              title: event.title,
-              snippet: event.locationName,
-            ),
+            onTap: onTap != null ? () {
+              debugPrint('🟢 Emoji marker tapped: ${event.id}');
+              onTap(event.id);
+            } : null,
           ),
         );
 
@@ -119,7 +118,10 @@ class EventMarkerService {
             icon: avatarPin,
             anchor: const Offset(0.5, 0.5), // Centralizado
             zIndex: 1, // Camada de cima
-            onTap: onTap != null ? () => onTap(event.id) : null,
+            onTap: onTap != null ? () {
+              debugPrint('🔵 Avatar marker tapped: ${event.id}');
+              onTap(event.id);
+            } : null,
           ),
         );
       } catch (e) {

@@ -8,6 +8,7 @@ import 'package:partiu/features/auth/presentation/screens/forgot_password_screen
 import 'package:partiu/features/auth/presentation/screens/blocked_account_screen_router.dart';
 import 'package:partiu/features/location/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
+import 'package:partiu/features/home/presentation/screens/splash_screen.dart';
 import 'package:partiu/features/home/presentation/screens/advanced_filters_screen.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen_optimized.dart';
 import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
@@ -132,11 +133,11 @@ GoRouter createAppRouter(BuildContext context) {
       builder: (context, state) => const UpdateLocationScreenRouter(),
     ),
     
-    // Home
+    // Home (agora aponta para SplashScreen para inicialização)
     GoRoute(
       path: AppRoutes.home,
       name: 'home',
-      builder: (context, state) => const HomeScreenRefactored(),
+      builder: (context, state) => const SplashScreen(),
     ),
     
     // Blocked Account
