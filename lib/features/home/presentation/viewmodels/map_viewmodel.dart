@@ -240,7 +240,20 @@ class MapViewModel extends ChangeNotifier {
       );
     }));
     
-    _events = enrichedEvents;
+    // Filtrar eventos rejeitados (não mostrar eventos onde o usuário foi rejeitado)
+    final eventsBeforeFilter = enrichedEvents.length;
+    _events = enrichedEvents.where((event) {
+      final isRejected = event.userApplication?.isRejected ?? false;
+      if (isRejected) {
+        debugPrint('🚫 Evento ${event.id} filtrado (aplicação rejeitada)');
+      }
+      return !isRejected;
+    }).toList();
+
+    final filteredCount = eventsBeforeFilter - _events.length;
+    if (filteredCount > 0) {
+      debugPrint('🚫 $filteredCount evento(s) rejeitado(s) removido(s) da lista');
+    }
 
     debugPrint('✨ Enriquecidos ${_events.length} eventos com distância e disponibilidade');
   }

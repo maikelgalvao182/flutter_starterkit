@@ -14,6 +14,10 @@ class GlimpseColors {
   static const Color disabledButtonColorLight = Color(0xFFC2C2C2);
   static const Color bgColorLight = Color(0xFFFFFFFF);
 
+   // Cor de botões de ação 
+  static const Color approveButtonColor = Color(0xFF5BAD46);
+  static const Color rejectButtonColor = Color(0xFFEF4444);
+
   // Cor de ação genérica
   static const Color actionColor = Color(0xFFFF8F39);
 

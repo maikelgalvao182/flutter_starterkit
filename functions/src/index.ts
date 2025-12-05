@@ -57,6 +57,7 @@ export const onEventCreated = functions.firestore
         status: "autoApproved",
         appliedAt: admin.firestore.FieldValue.serverTimestamp(),
         decisionAt: admin.firestore.FieldValue.serverTimestamp(),
+        presence: "Talvez", // Status de presença padrão
       });
 
       console.log(

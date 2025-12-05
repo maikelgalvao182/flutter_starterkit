@@ -18,6 +18,23 @@ enum ApplicationStatus {
   }
 }
 
+/// Status de presença do participante no evento
+enum PresenceStatus {
+  going('Vou'),
+  maybe('Talvez'),
+  notGoing('Não vou');
+
+  const PresenceStatus(this.value);
+  final String value;
+
+  static PresenceStatus fromString(String value) {
+    return PresenceStatus.values.firstWhere(
+      (status) => status.value == value,
+      orElse: () => PresenceStatus.maybe,
+    );
+  }
+}
+
 /// Modelo de aplicação de usuário para um evento
 class EventApplicationModel {
   final String id;
@@ -26,6 +43,7 @@ class EventApplicationModel {
   final ApplicationStatus status;
   final DateTime appliedAt;
   final DateTime? decisionAt;
+  final PresenceStatus presence;
 
   const EventApplicationModel({
     required this.id,
@@ -34,6 +52,7 @@ class EventApplicationModel {
     required this.status,
     required this.appliedAt,
     this.decisionAt,
+    this.presence = PresenceStatus.maybe,
   });
 
   /// Cria instância a partir de documento Firestore
@@ -49,6 +68,9 @@ class EventApplicationModel {
       decisionAt: data['decisionAt'] != null 
           ? (data['decisionAt'] as Timestamp).toDate() 
           : null,
+      presence: data['presence'] != null
+          ? PresenceStatus.fromString(data['presence'] as String)
+          : PresenceStatus.maybe,
     );
   }
 
@@ -59,6 +81,7 @@ class EventApplicationModel {
       'userId': userId,
       'status': status.value,
       'appliedAt': Timestamp.fromDate(appliedAt),
+      'presence': presence.value,
       if (decisionAt != null) 'decisionAt': Timestamp.fromDate(decisionAt!),
     };
   }

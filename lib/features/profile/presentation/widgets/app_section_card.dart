@@ -160,7 +160,10 @@ class _AppSectionCardState extends State<AppSectionCard> {
             context,
             icon: Iconsax.logout,
             title: i18n.translate('sign_out') ?? 'Sair',
-            onTap: () => _handleLogout(context, i18n),
+            onTap: () {
+              debugPrint('🚪 [LOGOUT] Botão de logout clicado');
+              _handleLogout(context, i18n);
+            },
           ),
           Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
           
@@ -203,39 +206,52 @@ class _AppSectionCardState extends State<AppSectionCard> {
   
   /// Executa logout com loading e navegação via go_router
   Future<void> _handleLogout(BuildContext context, LocalizationService i18n) async {
+    debugPrint('🚪 [LOGOUT] Iniciando processo de logout');
+    
+    // IMPORTANTE: Capturar GoRouter ANTES de qualquer operação assíncrona
+    // para evitar "Looking up a deactivated widget's ancestor is unsafe"
+    final router = GoRouter.of(context);
+    debugPrint('🚪 [LOGOUT] GoRouter capturado');
+    
     final progressDialog = ProgressDialog(context);
     
     try {
       // Mostra loading
+      debugPrint('🚪 [LOGOUT] Mostrando dialog de progresso');
       progressDialog.show(i18n.translate('signing_out') ?? 'Saindo...');
       
       // Executa logout (processo de 9 etapas)
+      debugPrint('🚪 [LOGOUT] Chamando _viewModel.signOut()');
       await _viewModel?.signOut();
+      debugPrint('🚪 [LOGOUT] ✅ signOut() concluído');
       
       // Esconde loading
+      debugPrint('🚪 [LOGOUT] Escondendo dialog de progresso');
       await progressDialog.hide();
+      debugPrint('🚪 [LOGOUT] ✅ Dialog escondido');
       
-      // Aguarda frame para garantir que dialog foi fechado
-      if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Navega usando GoRouter capturado (não usa context)
+      debugPrint('🚪 [LOGOUT] Navegando para ${AppRoutes.signIn} via GoRouter');
+      router.go(AppRoutes.signIn);
+      debugPrint('🚪 [LOGOUT] ✅ Navegação concluída');
       
-      // Navega para login usando go_router (declarative navigation)
-      if (mounted) {
-        context.go(AppRoutes.signIn);
-      }
-    } catch (e) {
-      debugPrint('❌ Erro durante logout: $e');
+    } catch (e, stackTrace) {
+      debugPrint('🚪 [LOGOUT] ❌ Erro durante logout: $e');
+      debugPrint('🚪 [LOGOUT] ❌ StackTrace: $stackTrace');
       
       // Tenta esconder loading mesmo com erro
       try {
+        debugPrint('🚪 [LOGOUT] Tentando esconder dialog após erro');
         await progressDialog.hide();
-      } catch (_) {}
-      
-      // Navega mesmo assim (logout provavelmente foi executado)
-      if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        context.go(AppRoutes.signIn);
+        debugPrint('🚪 [LOGOUT] ✅ Dialog escondido após erro');
+      } catch (dialogError) {
+        debugPrint('🚪 [LOGOUT] ❌ Erro ao esconder dialog: $dialogError');
       }
+      
+      // Navega mesmo assim usando GoRouter capturado
+      debugPrint('🚪 [LOGOUT] Navegando para ${AppRoutes.signIn} (após erro)');
+      router.go(AppRoutes.signIn);
+      debugPrint('🚪 [LOGOUT] ✅ Navegação concluída (após erro)');
     }
   }
 
