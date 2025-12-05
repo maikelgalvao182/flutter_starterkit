@@ -184,8 +184,8 @@ class LocationSyncScheduler {
           .collection('Users')
           .doc(userId)
           .update({
-        'lat': latitude,
-        'lng': longitude,
+        'latitude': latitude,
+        'longitude': longitude,
         'locationUpdatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {

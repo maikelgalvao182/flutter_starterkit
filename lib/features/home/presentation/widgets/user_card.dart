@@ -23,6 +23,7 @@ class UserCard extends StatefulWidget {
     this.userWithMeta,
     this.user,
     this.onTap,
+    this.onLongPress,
     super.key,
   });
 
@@ -30,6 +31,7 @@ class UserCard extends StatefulWidget {
   final UserWithMeta? userWithMeta;
   final User? user;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   State<UserCard> createState() => _UserCardState();
@@ -41,6 +43,8 @@ class _UserCardState extends State<UserCard> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🎴 UserCard iniciado para userId: ${widget.userId}');
+    
     // Se userWithMeta ou user for fornecido, o controller pode não ser necessário para fetch,
     // mas mantemos para compatibilidade ou usamos dados diretos.
     _controller = UserCardController(userId: widget.userId);
@@ -167,6 +171,7 @@ class _UserCardState extends State<UserCard> {
 
     return GestureDetector(
       onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),

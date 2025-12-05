@@ -359,3 +359,7 @@ export const onApplicationApproved = functions.firestore
       console.error("❌ Erro ao processar application aprovada:", error);
     }
   });
+
+// ===== EVENT MANAGEMENT FUNCTIONS =====
+// Importa e exporta as Cloud Functions de gerenciamento de eventos
+export * from "./events";

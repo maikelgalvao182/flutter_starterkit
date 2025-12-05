@@ -27,172 +27,165 @@ class SessionCleanupService {
   static bool get isLoggingOut => _isLoggingOut;
 
   /// Executa o logout completo e limpeza de sessão.
+  /// Processo robusto com 9 etapas sequenciais.
   Future<void> performLogout() async {
-    _isLoggingOut = true; // Marcar início do logout
-    _log('=== INICIANDO LOGOUT COMPLETO ===');
+    _isLoggingOut = true;
+    final startTime = DateTime.now();
+    _log('🚀 === INICIANDO LOGOUT COMPLETO (${startTime.toIso8601String()}) ===');
     
     try {
       // 1. Parar listeners de push e remover token do usuário atual
-      _log('ETAPA 1: Removendo device token do usuário');
+      _log('📱 ETAPA 1/9: Removendo device token do usuário');
       try {
         final uid = _firebaseAuth.currentUser?.uid;
-        _log('UID do usuário atual: $uid');
         if (uid != null) {
           // TODO: Implementar remoção do device token quando tivermos push notifications
           // await UserPushNotificationService().removeUserDeviceToken(uid);
-          _log('Device token removido com sucesso para UID: $uid');
+          _log('✅ Device token preparado para remoção (UID: ${_maskUid(uid)})');
         } else {
-          _log('Nenhum usuário logado, pulando remoção de device token');
+          _log('⚠️  Nenhum usuário logado, pulando remoção de device token');
         }
       } catch (e) {
-        _log('Falha ao remover device token: $e');
+        _log('⚠️  Etapa 1/9 falhou: $e (continuando...)');
       }
 
       // 2. Google Sign-In logout
-      _log('ETAPA 2: Fazendo logout do Google Sign-In');
+      _log('🔓 ETAPA 2/9: Limpando Google Sign-In');
       try {
-        final googleSignIn = GoogleSignIn.instance;
-        await googleSignIn.signOut();
-        _log('Google Sign-In cleared com sucesso');
+        await GoogleSignIn.instance.signOut();
+        _log('✅ Google Sign-In limpo com sucesso');
       } catch (e) {
-        _log('Falha ao limpar Google Sign-In: $e');
+        _log('⚠️  Etapa 2/9 falhou: $e (continuando...)');
       }
 
       // 3. Limpar caches personalizados
-      _log('ETAPA 3: Limpando caches personalizados');
+      _log('🗑️  ETAPA 3/9: Limpando caches personalizados');
       try {
         final uid = _firebaseAuth.currentUser?.uid;
         if (uid != null) {
-          _log('Limpando caches para UID: $uid');
           // TODO: Implementar limpeza de caches específicos quando necessário
-          _log('Caches personalizados limpos com sucesso');
+          _log('✅ Caches personalizados preparados para limpeza');
         } else {
-          _log('UID nulo, pulando limpeza de caches personalizados');
+          _log('⚠️  UID nulo, pulando limpeza de caches');
         }
       } catch (e) {
-        _log('Falha ao limpar caches: $e');
+        _log('⚠️  Etapa 3/9 falhou: $e (continuando...)');
       }
 
       // 4. Desinscrever de tópicos FCM específicos do usuário (se aplicável)
-      _log('ETAPA 4: Desinscrevendo de tópicos FCM do usuário');
+      _log('🔔 ETAPA 4/9: Desinscrevendo de tópicos FCM do usuário');
       try {
         final uid = _firebaseAuth.currentUser?.uid;
         if (uid != null) {
-          // Padrão: tópicos nomeados pelo UID
           final topicName = 'user_$uid';
-          _log('Desinscrevendo do tópico: $topicName');
           await _messaging.unsubscribeFromTopic(topicName);
-          _log('Desinscrição do tópico $topicName realizada com sucesso');
+          _log('✅ Desinscrição do tópico user_* realizada');
         } else {
-          _log('UID nulo, pulando desinscrição de tópicos FCM');
+          _log('⚠️  UID nulo, pulando desinscrição de tópicos');
         }
       } catch (e) {
-        _log('Falha ao desinscrever de tópicos: $e');
+        _log('⚠️  Etapa 4/9 falhou: $e (continuando...)');
       }
 
       // 4.1. Apagar token FCM local para evitar associação com nova sessão
-      _log('ETAPA 4.1: Apagando device token FCM local');
+      _log('🗑️  ETAPA 4.1/9: Apagando token FCM local');
       try {
         await _messaging.deleteToken();
-        _log('Device token FCM local apagado com sucesso');
+        _log('✅ Token FCM local deletado com sucesso');
       } catch (e) {
-        _log('Falha ao apagar device token FCM local: $e');
+        _log('⚠️  Etapa 4.1/9 falhou: $e (continuando...)');
       }
 
       // 5. Limpar sessão persistida (SharedPreferences) via SessionManager
-      _log('ETAPA 5: Limpando SessionManager e SharedPreferences');
+      _log('💾 ETAPA 5/9: Limpando SessionManager e SharedPreferences');
       try {
-        _log('Inicializando SessionManager');
         await SessionManager.instance.initialize();
-        _log('SessionManager inicializado');
-        
-        // Zera token FCM salvo localmente e apaga usuário/sinalizadores
-        _log('Zerando FCM token local');
         SessionManager.instance.fcmToken = null;
-        _log('FCM token local zerado');
-        
-        _log('Executando logout do SessionManager');
         await SessionManager.instance.logout();
-        _log('SessionManager logout executado com sucesso');
+        _log('✅ SessionManager limpo (configurações preservadas)');
       } catch (e) {
-        _log('Falha ao limpar SessionManager: $e');
+        _log('⚠️  Etapa 5/9 falhou: $e (continuando...)');
       }
 
       // 6. Firebase Auth signOut (após limpar preferências/caches)
-      _log('ETAPA 6: Fazendo signOut do Firebase Auth');
+      _log('🔥 ETAPA 6/9: Fazendo signOut do Firebase Auth');
       try { 
         await _firebaseAuth.signOut();
-        _log('Firebase Auth signOut executado com sucesso');
+        _log('✅ Firebase Auth signOut executado');
       } catch (e) {
-        _logError('Erro em FirebaseAuth.signOut: $e');
+        _log('⚠️  Etapa 6/9 falhou: $e (continuando...)');
       }
 
-      // 7. Reset reativo global (ValueNotifiers) - redundante, mas inofensivo
-      _log('ETAPA 7: Resetando estado reativo global');
-      _resetGlobalReactiveState();
-      _log('Estado reativo global resetado');
+      // 7. Reset reativo global (ValueNotifiers)
+      _log('🔄 ETAPA 7/9: Resetando estado reativo global');
+      try {
+        _resetGlobalReactiveState();
+        _log('✅ Estado reativo (AppState) resetado');
+      } catch (e) {
+        _log('⚠️  Etapa 7/9 falhou: $e (continuando...)');
+      }
 
       // 8. Limpar cache offline do Firestore para evitar dados antigos
-      _log('ETAPA 8: Limpando cache offline do Firestore');
+      _log('🗄️  ETAPA 8/9: Limpando cache offline do Firestore');
       try {
-        await FirebaseFirestore.instance.clearPersistence();
-        _log('Cache offline do Firestore limpo com sucesso');
+        await FirebaseFirestore.instance.clearPersistence()
+          .timeout(const Duration(seconds: 5));
+        _log('✅ Cache Firestore limpo com sucesso');
       } catch (e) {
-        _log('Falha ao limpar cache offline do Firestore: $e');
+        _log('⚠️  Etapa 8/9 falhou: $e (continuando...)');
       }
 
       // 9. Reinscrever em tópico global (padrão pós logout)
-      _log('ETAPA 9: Reinscrevendo no tópico global: $globalTopic');
+      _log('🌍 ETAPA 9/9: Reinscrevendo no tópico global');
       try { 
         await _messaging.subscribeToTopic(globalTopic);
-        _log('Reinscrição no tópico global $globalTopic realizada com sucesso');
+        _log('✅ Reinscrito em tópico global: $globalTopic');
       } catch (e) {
-        _log('Falha ao reinscrever no tópico global: $e');
+        _log('⚠️  Etapa 9/9 falhou: $e (continuando...)');
       }
 
-      _log('=== LOGOUT COMPLETO FINALIZADO COM SUCESSO ===');
+      final duration = DateTime.now().difference(startTime);
+      _log('🎉 === LOGOUT COMPLETO FINALIZADO (${duration.inMilliseconds}ms) ===');
     } catch (e, st) {
-      _logError('Falha inesperada no performLogout: $e', stackTrace: st);
-      rethrow; // Propaga erro para o chamador
+      _log('❌ ERRO CRÍTICO durante logout: $e');
+      _logError('Stack trace:', stackTrace: st);
+      // NÃO propaga erro - deixa UI navegar mesmo assim
     } finally {
       _isLoggingOut = false;
-      _log('Flag de logout resetado');
+      _log('✅ Flag de logout resetada - processo finalizado');
     }
   }
 
   void _resetGlobalReactiveState() {
-    try {
-      _log('Resetando AppState.currentUser');
-      AppState.currentUser.value = null;
-      
-      _log('Resetando AppState.isVerified');
-      AppState.isVerified.value = false;
-      
-      _log('Resetando contadores de notificações');
-      AppState.unreadNotifications.value = 0;
-      AppState.unreadMessages.value = 0;
-      AppState.unreadLikes.value = 0;
-      
-      _log('Resetando rota atual e estado de background');
-      AppState.currentRoute.value = '/';
-      AppState.isAppInBackground.value = false;
-      
-      _log('Todos os valores do AppState foram resetados');
-    } catch (e) {
-      _log('Falha ao resetar AppState: $e');
-    }
+    AppState.currentUser.value = null;
+    AppState.isVerified.value = false;
+    AppState.unreadNotifications.value = 0;
+    AppState.unreadMessages.value = 0;
+    AppState.unreadLikes.value = 0;
+    AppState.currentRoute.value = '/';
+    AppState.isAppInBackground.value = false;
+  }
+
+  // ==================== HELPERS ====================
+
+  /// Mascara UID para logs (mostra primeiros 4 e últimos 4 caracteres)
+  String _maskUid(String uid) {
+    if (uid.length <= 8) return '****';
+    return '${uid.substring(0, 4)}****${uid.substring(uid.length - 4)}';
   }
 
   // ==================== LOGGING ====================
 
   void _log(String message) {
-    developer.log(message, name: 'partiu.session_cleanup');
+    if (kDebugMode) {
+      developer.log(message, name: 'SessionCleanup');
+    }
   }
 
   void _logError(String message, {StackTrace? stackTrace}) {
     developer.log(
       message,
-      name: 'partiu.session_cleanup',
+      name: 'SessionCleanup',
       error: message,
       stackTrace: stackTrace,
     );

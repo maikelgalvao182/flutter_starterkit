@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:partiu/features/home/data/models/event_application_model.dart';
 
 /// Modelo simplificado de evento para exibição no mapa
 class EventModel {
@@ -19,6 +20,7 @@ class EventModel {
   final DateTime? scheduleDate;
   final String? privacyType;
   final List<Map<String, dynamic>>? participants;
+  final EventApplicationModel? userApplication; // Aplicação do usuário atual (pré-carregada)
 
   EventModel({
     required this.id,
@@ -37,6 +39,7 @@ class EventModel {
     this.scheduleDate,
     this.privacyType,
     this.participants,
+    this.userApplication,
   });
 
   /// Factory para criar EventModel a partir de um Map
@@ -140,6 +143,7 @@ class EventModel {
     DateTime? scheduleDate,
     String? privacyType,
     List<Map<String, dynamic>>? participants,
+    EventApplicationModel? userApplication,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -158,6 +162,7 @@ class EventModel {
       scheduleDate: scheduleDate ?? this.scheduleDate,
       privacyType: privacyType ?? this.privacyType,
       participants: participants ?? this.participants,
+      userApplication: userApplication ?? this.userApplication,
     );
   }
 }

@@ -226,12 +226,24 @@ class AppleMapViewModel extends ChangeNotifier {
         debugPrint('⚠️ Erro ao buscar participantes para evento ${event.id}: $e');
       }
 
-      // 5. Retornar evento enriquecido
+      // 5. Buscar aplicação do usuário atual (para saber se está aprovado/pendente)
+      dynamic userApplication;
+      try {
+        userApplication = await _applicationRepository.getUserApplication(
+          eventId: event.id,
+          userId: currentUserId,
+        );
+      } catch (e) {
+        debugPrint('⚠️ Erro ao buscar aplicação do usuário para evento ${event.id}: $e');
+      }
+
+      // 6. Retornar evento enriquecido
       return event.copyWith(
         distanceKm: distance,
         isAvailable: isAvailable,
         creatorFullName: creatorFullName,
         participants: participants,
+        userApplication: userApplication,
       );
     }));
     

@@ -12,6 +12,7 @@ import 'package:partiu/features/home/presentation/screens/splash_screen.dart';
 import 'package:partiu/features/home/presentation/screens/advanced_filters_screen.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen_optimized.dart';
 import 'package:partiu/features/profile/presentation/screens/edit_profile_screen_advanced.dart';
+import 'package:partiu/features/events/presentation/screens/group_info/group_info_screen.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule_drawer.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/features/auth/presentation/widgets/signup_widgets.dart';
@@ -36,6 +37,7 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String advancedFilters = '/advanced-filters';
   static const String schedule = '/schedule';
+  static const String groupInfo = '/group-info';
 }
 
 /// Cria o GoRouter com proteção baseada no AuthSyncService
@@ -207,6 +209,25 @@ GoRouter createAppRouter(BuildContext context) {
       path: AppRoutes.schedule,
       name: 'schedule',
       builder: (context, state) => const ScheduleDrawer(),
+    ),
+    
+    // Group Info
+    GoRoute(
+      path: '${AppRoutes.groupInfo}/:eventId',
+      name: 'groupInfo',
+      builder: (context, state) {
+        final eventId = state.pathParameters['eventId'];
+        
+        if (eventId == null) {
+          return Scaffold(
+            body: Center(
+              child: Text(AppLocalizations.of(context).translate('event_not_found')),
+            ),
+          );
+        }
+        
+        return GroupInfoScreen(eventId: eventId);
+      },
     ),
   ],
   

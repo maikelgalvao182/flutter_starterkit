@@ -1,0 +1,267 @@
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+
+/**
+ * Cloud Function para deletar um evento e todos os seus dados relacionados
+ *
+ * Operações realizadas:
+ * 1. Valida que o usuário é o criador do evento
+ * 2. Remove documento em 'events'
+ * 3. Remove chat em 'EventChats' e todas as mensagens
+ * 4. Remove todas as aplicações em 'EventApplications'
+ * 5. Remove conversas relacionadas de todos os participantes
+ * 6. Remove arquivos do Storage
+ *
+ * @param eventId - ID do evento a ser deletado
+ * @returns {success: boolean, message: string}
+ */
+export const deleteEvent = functions
+  .region("us-central1")
+  .https.onCall(async (data, context) => {
+    // Verifica autenticação
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "User must be authenticated to delete an event"
+      );
+    }
+
+    const {eventId} = data;
+    const userId = context.auth.uid;
+
+    if (!eventId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "eventId is required"
+      );
+    }
+
+    const firestore = admin.firestore();
+    const storage = admin.storage();
+
+    try {
+      // 1. Verifica se o evento existe e se o usuário é o criador
+      const eventDoc = await firestore.collection("events").doc(eventId).get();
+
+      if (!eventDoc.exists) {
+        throw new functions.https.HttpsError(
+          "not-found",
+          "Event not found"
+        );
+      }
+
+      const eventData = eventDoc.data();
+      const createdBy = eventData?.createdBy;
+
+      if (createdBy !== userId) {
+        throw new functions.https.HttpsError(
+          "permission-denied",
+          "Only the event creator can delete this event"
+        );
+      }
+
+      console.log(
+        `🗑️ Starting deletion for event ${eventId} by user ${userId}`
+      );
+
+      // 2. Busca todas as aplicações para saber quais conversas remover
+      const applicationsSnapshot = await firestore
+        .collection("EventApplications")
+        .where("eventId", "==", eventId)
+        .get();
+
+      const participantIds = new Set<string>();
+      participantIds.add(userId); // Adiciona o criador
+
+      applicationsSnapshot.docs.forEach((doc) => {
+        const appUserId = doc.data().userId;
+        if (appUserId) {
+          participantIds.add(appUserId);
+        }
+      });
+
+      console.log(`👥 Found ${participantIds.size} participants to clean up`);
+
+      // 3. Inicia batch operations (máximo 500 operações por batch)
+      const batches: FirebaseFirestore.WriteBatch[] = [];
+      let currentBatch = firestore.batch();
+      let operationCount = 0;
+      const MAX_BATCH_SIZE = 500;
+
+      // Helper para adicionar operação ao batch
+      const addToBatch = (
+        operation: (batch: FirebaseFirestore.WriteBatch) => void
+      ) => {
+        if (operationCount >= MAX_BATCH_SIZE) {
+          batches.push(currentBatch);
+          currentBatch = firestore.batch();
+          operationCount = 0;
+        }
+        operation(currentBatch);
+        operationCount++;
+      };
+
+      // 4. Remove documento do evento
+      addToBatch((batch) =>
+        batch.delete(firestore.collection("events").doc(eventId))
+      );
+
+      // 5. Remove chat do evento
+      addToBatch((batch) =>
+        batch.delete(firestore.collection("EventChats").doc(eventId))
+      );
+
+      // 6. Remove mensagens do chat (subcoleção)
+      const messagesSnapshot = await firestore
+        .collection("EventChats")
+        .doc(eventId)
+        .collection("Messages")
+        .get();
+
+      console.log(`💬 Deleting ${messagesSnapshot.size} messages`);
+      messagesSnapshot.docs.forEach((doc) => {
+        addToBatch((batch) => batch.delete(doc.ref));
+      });
+
+      // 7. Remove todas as aplicações
+      console.log(`📋 Deleting ${applicationsSnapshot.size} applications`);
+      applicationsSnapshot.docs.forEach((doc) => {
+        addToBatch((batch) => batch.delete(doc.ref));
+      });
+
+      // 8. Remove conversas de todos os participantes
+      const eventUserId = `event_${eventId}`;
+      console.log(`🗑️ Removing conversations for ${participantIds.size} users`);
+
+      for (const participantId of participantIds) {
+        const conversationRef = firestore
+          .collection("Connections")
+          .doc(participantId)
+          .collection("conversations")
+          .doc(eventUserId);
+
+        addToBatch((batch) => batch.delete(conversationRef));
+      }
+
+      // 9. Adiciona o último batch se houver operações pendentes
+      if (operationCount > 0) {
+        batches.push(currentBatch);
+      }
+
+      // 10. Executa todos os batches
+      console.log(`📦 Executing ${batches.length} batch(es)...`);
+      await Promise.all(batches.map((batch) => batch.commit()));
+      console.log("✅ All Firestore operations completed");
+
+      // 11. Remove arquivos do Storage (async, não aguarda conclusão)
+      deleteEventStorage(eventId, eventData, storage)
+        .then(() =>
+          console.log(`🗑️ Storage cleanup completed for event ${eventId}`)
+        )
+        .catch((err) =>
+          console.error(`⚠️ Storage cleanup failed: ${err.message}`)
+        );
+
+      console.log(`✅ Event ${eventId} deleted successfully`);
+
+      return {
+        success: true,
+        message: "Event deleted successfully",
+      };
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error(`❌ Error deleting event ${eventId}:`, err);
+
+      // Se for um HttpsError, propaga
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      // Caso contrário, encapsula em um HttpsError
+      throw new functions.https.HttpsError(
+        "internal",
+        `Failed to delete event: ${err.message}`
+      );
+    }
+  });
+
+/**
+ * Remove arquivos do Storage relacionados ao evento
+ * @param {string} eventId - ID do evento
+ * @param {Record<string, unknown>} eventData - Dados do evento
+ * @param {admin.storage.Storage} storage - Firebase Storage instance
+ * @return {Promise<void>}
+ */
+async function deleteEventStorage(
+  eventId: string,
+  eventData: Record<string, unknown> | null | undefined,
+  storage: admin.storage.Storage
+): Promise<void> {
+  const bucket = storage.bucket();
+
+  try {
+    // Lista de possíveis caminhos
+    const paths = [
+      `events/${eventId}`,
+      `event_images/${eventId}`,
+      `event_media/${eventId}`,
+    ];
+
+    // Deleta cada caminho
+    for (const path of paths) {
+      try {
+        await bucket.deleteFiles({
+          prefix: path,
+        });
+        console.log(`🗑️ Deleted files at ${path}`);
+      } catch (err: unknown) {
+        const error = err as Error;
+        console.warn(`⚠️ Could not delete ${path}: ${error.message}`);
+      }
+    }
+
+    // Deleta cover photo se existir
+    if (eventData?.coverPhoto && typeof eventData.coverPhoto === "string") {
+      try {
+        const url = eventData.coverPhoto;
+        if (url.includes("firebase")) {
+          // Extrai o caminho do arquivo da URL
+          const pathMatch = url.match(/\/o\/(.+?)\?/);
+          if (pathMatch) {
+            const filePath = decodeURIComponent(pathMatch[1]);
+            await bucket.file(filePath).delete();
+            console.log(`🗑️ Deleted cover photo: ${filePath}`);
+          }
+        }
+      } catch (err: unknown) {
+        const error = err as Error;
+        console.warn(`⚠️ Could not delete cover photo: ${error.message}`);
+      }
+    }
+
+    // Deleta fotos da galeria se existirem
+    if (eventData && Array.isArray(eventData.photos)) {
+      for (const photoUrl of eventData.photos) {
+        if (typeof photoUrl === "string" && photoUrl.includes("firebase")) {
+          try {
+            const pathMatch = photoUrl.match(/\/o\/(.+?)\?/);
+            if (pathMatch) {
+              const filePath = decodeURIComponent(pathMatch[1]);
+              await bucket.file(filePath).delete();
+              console.log(`🗑️ Deleted gallery photo: ${filePath}`);
+            }
+          } catch (err: unknown) {
+            const error = err as Error;
+            console.warn(`⚠️ Could not delete gallery photo: ${error.message}`);
+          }
+        }
+      }
+    }
+
+    console.log("✅ Storage cleanup completed");
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("❌ Storage cleanup error:", err.message);
+    throw error;
+  }
+}

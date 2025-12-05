@@ -24,7 +24,7 @@ class GeoService {
       if (data == null) return null;
 
       final lat = (data['latitude'] as num?)?.toDouble();
-      final lng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble();
+      final lng = (data['longitude'] as num?)?.toDouble();
 
       if (lat != null && lng != null) {
         return (lat: lat, lng: lng);
@@ -97,8 +97,7 @@ class GeoService {
         final data = doc.data();
 
         final userLat = (data['latitude'] as num?)?.toDouble();
-        // Fallback para 'lng' se 'longitude' não existir
-        final userLng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble();
+        final userLng = (data['longitude'] as num?)?.toDouble();
 
         if (userLat == null || userLng == null) continue;
         

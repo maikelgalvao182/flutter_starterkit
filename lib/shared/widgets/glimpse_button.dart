@@ -22,6 +22,8 @@ class GlimpseButton extends StatelessWidget {
     this.outline = false,
     this.isProcessing = false,
     this.noPadding = false,
+    this.icon,
+    this.iconSize = 20,
   });
   final String text;
   final VoidCallback? onTap;
@@ -35,6 +37,8 @@ class GlimpseButton extends StatelessWidget {
   final bool outline;
   final bool isProcessing;
   final bool noPadding;
+  final IconData? icon;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -98,14 +102,32 @@ class GlimpseButton extends StatelessWidget {
                       ),
                     ],
                   )
-                : Text(
-                    text,
-                    style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                      fontWeight: fontWeight,
-                      color: effectiveTextColor,
-                      fontSize: fontSize,
-                    ),
-                    textAlign: TextAlign.center,
+                : Row(
+                    mainAxisSize: MainAxisSize.max,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(
+                          icon,
+                          size: iconSize,
+                          color: effectiveTextColor,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          text,
+                          style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+                            fontWeight: fontWeight,
+                            color: effectiveTextColor,
+                            fontSize: fontSize,
+                          ),
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ),
           ),
         ),

@@ -50,7 +50,7 @@ class UserCardController extends ChangeNotifier {
       
       // Calcular distância
       final lat = (data['latitude'] as num?)?.toDouble();
-      final lng = (data['longitude'] as num?)?.toDouble() ?? (data['lng'] as num?)?.toDouble();
+      final lng = (data['longitude'] as num?)?.toDouble();
 
       if (lat != null && lng != null) {
         final dist = await GeoService().getDistanceToTarget(

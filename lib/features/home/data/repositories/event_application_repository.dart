@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/features/home/data/models/event_application_model.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
@@ -6,12 +7,14 @@ import 'package:partiu/shared/repositories/user_repository.dart';
 /// Repositório para gerenciar aplicações de usuários em eventos
 class EventApplicationRepository {
   final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
   final UserRepository _userRepo;
 
   EventApplicationRepository({
     FirebaseFirestore? firestore,
     UserRepository? userRepository,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _functions = FirebaseFunctions.instance,
         _userRepo = userRepository ?? UserRepository(firestore);
 
   /// Cria uma nova aplicação para um evento
@@ -325,6 +328,32 @@ class EventApplicationRepository {
     } catch (e) {
       debugPrint('❌ Erro ao contar todas as aplicações: $e');
       return 0;
+    }
+  }
+
+  /// Remove a aplicação do usuário no evento via Cloud Function
+  /// 
+  /// Usa Cloud Function para garantir atomicidade e segurança
+  Future<void> removeUserApplication({
+    required String eventId,
+    required String userId,
+  }) async {
+    try {
+      debugPrint('🔥 Chamando Cloud Function: removeUserApplication');
+      debugPrint('   - eventId: $eventId');
+      debugPrint('   - userId: $userId');
+      
+      final result = await _functions.httpsCallable('removeUserApplication').call({
+        'eventId': eventId,
+        'userId': userId,
+      });
+      
+      debugPrint('✅ Cloud Function executada com sucesso');
+      debugPrint('   - resultado: ${result.data}');
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao chamar removeUserApplication: $e');
+      rethrow;
     }
   }
 }

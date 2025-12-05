@@ -341,12 +341,15 @@ class SessionManager {
   /// 
   /// Limpa TODOS os dados da sessão, mas preserva configurações do app
   Future<void> logout() async {
-    _log('Logging out user: ${AppState.currentUserId ?? 'unknown'}');
+    final uid = AppState.currentUserId ?? 'unknown';
+    _log('🔐 Iniciando logout do SessionManager (UID: ${_maskSensitiveData(uid)})');
     
     // Preserva configurações que devem persistir
     final savedLanguage = language;
     final savedTheme = themeMode;
     final savedOnboarding = hasCompletedOnboarding;
+    
+    _log('💾 Preservando configurações: idioma=$savedLanguage, tema=$savedTheme');
     
     // Evita race conditions usando Future wrapper
     // clear() pode ser síncrono em algumas plataformas
@@ -355,15 +358,19 @@ class SessionManager {
       await _prefsOrThrow.reload(); // Força reload do estado
     });
     
+    _log('🧹 SharedPreferences limpo');
+    
     // Restaura configurações preservadas
     language = savedLanguage;
     themeMode = savedTheme;
     hasCompletedOnboarding = savedOnboarding;
     
+    _log('✅ Configurações restauradas');
+    
     // Delegado para limpeza de caches externos
     await _clearExternalCaches();
     
-    _log('User logged out successfully');
+    _log('✅ SessionManager logout completo');
 
     // Reset reativo global
     AppState.reset();
@@ -394,19 +401,21 @@ class SessionManager {
   /// Separação de responsabilidades - idealmente seria um CacheCleanupManager
   Future<void> _clearExternalCaches() async {
     try {
+      _log('🗑️  Limpando cache de imagens (DefaultCacheManager)');
       // Limpa cache de imagens
       await DefaultCacheManager().emptyCache();
-      _log('Image cache cleared');
+      _log('✅ Cache de imagens limpo');
       
       // Limpa AppCacheService (se existir)
       try {
+        _log('🗑️  Limpando AppCacheService');
         await AppCacheService.clearCache();
-        _log('AppCacheService cleared');
+        _log('✅ AppCacheService limpo');
       } catch (e) {
-        _log('AppCacheService not available or already clear');
+        _log('⚠️  AppCacheService não disponível ou já limpo');
       }
     } catch (e, stack) {
-      _logError('Error clearing external caches', e, stack);
+      _logError('❌ Erro ao limpar caches externos', e, stack);
     }
   }
 

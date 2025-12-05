@@ -1,0 +1,245 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
+import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/features/events/presentation/screens/group_info/group_info_controller.dart';
+import 'package:partiu/features/events/presentation/screens/group_info/widgets/event_header_widget.dart';
+import 'package:partiu/features/events/presentation/screens/group_info/widgets/map_and_error_widgets.dart';
+import 'package:partiu/features/events/presentation/screens/group_info/widgets/settings_widgets.dart';
+import 'package:partiu/features/home/presentation/widgets/user_card.dart';
+import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
+import 'package:partiu/shared/widgets/glimpse_button.dart';
+
+/// Tela de informações do grupo/evento
+class GroupInfoScreen extends StatefulWidget {
+  const GroupInfoScreen({
+    required this.eventId,
+    super.key,
+  });
+
+  final String eventId;
+
+  @override
+  State<GroupInfoScreen> createState() => _GroupInfoScreenState();
+}
+
+class _GroupInfoScreenState extends State<GroupInfoScreen> {
+  late GroupInfoController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = GroupInfoController(eventId: widget.eventId);
+    _controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: GlimpseAppBar(
+        title: i18n.translate('group_info'),
+      ),
+      body: _controller.isLoading
+          ? const Center(child: CupertinoActivityIndicator())
+          : _buildBody(i18n),
+    );
+  }
+
+  Widget _buildBody(AppLocalizations i18n) {
+    if (_controller.error != null) {
+      return ErrorStateWidget(
+        errorMessage: _controller.error!,
+        onRetry: _controller.refresh,
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(0),
+            child: Column(
+              children: [
+                const SizedBox(height: 32),
+                EventHeaderWidget(
+                  eventId: widget.eventId,
+                  emoji: _controller.eventEmoji,
+                  eventName: _controller.eventName,
+                  formattedDate: _controller.formattedEventDate,
+                  participantCount: _controller.participantCount,
+                  isCreator: _controller.isCreator,
+                  onEditName: () => _controller.showEditNameDialog(context),
+                ),
+                const SizedBox(height: 32),
+                _buildSettings(i18n),
+                const SizedBox(height: 24),
+                if (_controller.eventLocation != null)
+                  EventMapWidget(
+                    locationText: _controller.eventLocation!,
+                    onOpenMaps: _controller.openInMaps,
+                  ),
+                const SizedBox(height: 24),
+                _buildMembersList(i18n),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          color: Colors.white,
+          child: SafeArea(
+            child: !_controller.isCreator 
+                ? _buildLeaveButton(i18n) 
+                : _buildDeleteButton(i18n),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettings(AppLocalizations i18n) {
+    return Column(
+      children: [
+        SettingTileWidget(
+          icon: IconsaxPlusBold.notification,
+          iconColor: GlimpseColors.primary,
+          title: i18n.translate('mute_notifications'),
+          trailing: CupertinoSwitch(
+            value: _controller.isMuted,
+            onChanged: _controller.toggleMute,
+            activeColor: GlimpseColors.primary,
+          ),
+        ),
+        // Switch de privacidade apenas para o criador
+        if (_controller.isCreator)
+          PrivacySwitchWidget(
+            isPrivate: _controller.isPrivate,
+            isCreator: _controller.isCreator,
+            onToggle: _controller.togglePrivacy,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMembersList(AppLocalizations i18n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${i18n.translate('members')} (${_controller.participantCount})',
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: GlimpseColors.textSubTitle,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_controller.participantUserIds.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                i18n.translate('no_members_yet'),
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  color: GlimpseColors.textSubTitle,
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: _controller.participantUserIds.length,
+              itemBuilder: (context, index) {
+                final userId = _controller.participantUserIds[index];
+                
+                // Se for o owner, adiciona opção de remover membro
+                if (_controller.isCreator) {
+                  return UserCard(
+                    key: ValueKey(userId),
+                    userId: userId,
+                    onTap: () {
+                      // TODO: Navegar para perfil do usuário
+                    },
+                    onLongPress: () {
+                      // Não permite remover a si mesmo
+                      if (userId == _controller.creatorId) {
+                        ToastService.showError(
+                          context: context,
+                          title: i18n.translate('error'),
+                          subtitle: i18n.translate('cannot_remove_yourself'),
+                        );
+                        return;
+                      }
+                      
+                      // Exibe dialog de confirmação para remover
+                      _controller.showRemoveParticipantDialog(
+                        context,
+                        userId,
+                        'Participante', // TODO: Buscar nome real do usuário
+                      );
+                    },
+                  );
+                }
+                
+                // Para membros normais, apenas exibe o card
+                return UserCard(
+                  key: ValueKey(userId),
+                  userId: userId,
+                  onTap: () {
+                    // TODO: Navegar para perfil do usuário
+                  },
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(AppLocalizations i18n) {
+    return GlimpseButton(
+      text: i18n.translate('delete_activity'),
+      backgroundColor: GlimpseColors.primary,
+      textColor: Colors.white,
+      onTap: () => _controller.showDeleteEventDialog(context),
+      height: 55,
+    );
+  }
+
+  Widget _buildLeaveButton(AppLocalizations i18n) {
+    return GlimpseButton(
+      text: i18n.translate('leave_event'),
+      backgroundColor: GlimpseColors.primary,
+      textColor: Colors.white,
+      onTap: () => _controller.showLeaveEventDialog(context),
+      height: 55,
+    );
+  }
+}

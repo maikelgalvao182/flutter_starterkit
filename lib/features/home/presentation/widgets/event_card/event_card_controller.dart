@@ -6,6 +6,7 @@ import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/shared/utils/date_formatter.dart';
 
 /// Controller para gerenciar dados do EventCard
 class EventCardController extends ChangeNotifier {
@@ -57,6 +58,7 @@ class EventCardController extends ChangeNotifier {
       debugPrint('   - creatorFullName: ${_preloadedEvent!.creatorFullName}');
       debugPrint('   - privacyType: ${_preloadedEvent!.privacyType}');
       debugPrint('   - createdBy: ${_preloadedEvent!.createdBy}');
+      debugPrint('   - userApplication: ${_preloadedEvent!.userApplication != null ? "SIM (${_preloadedEvent!.userApplication!.status.value})" : "NÃO"}');
       
       _emoji = _preloadedEvent!.emoji;
       _activityText = _preloadedEvent!.title;
@@ -66,6 +68,9 @@ class EventCardController extends ChangeNotifier {
       _privacyType = _preloadedEvent!.privacyType;
       _creatorId = _preloadedEvent!.createdBy;
       
+      // PRÉ-CARREGA aplicação do usuário se vier no EventModel
+      _userApplication = _preloadedEvent!.userApplication;
+      
       if (_preloadedEvent!.participants != null) {
         _approvedParticipants = _preloadedEvent!.participants!;
       }
@@ -73,6 +78,7 @@ class EventCardController extends ChangeNotifier {
       debugPrint('✅ Dados do controller após construtor:');
       debugPrint('   - _privacyType: $_privacyType');
       debugPrint('   - _creatorId: $_creatorId');
+      debugPrint('   - _userApplication: ${_userApplication != null ? "SIM (${_userApplication!.status.value})" : "NÃO"}');
     } else {
       debugPrint('⚠️ Nenhum evento pré-carregado, será necessário buscar do Firestore');
     }
@@ -103,6 +109,20 @@ class EventCardController extends ChangeNotifier {
   List<Map<String, dynamic>> get approvedParticipants => _approvedParticipants;
   int get participantsCount => _approvedParticipants.length;
   
+  /// Participantes visíveis (máximo 5)
+  List<Map<String, dynamic>> get visibleParticipants => 
+      _approvedParticipants.take(5).toList();
+  
+  /// Quantidade de participantes restantes (além dos 5 visíveis)
+  int get remainingParticipantsCount => 
+      participantsCount - visibleParticipants.length;
+  
+  /// Data formatada (hoje, amanhã, dia XX/XX)
+  String get formattedDate => DateFormatter.formatDate(_scheduleDate);
+  
+  /// Horário formatado (HH:mm ou vazio se flexible)
+  String get formattedTime => DateFormatter.formatTime(_scheduleDate);
+  
   /// Retorna dados de localização para preload no PlaceCard
   /// Inclui visitantes aprovados para exibição imediata
   Map<String, dynamic>? get locationData {
@@ -128,6 +148,12 @@ class EventCardController extends ChangeNotifier {
     return privacyType == 'open' ? 'participate' : 'request_participation';
   }
   
+  /// Texto do botão Chat (hardcoded para não depender de i18n)
+  String get chatButtonText => 'Chat';
+  
+  /// Texto do botão Sair (hardcoded para não depender de i18n)
+  String get leaveButtonText => 'Sair';
+  
   /// Se o botão deve estar habilitado
   bool get isButtonEnabled {
     if (isCreator) return true;
@@ -137,36 +163,144 @@ class EventCardController extends ChangeNotifier {
     return true; // Pode aplicar
   }
 
-  /// Carrega dados do evento de forma assíncrona (ANTES de abrir o widget)
+  /// Pré-carrega apenas informações essenciais para renderizar o card instantaneamente.
+  /// Isso roda ANTES de abrir o modal — deve ser muito rápido (60-120ms).
   /// 
-  /// Se o evento já foi pré-carregado, usa os dados enriquecidos e apenas busca dados adicionais
-  Future<void> load() async {
-    debugPrint('🔄 EventCardController.load() iniciado');
-    debugPrint('   - _privacyType ANTES de load: $_privacyType');
+  /// Card já abre com layout correto:
+  /// - Botões certos (Chat + Sair se aprovado, ou Participar se não aplicou)
+  /// - Estado do criador identificado
+  /// - Privacy type carregado
+  Future<void> preloadState() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    debugPrint('⚡ preloadState() iniciado (modo rápido)');
+    final startTime = DateTime.now();
+
+    // Se já veio do preloadedEvent, está pronto
+    if (_preloadedEvent != null) {
+      _creatorId = _preloadedEvent!.createdBy;
+      _privacyType = _preloadedEvent!.privacyType;
+      _userApplication = _preloadedEvent!.userApplication;
+      _emoji = _preloadedEvent!.emoji;
+      _activityText = _preloadedEvent!.title;
+      _locationName = _preloadedEvent!.locationName;
+      _creatorFullName = _preloadedEvent!.creatorFullName;
+      _scheduleDate = _preloadedEvent!.scheduleDate;
+      
+      if (_preloadedEvent!.participants != null) {
+        _approvedParticipants = _preloadedEvent!.participants!;
+      }
+      
+      final duration = DateTime.now().difference(startTime).inMilliseconds;
+      debugPrint('✅ preloadState() completo em ${duration}ms (dados pré-carregados)');
+      return;
+    }
+
+    // Caso contrário, buscar APENAS dados mínimos do Firestore (paralelo)
+    debugPrint('🔍 Buscando dados mínimos do Firestore...');
     
     try {
-      // Se temos evento pré-carregado, usar esses dados (evita query do Firestore)
-      if (_preloadedEvent != null) {
-        // Dados já inicializados no construtor
-        debugPrint('✨ EventCard usando dados pré-carregados (sem query Firestore)');
+      // Buscar em paralelo: aplicação do usuário + dados essenciais do evento
+      final results = await Future.wait([
+        // 1. Application do usuário
+        FirebaseFirestore.instance
+            .collection('EventApplications')
+            .where('eventId', isEqualTo: eventId)
+            .where('userId', isEqualTo: uid)
+            .limit(1)
+            .get(),
+        
+        // 2. Dados essenciais do evento
+        FirebaseFirestore.instance
+            .collection('Events')
+            .doc(eventId)
+            .get(),
+      ]);
+
+      // Processar application
+      final appSnapshot = results[0] as QuerySnapshot;
+      if (appSnapshot.docs.isNotEmpty) {
+        _userApplication = EventApplicationModel.fromFirestore(appSnapshot.docs.first);
+        debugPrint('✅ userApplication carregada: ${_userApplication!.status.value}');
+      } else {
+        debugPrint('ℹ️ userApplication: nenhuma encontrada');
+      }
+
+      // Processar evento
+      final eventDoc = results[1] as DocumentSnapshot;
+      if (eventDoc.exists) {
+        final data = eventDoc.data() as Map<String, dynamic>;
+        _creatorId = data['createdBy'] as String?;
+        
+        // Extrair privacyType de participants.privacyType
+        final participantsData = data['participants'] as Map<String, dynamic>?;
+        _privacyType = participantsData?['privacyType'] as String? ?? 'open';
+        
+        // Dados para exibição (opcional, mas bom ter)
+        _emoji = data['emoji'] as String?;
+        _activityText = data['activityText'] as String?;
+        
+        // Location
+        final locationData = data['location'] as Map<String, dynamic>?;
+        _locationName = locationData?['locationName'] as String?;
+        
+        debugPrint('✅ Dados essenciais do evento carregados');
+      }
+
+      final duration = DateTime.now().difference(startTime).inMilliseconds;
+      debugPrint('✅ preloadState() completo em ${duration}ms');
+      debugPrint('   - isCreator: $isCreator');
+      debugPrint('   - hasApplied: $hasApplied');
+      debugPrint('   - isApproved: $isApproved');
+      debugPrint('   - privacyType: $_privacyType');
+      
+    } catch (e) {
+      debugPrint('❌ preloadState() erro: $e');
+      // Não propaga erro - load() tentará novamente
+    }
+  }
+
+  /// Carrega dados do evento de forma assíncrona (ANTES de abrir o widget)
+  /// 
+  /// Agora foca apenas em dados ADICIONAIS (participantes, criador fullName, etc).
+  /// O essencial (isApproved, isCreator, privacyType) já vem do preloadState().
+  Future<void> load() async {
+    debugPrint('🔄 EventCardController.load() iniciado');
+    
+    try {
+      // Se temos evento pré-carregado E já temos dados essenciais, pular busca
+      if (_preloadedEvent != null && _privacyType != null) {
+        debugPrint('✨ Dados essenciais já carregados via preloadState()');
       } else {
         // Fallback: buscar do Firestore (fluxo antigo)
         debugPrint('⚠️ Sem dados pré-carregados, buscando do Firestore...');
         await _loadEventData();
       }
       
-      debugPrint('   - _privacyType APÓS carregar evento: $_privacyType');
+      // Buscar dados ADICIONAIS (não-essenciais)
       
-      await _loadUserApplication();
+      // 1. Nome completo do criador (se ainda não tiver)
+      if (_creatorFullName == null && _creatorId != null) {
+        debugPrint('👤 Buscando nome do criador...');
+        final userData = await _userRepo.getUserBasicInfo(_creatorId!);
+        _creatorFullName = userData?['fullName'] as String?;
+      }
       
-      // Carregar participantes apenas se não vieram pré-carregados
+      // 2. userApplication (se ainda não foi carregada)
+      if (_userApplication == null) {
+        debugPrint('🔍 Buscando userApplication (fallback)...');
+        await _loadUserApplication();
+      }
+      
+      // 3. Participantes aprovados (se não vieram pré-carregados)
       if (_preloadedEvent?.participants == null) {
+        debugPrint('👥 Buscando lista de participantes...');
         await _loadApprovedParticipants();
       }
       
       _loaded = true;
-      debugPrint('✅ EventCardController.load() finalizado com sucesso');
-      debugPrint('   - _privacyType FINAL: $_privacyType');
+      debugPrint('✅ EventCardController.load() finalizado');
       notifyListeners();
     } catch (e) {
       _error = 'Erro ao carregar dados: $e';
@@ -265,6 +399,40 @@ class EventCardController extends ChangeNotifier {
       _isApplying = false;
       notifyListeners();
       debugPrint('🏁 applyToEvent finalizado');
+    }
+  }
+
+  /// Remove a aplicação do usuário (sair do evento)
+  Future<void> leaveEvent() async {
+    debugPrint('🚪 EventCardController.leaveEvent iniciado');
+    
+    if (!hasApplied) {
+      debugPrint('⚠️ Usuário não tem aplicação para remover');
+      return;
+    }
+    
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      debugPrint('❌ Usuário não autenticado');
+      throw Exception('Usuário não autenticado');
+    }
+    
+    try {
+      debugPrint('🔥 Chamando removeUserApplication via Cloud Function');
+      await _applicationRepo.removeUserApplication(
+        eventId: eventId,
+        userId: userId,
+      );
+      
+      debugPrint('✅ Aplicação removida com sucesso');
+      
+      // Limpar aplicação local
+      _userApplication = null;
+      notifyListeners();
+      
+    } catch (e) {
+      debugPrint('❌ Erro ao sair do evento: $e');
+      rethrow;
     }
   }
 
