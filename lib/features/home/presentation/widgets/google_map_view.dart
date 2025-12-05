@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/presentation/services/google_event_marker_service.dart';
-import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
 import 'package:partiu/screens/chat/chat_screen_refactored.dart';
@@ -18,12 +18,12 @@ import 'package:partiu/screens/chat/chat_screen_refactored.dart';
 /// - Controlar câmera
 /// 
 /// Toda lógica de negócio foi extraída para:
-/// - AppleMapViewModel (orquestração) - Reutilizado!
+/// - MapViewModel (orquestração)
 /// - EventMarkerService (markers)
 /// - UserLocationService (localização)
 /// - AvatarService (avatares)
 class GoogleMapView extends StatefulWidget {
-  final AppleMapViewModel viewModel;
+  final MapViewModel viewModel;
 
   const GoogleMapView({
     super.key,
@@ -59,21 +59,25 @@ class GoogleMapViewState extends State<GoogleMapView> {
     // Carregar estilo do mapa de assets
     _loadMapStyle();
     
-    // Pré-carregar pins padrão
-    _markerService.preloadDefaultPins();
-    
     // Configurar callback de tap no ViewModel recebido
     debugPrint('🔴 GoogleMapView: Configurando callback onMarkerTap');
     widget.viewModel.onMarkerTap = _onMarkerTap;
     debugPrint('🔴 GoogleMapView: Callback configurado? ${widget.viewModel.onMarkerTap != null}');
     
-    // Listener para regenerar markers quando eventos mudarem
+    // Listener para atualizar markers quando eventos mudarem
     widget.viewModel.addListener(_onEventsChanged);
     
-    // Agora que o callback está configurado, carregar eventos
+    // Verificar se eventos e markers já foram pré-carregados pelo AppInitializerService
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('🔴 GoogleMapView: Carregando eventos APÓS callback configurado');
-      widget.viewModel.loadNearbyEvents();
+      if (widget.viewModel.events.isEmpty && !widget.viewModel.isLoading) {
+        debugPrint('🔴 GoogleMapView: Nenhum evento pré-carregado, carregando agora...');
+        widget.viewModel.loadNearbyEvents();
+      } else {
+        debugPrint('✅ GoogleMapView: ${widget.viewModel.events.length} eventos já pré-carregados!');
+        debugPrint('✅ GoogleMapView: ${widget.viewModel.googleMarkers.length} markers já pré-carregados!');
+        // Usar markers pré-carregados
+        _onEventsChanged();
+      }
     });
   }
   
@@ -90,13 +94,52 @@ class GoogleMapViewState extends State<GoogleMapView> {
   void _onEventsChanged() async {
     if (!mounted) return;
     
-    debugPrint('🗺️ GoogleMapView: Regenerando ${widget.viewModel.events.length} markers');
+    final stopwatch = Stopwatch()..start();
     
-    // Gerar markers customizados
+    // Usar markers pré-carregados do ViewModel SE existirem
+    if (widget.viewModel.googleMarkers.isNotEmpty) {
+      debugPrint('⚡ GoogleMapView: Usando ${widget.viewModel.googleMarkers.length} markers PRÉ-CARREGADOS (cache)');
+      
+      // RECONSTRUIR markers com callback correto
+      final Set<Marker> markersWithCallback = {};
+      
+      for (final marker in widget.viewModel.googleMarkers) {
+        // Extrair eventId do markerId (formato: 'event_emoji_ID' ou 'event_avatar_ID')
+        final markerId = marker.markerId.value;
+        final eventId = markerId.replaceAll('event_emoji_', '').replaceAll('event_avatar_', '');
+        
+        // Recriar marker com callback
+        markersWithCallback.add(
+          marker.copyWith(
+            onTapParam: () {
+              debugPrint('🎯 Marker callback acionado para eventId: $eventId');
+              final event = widget.viewModel.events.firstWhere((e) => e.id == eventId);
+              debugPrint('🎯 Evento encontrado: ${event.title}');
+              _onMarkerTap(event);
+            },
+          ),
+        );
+      }
+      
+      if (mounted) {
+        setState(() {
+          _markers = markersWithCallback;
+        });
+        stopwatch.stop();
+        debugPrint('✅ GoogleMapView: ${_markers.length} markers atualizados com callback em ${stopwatch.elapsedMilliseconds}ms');
+      }
+      return;
+    }
+    
+    // Fallback: gerar markers do zero (só acontece se AppInitializer falhou)
+    debugPrint('⚠️ GoogleMapView: Gerando ${widget.viewModel.events.length} markers do ZERO (fallback)');
+    
     final markers = await _markerService.buildEventMarkers(
       widget.viewModel.events,
       onTap: (eventId) {
+        debugPrint('🎯 Marker callback acionado para eventId: $eventId');
         final event = widget.viewModel.events.firstWhere((e) => e.id == eventId);
+        debugPrint('🎯 Evento encontrado: ${event.title}');
         _onMarkerTap(event);
       },
     );
@@ -105,10 +148,10 @@ class GoogleMapViewState extends State<GoogleMapView> {
       setState(() {
         _markers = markers;
       });
+      stopwatch.stop();
+      debugPrint('✅ GoogleMapView: ${_markers.length} markers gerados em ${stopwatch.elapsedMilliseconds}ms');
     }
-  }
-
-  /// Callback quando o mapa é criado
+  }// Callback quando o mapa é criado
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     
@@ -182,7 +225,15 @@ class GoogleMapViewState extends State<GoogleMapView> {
 
   /// Callback quando usuário toca em um marker
   void _onMarkerTap(EventModel event) {
+    debugPrint('🔴🔴🔴 GoogleMapView._onMarkerTap CHAMADO! 🔴🔴🔴');
     debugPrint('🔴 GoogleMapView._onMarkerTap called for: ${event.id} - ${event.title}');
+    debugPrint('📦 EventModel pré-carregado:');
+    debugPrint('   - locationName: ${event.locationName}');
+    debugPrint('   - privacyType: ${event.privacyType}');
+    debugPrint('   - creatorFullName: ${event.creatorFullName}');
+    debugPrint('   - scheduleDate: ${event.scheduleDate}');
+    debugPrint('   - userApplication: ${event.userApplication?.status.value}');
+    debugPrint('   - participants: ${event.participants?.length ?? 0}');
     
     // Criar controller com evento pré-carregado (evita query Firestore)
     final controller = EventCardController(
@@ -190,12 +241,13 @@ class GoogleMapViewState extends State<GoogleMapView> {
       preloadedEvent: event,
     );
     
-    debugPrint('🔴 Controller criado, iniciando load()');
-    // Iniciar carregamento dos dados adicionais em background
-    controller.load();
+    debugPrint('🔴 Controller criado com dados pré-carregados');
+    
+    // NÃO chamar load() aqui - deixar o EventCard chamar quando necessário
+    // O controller já tem todos os dados essenciais via preloadedEvent
     
     debugPrint('🔴 Abrindo showModalBottomSheet');
-    // Abrir o card imediatamente (sem aguardar load)
+    // Abrir o card imediatamente
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,

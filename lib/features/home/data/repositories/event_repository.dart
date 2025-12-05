@@ -15,7 +15,12 @@ class EventRepository {
 
   /// Busca um evento por ID
   /// 
-  /// Retorna null se não encontrado
+  /// IMPORTANTE: Filtra eventos cancelados (isCanceled=true) e inativos (isActive=false)
+  /// 
+  /// Retorna null se:
+  /// - Evento não encontrado
+  /// - Evento cancelado
+  /// - Evento inativo
   Future<Map<String, dynamic>?> getEventById(String eventId) async {
     try {
       final doc = await _eventsCollection.doc(eventId).get();
@@ -25,9 +30,25 @@ class EventRepository {
         return null;
       }
 
+      final data = doc.data() as Map<String, dynamic>;
+      
+      // ✅ FILTRAR eventos cancelados ou inativos
+      final isCanceled = data['isCanceled'] as bool? ?? false;
+      final isActive = data['isActive'] as bool? ?? false;
+      
+      if (isCanceled) {
+        debugPrint('⚠️ Evento $eventId está CANCELADO, não será carregado');
+        return null;
+      }
+      
+      if (!isActive) {
+        debugPrint('⚠️ Evento $eventId está INATIVO, não será carregado');
+        return null;
+      }
+
       return {
         'id': doc.id,
-        ...doc.data() as Map<String, dynamic>,
+        ...data,
       };
     } catch (e) {
       debugPrint('❌ Erro ao buscar evento $eventId: $e');
@@ -37,6 +58,8 @@ class EventRepository {
 
   /// Busca dados básicos de um evento (para cards, listas, etc)
   /// 
+  /// IMPORTANTE: Filtra eventos cancelados (isCanceled=true) e inativos (isActive=false)
+  /// 
   /// Retorna:
   /// - id
   /// - emoji
@@ -45,15 +68,35 @@ class EventRepository {
   /// - scheduleDate (convertido de schedule.date Timestamp → DateTime)
   /// - privacyType (extraído de participants.privacyType)
   /// - createdBy (userId do criador)
+  /// 
+  /// Retorna null se:
+  /// - Evento não existe
+  /// - Evento está cancelado (isCanceled=true)
+  /// - Evento está inativo (isActive=false)
   Future<Map<String, dynamic>?> getEventBasicInfo(String eventId) async {
     try {
       final doc = await _eventsCollection.doc(eventId).get();
       
       if (!doc.exists) {
+        debugPrint('⚠️ Evento não encontrado: $eventId');
         return null;
       }
 
       final data = doc.data() as Map<String, dynamic>;
+      
+      // ✅ FILTRAR eventos cancelados ou inativos
+      final isCanceled = data['isCanceled'] as bool? ?? false;
+      final isActive = data['isActive'] as bool? ?? false;
+      
+      if (isCanceled) {
+        debugPrint('⚠️ Evento $eventId está CANCELADO, não será carregado');
+        return null;
+      }
+      
+      if (!isActive) {
+        debugPrint('⚠️ Evento $eventId está INATIVO, não será carregado');
+        return null;
+      }
       
       // Extrair dados aninhados
       final locationData = data['location'] as Map<String, dynamic>?;

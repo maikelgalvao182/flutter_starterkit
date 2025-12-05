@@ -58,6 +58,7 @@ class EventCardController extends ChangeNotifier {
       debugPrint('   - creatorFullName: ${_preloadedEvent!.creatorFullName}');
       debugPrint('   - privacyType: ${_preloadedEvent!.privacyType}');
       debugPrint('   - createdBy: ${_preloadedEvent!.createdBy}');
+      debugPrint('   - scheduleDate: ${_preloadedEvent!.scheduleDate}');
       debugPrint('   - userApplication: ${_preloadedEvent!.userApplication != null ? "SIM (${_preloadedEvent!.userApplication!.status.value})" : "NÃO"}');
       
       _emoji = _preloadedEvent!.emoji;
@@ -75,9 +76,17 @@ class EventCardController extends ChangeNotifier {
         _approvedParticipants = _preloadedEvent!.participants!;
       }
       
+      // ✅ MARCAR COMO LOADED se temos dados essenciais
+      // Isso evita que o EventCard fique em loading state
+      if (_privacyType != null && _creatorId != null) {
+        _loaded = true;
+        debugPrint('✅ Dados pré-carregados estão completos, marcando como loaded');
+      }
+      
       debugPrint('✅ Dados do controller após construtor:');
       debugPrint('   - _privacyType: $_privacyType');
       debugPrint('   - _creatorId: $_creatorId');
+      debugPrint('   - _loaded: $_loaded');
       debugPrint('   - _userApplication: ${_userApplication != null ? "SIM (${_userApplication!.status.value})" : "NÃO"}');
     } else {
       debugPrint('⚠️ Nenhum evento pré-carregado, será necessário buscar do Firestore');
@@ -164,6 +173,12 @@ class EventCardController extends ChangeNotifier {
     if (isApplying) return false;
     if (isApproved) return true;
     if (isPending || isRejected) return false;
+    
+    // Verificar se evento está disponível (distância)
+    if (_preloadedEvent != null && !_preloadedEvent!.isAvailable) {
+      return false; // Evento muito distante para usuário free
+    }
+    
     return true; // Pode aplicar
   }
 
@@ -235,6 +250,21 @@ class EventCardController extends ChangeNotifier {
       final eventDoc = results[1] as DocumentSnapshot;
       if (eventDoc.exists) {
         final data = eventDoc.data() as Map<String, dynamic>;
+        
+        // ✅ VALIDAR se evento está ativo e não cancelado
+        final isCanceled = data['isCanceled'] as bool? ?? false;
+        final isActive = data['isActive'] as bool? ?? false;
+        
+        if (isCanceled) {
+          debugPrint('⚠️ Evento $eventId está CANCELADO, não será carregado');
+          throw Exception('Evento cancelado');
+        }
+        
+        if (!isActive) {
+          debugPrint('⚠️ Evento $eventId está INATIVO, não será carregado');
+          throw Exception('Evento inativo');
+        }
+        
         _creatorId = data['createdBy'] as String?;
         
         // Extrair privacyType de participants.privacyType

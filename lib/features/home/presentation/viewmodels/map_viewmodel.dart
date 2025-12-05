@@ -1,22 +1,22 @@
 import 'dart:async';
-import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/geo_distance_helper.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/repositories/event_map_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/services/user_location_service.dart';
-import 'package:partiu/features/home/presentation/services/event_marker_service.dart';
+import 'package:partiu/features/home/presentation/services/google_event_marker_service.dart';
 import 'package:partiu/services/location/location_stream_controller.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 
-/// ViewModel responsável por gerenciar o estado e lógica do mapa
+/// ViewModel responsável por gerenciar o estado e lógica do mapa Google Maps
 /// 
 /// Responsabilidades:
 /// - Carregar eventos com filtro de raio
-/// - Gerar markers
+/// - Gerar markers do Google Maps
 /// - Gerenciar estado dos markers
 /// - Fornecer dados limpos para o widget
 /// - Orquestrar serviços
@@ -24,17 +24,17 @@ import 'package:partiu/shared/repositories/user_repository.dart';
 /// 
 /// NOTA: Este ViewModel usa EventMapRepository diretamente.
 /// Para descoberta de PESSOAS, use LocationQueryService (refatorado para usuários).
-class AppleMapViewModel extends ChangeNotifier {
+class MapViewModel extends ChangeNotifier {
   final EventMapRepository _eventRepository;
   final UserLocationService _locationService;
-  final EventMarkerService _markerService;
+  final GoogleEventMarkerService _googleMarkerService;
   final LocationStreamController _streamController;
   final UserRepository _userRepository;
   final EventApplicationRepository _applicationRepository;
 
-  /// Markers atualmente exibidos no mapa
-  Set<Annotation> _eventMarkers = {};
-  Set<Annotation> get eventMarkers => _eventMarkers;
+  /// Markers para Google Maps (pré-carregados)
+  Set<Marker> _googleMarkers = {};
+  Set<Marker> get googleMarkers => _googleMarkers;
 
   /// Estado de carregamento
   bool _isLoading = false;
@@ -44,7 +44,7 @@ class AppleMapViewModel extends ChangeNotifier {
   bool _mapReady = false;
   bool get mapReady => _mapReady;
 
-  /// Última localização obtida
+  /// Última localização obtida (Google Maps LatLng)
   LatLng? _lastLocation;
   LatLng? get lastLocation => _lastLocation;
 
@@ -61,17 +61,17 @@ class AppleMapViewModel extends ChangeNotifier {
   /// Subscription para mudanças de filtros/reload
   StreamSubscription<void>? _reloadSubscription;
 
-  AppleMapViewModel({
+  MapViewModel({
     EventMapRepository? eventRepository,
     UserLocationService? locationService,
-    EventMarkerService? markerService,
+    GoogleEventMarkerService? googleMarkerService,
     LocationStreamController? streamController,
     UserRepository? userRepository,
     EventApplicationRepository? applicationRepository,
     this.onMarkerTap,
   })  : _eventRepository = eventRepository ?? EventMapRepository(),
         _locationService = locationService ?? UserLocationService(),
-        _markerService = markerService ?? EventMarkerService(),
+        _googleMarkerService = googleMarkerService ?? GoogleEventMarkerService(),
         _streamController = streamController ?? LocationStreamController(),
         _userRepository = userRepository ?? UserRepository(),
         _applicationRepository = applicationRepository ?? EventApplicationRepository() {
@@ -81,14 +81,14 @@ class AppleMapViewModel extends ChangeNotifier {
   /// Inicializa listener para mudanças de raio
   void _initializeRadiusListener() {
     _radiusSubscription = _streamController.radiusStream.listen((radiusKm) {
-      debugPrint('🗺️ AppleMapViewModel: Raio atualizado para $radiusKm km');
+      debugPrint('🗺️ MapViewModel: Raio atualizado para $radiusKm km');
       // Recarregar eventos com novo raio
       loadNearbyEvents();
     });
     
     // Listener para mudanças de filtros (reload)
     _reloadSubscription = _streamController.reloadStream.listen((_) {
-      debugPrint('🗺️ AppleMapViewModel: Reload solicitado (filtros mudaram)');
+      debugPrint('🗺️ MapViewModel: Reload solicitado (filtros mudaram)');
       // Recarregar eventos com novos filtros
       loadNearbyEvents();
     });
@@ -98,7 +98,9 @@ class AppleMapViewModel extends ChangeNotifier {
   /// 
   /// Deve ser chamado após o mapa estar pronto
   Future<void> initialize() async {
-    await _markerService.preloadDefaultPins();
+    // Pré-carregar pins (imagens) para Google Maps
+    await _googleMarkerService.preloadDefaultPins();
+    
     // Carregar eventos iniciais
     await loadNearbyEvents();
   }
@@ -121,26 +123,18 @@ class AppleMapViewModel extends ChangeNotifier {
       final locationResult = await _locationService.getUserLocation();
       _lastLocation = locationResult.location;
 
-      // 2. Buscar eventos (EventMapRepository)
-      _events = await _eventRepository.getEventsWithinRadius(_lastLocation!);
+      // 2. Buscar eventos (EventMapRepository - raio fixo ou dinâmico)
+      final events = await _eventRepository.getEventsWithinRadius(_lastLocation!);
+      _events = events;
 
       // 3. Enriquecer com distância e disponibilidade (lógica centralizada)
       await _enrichEvents();
 
-      // 4. Gerar markers com callback de tap
-      final markers = await _markerService.buildEventAnnotations(
-        _events,
-        onTap: onMarkerTap != null ? (eventId) {
-          debugPrint('🟡 ViewModel onTap callback called for: $eventId');
-          final event = _events.firstWhere((e) => e.id == eventId);
-          debugPrint('🟡 Event found, calling onMarkerTap: ${event.title}');
-          onMarkerTap!(event);
-        } : null,
-      );
-      _eventMarkers = markers;
+      // 4. Gerar markers do Google Maps
+      await _generateGoogleMarkers();
 
-      debugPrint('🗺️ AppleMapViewModel: ${_events.length} eventos carregados');
-      debugPrint('🗺️ Markers criados: ${markers.length}');
+      debugPrint('🗺️ MapViewModel: ${_events.length} eventos carregados');
+      debugPrint('🗺️ Google Maps markers: ${_googleMarkers.length}');
       debugPrint('🗺️ onMarkerTap callback configurado: ${onMarkerTap != null}');
       
       // SOMENTE AQUI o mapa está realmente pronto
@@ -148,13 +142,26 @@ class AppleMapViewModel extends ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ AppleMapViewModel: Erro ao carregar eventos: $e');
+      debugPrint('❌ MapViewModel: Erro ao carregar eventos: $e');
       // Erro será silencioso - markers continuam vazios
-      _eventMarkers = {};
+      _googleMarkers = {};
       notifyListeners();
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Gera markers do Google Maps
+  Future<void> _generateGoogleMarkers() async {
+    final markers = await _googleMarkerService.buildEventMarkers(
+      _events,
+      onTap: onMarkerTap != null ? (eventId) {
+        debugPrint('🟢 Google Maps marker tapped: $eventId');
+        final event = _events.firstWhere((e) => e.id == eventId);
+        onMarkerTap!(event);
+      } : null,
+    );
+    _googleMarkers = markers;
   }
 
   /// Enriquece eventos com distância e disponibilidade ANTES de criar markers
@@ -269,18 +276,13 @@ class AppleMapViewModel extends ChangeNotifier {
       // Enriquecer com distância e disponibilidade (lógica centralizada em _enrichEvents)
       await _enrichEvents();
 
-      final markers = await _markerService.buildEventAnnotations(
-        events,
-        onTap: onMarkerTap != null ? (eventId) {
-          final event = _events.firstWhere((e) => e.id == eventId);
-          onMarkerTap!(event);
-        } : null,
-      );
-      _eventMarkers = markers;
+      // Gerar markers do Google Maps
+      await _generateGoogleMarkers();
 
       notifyListeners();
     } catch (e) {
-      _eventMarkers = {};
+      debugPrint('❌ MapViewModel: Erro ao carregar eventos: $e');
+      _googleMarkers = {};
       notifyListeners();
     } finally {
       _setLoading(false);
@@ -298,7 +300,14 @@ class AppleMapViewModel extends ChangeNotifier {
 
   /// Limpa todos os markers
   void clearMarkers() {
-    _eventMarkers = {};
+    _googleMarkers = {};
+    _events = [];
+    notifyListeners();
+  }
+
+  /// Limpa recursos do ViewModel
+  void clear() {
+    _googleMarkers = {};
     _events = [];
     notifyListeners();
   }
@@ -324,14 +333,14 @@ class AppleMapViewModel extends ChangeNotifier {
 
   /// Limpa cache de markers
   void clearCache() {
-    _markerService.clearCache();
+    _googleMarkerService.clearCache();
   }
 
   @override
   void dispose() {
     _radiusSubscription?.cancel();
     _reloadSubscription?.cancel();
-    _markerService.clearCache();
+    _googleMarkerService.clearCache();
     super.dispose();
   }
 }

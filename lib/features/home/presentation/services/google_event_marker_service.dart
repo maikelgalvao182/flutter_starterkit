@@ -102,8 +102,10 @@ class GoogleEventMarkerService {
             anchor: const Offset(0.5, 1.0), // Ancorado no fundo
             zIndex: 0, // Camada de baixo
             onTap: onTap != null ? () {
-              debugPrint('🟢 Emoji marker tapped: ${event.id}');
+              debugPrint('🟢 [MarkerService] Emoji marker tapped: ${event.id}');
+              debugPrint('🟢 [MarkerService] Callback exists: ${onTap != null}');
               onTap(event.id);
+              debugPrint('🟢 [MarkerService] Callback executed');
             } : null,
           ),
         );
@@ -119,8 +121,10 @@ class GoogleEventMarkerService {
             anchor: const Offset(0.5, 0.5), // Centralizado
             zIndex: 1, // Camada de cima
             onTap: onTap != null ? () {
-              debugPrint('🔵 Avatar marker tapped: ${event.id}');
+              debugPrint('🔵 [MarkerService] Avatar marker tapped: ${event.id}');
+              debugPrint('🔵 [MarkerService] Callback exists: ${onTap != null}');
               onTap(event.id);
+              debugPrint('🔵 [MarkerService] Callback executed');
             } : null,
           ),
         );

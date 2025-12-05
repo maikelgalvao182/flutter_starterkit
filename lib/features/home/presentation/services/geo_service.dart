@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/geo_distance_helper.dart';
 import 'dart:math' show cos;
 
@@ -71,14 +72,14 @@ class GeoService {
     );
   }
 
-  /// Método profissional para listar até 100 perfis num raio de 30km
+  /// Método profissional para listar até 100 perfis num raio configurável
   Future<List<Map<String, dynamic>>> getUsersWithin30Km({
     required double lat,
     required double lng,
     int limit = 100,
   }) async {
     try {
-      final box = _buildBoundingBox(lat, lng, 30);
+      final box = _buildBoundingBox(lat, lng, PEOPLE_SEARCH_RADIUS_KM);
 
       // Tenta buscar na coleção 'Users' (padrão do app)
       // Nota: O app tem inconsistências entre 'Users' e 'users'. 
@@ -106,7 +107,7 @@ class GeoService {
 
         final d = GeoDistanceHelper.distanceInKm(lat, lng, userLat, userLng);
 
-        if (d <= 30) {
+        if (d <= PEOPLE_SEARCH_RADIUS_KM) {
           results.add({
             'id': doc.id,
             'data': data,
@@ -126,7 +127,7 @@ class GeoService {
     }
   }
 
-  /// Conta quantos usuários estão num raio de 30km
+  /// Conta quantos usuários estão num raio configurável (PEOPLE_SEARCH_RADIUS_KM)
   Future<int> countUsersWithin30Km(double lat, double lng) async {
     final users = await getUsersWithin30Km(lat: lat, lng: lng);
     return users.length;

@@ -23,7 +23,7 @@ import 'package:partiu/services/location/location_stream_controller.dart';
 /// 
 /// NÃO USAR MAIS PARA:
 /// - discover_screen.dart: Usa EventMapRepository diretamente
-/// - Filtros de eventos: Lógica movida para AppleMapViewModel
+/// - Filtros de eventos: Lógica movida para MapViewModel
 class LocationQueryService {
   /// Singleton
   static final LocationQueryService _instance =

@@ -7,7 +7,7 @@ import 'package:partiu/features/home/presentation/widgets/list_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/navigate_to_user_button.dart';
 import 'package:partiu/features/home/presentation/widgets/people_button.dart';
 import 'package:partiu/features/home/presentation/screens/find_people_screen.dart';
-import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 
 /// Tela de descoberta (Tab 0)
 /// Exibe mapa interativo com atividades próximas
@@ -17,7 +17,7 @@ class DiscoverTab extends StatefulWidget {
     required this.mapViewModel,
   });
 
-  final AppleMapViewModel mapViewModel;
+  final MapViewModel mapViewModel;
 
   @override
   State<DiscoverTab> createState() => _DiscoverTabState();

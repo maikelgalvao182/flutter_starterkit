@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:apple_maps_flutter/apple_maps_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
@@ -8,19 +8,21 @@ import 'package:partiu/features/home/data/models/event_model.dart';
 class EventMapRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Busca eventos dentro de um raio da localização do usuário
+  /// Busca eventos ativos próximos à localização do usuário
   /// 
   /// Parâmetros:
   /// - [userLocation]: Localização atual do usuário
-  /// - [radiusKm]: Raio de busca em quilômetros (padrão: 10km)
+  /// 
+  /// NOTA: Este método NÃO aplica filtro de raio.
+  /// Retorna TODOS os eventos ativos e NÃO cancelados.
+  /// A distância/disponibilidade são calculadas posteriormente pelo MapViewModel.
   Future<List<EventModel>> getEventsWithinRadius(
-    LatLng userLocation, {
-    double radiusKm = 10.0,
-  }) async {
+    LatLng userLocation,
+  ) async {
     try {
       debugPrint('📍 [EventMapRepository] Buscando eventos próximos...');
 
-      // Buscar eventos ativos
+      // Buscar eventos ativos e não cancelados
       final snapshot = await _firestore
           .collection('events')
           .where('isActive', isEqualTo: true)
@@ -32,6 +34,14 @@ class EventMapRepository {
       for (final doc in snapshot.docs) {
         try {
           final data = doc.data();
+          
+          // Filtrar eventos cancelados (dupla checagem no cliente)
+          final isCanceled = data['isCanceled'] as bool? ?? false;
+          if (isCanceled) {
+            debugPrint('⏭️ Evento ${doc.id} está cancelado, pulando...');
+            continue;
+          }
+
           final location = data['location'] as Map<String, dynamic>?;
 
           if (location == null) continue;
@@ -41,26 +51,35 @@ class EventMapRepository {
 
           if (lat == null || lng == null) continue;
 
-          // Calcular distância
-          final distance = _calculateDistance(
-            userLocation.latitude,
-            userLocation.longitude,
-            lat,
-            lng,
-          );
-
-          // Filtrar por raio
-          if (distance <= radiusKm) {
-            final event = EventModel(
-              id: doc.id,
-              emoji: data['emoji'] as String? ?? '🎉',
-              createdBy: data['createdBy'] as String? ?? '',
-              lat: lat,
-              lng: lng,
-              title: data['activityText'] as String? ?? '',
-            );
-            events.add(event);
+          // Extrair dados adicionais para pré-carregar no EventCard
+          final participantsData = data['participants'] as Map<String, dynamic>?;
+          final scheduleData = data['schedule'] as Map<String, dynamic>?;
+          final dateTimestamp = scheduleData?['date'] as Timestamp?;
+          
+          // Parse photoReferences
+          List<String>? photoReferences;
+          final photoRefs = location['photoReferences'] as List<dynamic>?;
+          if (photoRefs != null) {
+            photoReferences = photoRefs.map((e) => e.toString()).toList();
           }
+
+          // Criar evento com TODOS os campos disponíveis
+          // A distância/disponibilidade/userApplication serão enriquecidos pelo MapViewModel._enrichEvents()
+          final event = EventModel(
+            id: doc.id,
+            emoji: data['emoji'] as String? ?? '🎉',
+            createdBy: data['createdBy'] as String? ?? '',
+            lat: lat,
+            lng: lng,
+            title: data['activityText'] as String? ?? '',
+            locationName: location['locationName'] as String?,
+            formattedAddress: location['formattedAddress'] as String?,
+            placeId: location['placeId'] as String?,
+            photoReferences: photoReferences,
+            scheduleDate: dateTimestamp?.toDate(),
+            privacyType: participantsData?['privacyType'] as String?,
+          );
+          events.add(event);
         } catch (e) {
           debugPrint('⚠️ Erro ao processar evento ${doc.id}: $e');
         }

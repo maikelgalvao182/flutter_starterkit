@@ -11,7 +11,7 @@ class RadiusController extends ChangeNotifier {
   double _radiusKm = DEFAULT_RADIUS_KM;
 
   static const double minRadius = MIN_RADIUS_KM;
-  static const double maxRadius = MAX_RADIUS_KM;
+  static final double maxRadius = ENABLE_RADIUS_LIMIT ? MAX_RADIUS_KM : MAX_RADIUS_KM_EXTENDED;
 
   static const Duration debounceDuration = Duration(milliseconds: 500);
 

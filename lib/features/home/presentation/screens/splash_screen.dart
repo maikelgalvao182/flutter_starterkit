@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/core/services/app_initializer_service.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
-import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 
 /// Tela de Splash que carrega todos os dados do mapa antes de entrar no app
 class SplashScreen extends StatefulWidget {
@@ -14,7 +14,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   // ViewModel instanciado aqui e passado para frente
-  final AppleMapViewModel mapViewModel = AppleMapViewModel();
+  final MapViewModel mapViewModel = MapViewModel();
   bool _isReady = false;
 
   @override

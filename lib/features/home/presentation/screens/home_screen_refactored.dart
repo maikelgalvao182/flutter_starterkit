@@ -7,7 +7,7 @@ import 'package:partiu/features/home/presentation/screens/ranking_tab.dart';
 import 'package:partiu/features/home/presentation/widgets/home_app_bar.dart';
 import 'package:partiu/features/home/presentation/widgets/home_bottom_navigation_bar.dart';
 import 'package:partiu/shared/widgets/auth_protected_wrapper.dart';
-import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 
 
 /// Tela principal do app com navegação por tabs
@@ -19,7 +19,7 @@ class HomeScreenRefactored extends StatefulWidget {
   });
 
   final int initialIndex;
-  final AppleMapViewModel mapViewModel;
+  final MapViewModel mapViewModel;
 
   @override
   State<HomeScreenRefactored> createState() => _HomeScreenRefactoredState();

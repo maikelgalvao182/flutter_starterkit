@@ -186,21 +186,128 @@ const double kMi200InKm = 321.868; // 200 miles in km
 /// Permite que usuários free "vejam o que estão perdendo" sem sobrecarregar
 /// o servidor com queries desnecessárias.
 
-/// === EVENT AVAILABILITY DISTANCE LIMITS ===
-/// Maximum distance (in km) that free users can see events
-/// Premium users have unlimited distance access
+/// ========================================
+/// === 1. CONTROLE DE INTERAÇÃO COM EVENTOS (PAYWALL) ===
+/// ========================================
+/// 
+/// 🎯 O QUE FAZ:
+/// Controla se usuários GRATUITOS podem INTERAGIR/APLICAR para um evento baseado na distância.
+/// 
+/// 📍 ONDE É USADO:
+/// - MapViewModel._canApplyToEvent() → Retorna true/false para flag "isAvailable"
+/// - EventModel.isAvailable → Flag que indica se usuário pode aplicar ao evento
+/// 
+/// 🎭 TELAS AFETADAS:
+/// - discover_screen.dart (mapa de eventos)
+/// - EventCard (modal de detalhes do evento)
+/// 
+/// 💡 COMO FUNCIONA:
+/// - Usuário GRATUITO: Pode interagir/aplicar apenas para eventos até 30km
+/// - Usuário PREMIUM: Pode interagir/aplicar para eventos SEM limite de distância
+/// 
+/// ⚠️ IMPORTANTE:
+/// - O evento SEMPRE aparece no mapa (não é removido)
+/// - Eventos fora do limite aparecem com blur/botão bloqueado
+/// - Isso NÃO afeta o raio de busca (quantos eventos são buscados)
+/// 
+/// 📝 EXEMPLO:
+/// Usuário FREE vê evento a 50km no mapa, mas ao clicar:
+/// - isAvailable = false
+/// - Botão "Aplicar" bloqueado/disabled
+/// - Mensagem: "Assine Premium para acessar eventos distantes"
 const double FREE_ACCOUNT_MAX_EVENT_DISTANCE_KM = 30.0;
 
-/// === RADIUS FILTER LIMITS ===
-/// Minimum radius for event search (in km)
+/// ========================================
+/// === 2. CONTROLE DO SLIDER DE RAIO (LIMITE ON/OFF) ===
+/// ========================================
+/// 
+/// 🎯 O QUE FAZ:
+/// Liga/desliga o limite máximo do slider de raio de busca.
+/// 
+/// 📍 ONDE É USADO:
+/// - RadiusController.maxRadius → Define o limite superior do slider
+/// 
+/// 🎭 TELAS AFETADAS:
+/// - advanced_filters_screen.dart (slider de raio para filtrar PESSOAS)
+/// 
+/// 💡 COMO FUNCIONA:
+/// - false (atual): Slider vai de 1km até 100km (MAX_RADIUS_KM_EXTENDED)
+/// - true: Slider vai de 1km até 30km (MAX_RADIUS_KM)
+/// 
+/// ⚙️ USADO POR:
+/// - RadiusController (controla limites do slider)
+/// - Afeta busca de PESSOAS (via LocationQueryService)
+/// - NÃO afeta busca de eventos diretamente
+const bool ENABLE_RADIUS_LIMIT = false;
+
+/// ========================================
+/// === 3. LIMITES DO SLIDER DE RAIO ===
+/// ========================================
+
+/// 🎯 Raio MÍNIMO do slider (em km)
+/// 📍 Usado em: RadiusController.minRadius
+/// 🎭 Tela: advanced_filters_screen.dart
 const double MIN_RADIUS_KM = 1.0;
 
-/// Maximum radius for event search (in km)
-/// Free and Premium users can search up to this limit
+/// 🎯 Raio MÁXIMO quando ENABLE_RADIUS_LIMIT = true (em km)
+/// 📍 Usado em: RadiusController.maxRadius (se ENABLE_RADIUS_LIMIT = true)
+/// 🎭 Tela: advanced_filters_screen.dart
 const double MAX_RADIUS_KM = 30.0;
 
-/// Default radius when user first opens the app (in km)
+/// 🎯 Raio MÁXIMO quando ENABLE_RADIUS_LIMIT = false (em km)
+/// 📍 Usado em: RadiusController.maxRadius (se ENABLE_RADIUS_LIMIT = false)
+/// 🎭 Tela: advanced_filters_screen.dart
+/// 💡 Valor atual usado: 100km (ENABLE_RADIUS_LIMIT está false)
+const double MAX_RADIUS_KM_EXTENDED = 100.0;
+
+/// ========================================
+/// === 4. RAIO PADRÃO INICIAL (SLIDER DE PESSOAS) ===
+/// ========================================
+/// 
+/// 🎯 O QUE FAZ:
+/// Define o raio inicial do slider quando o app é aberto pela primeira vez
+/// ou quando filtros são resetados.
+/// 
+/// 📍 ONDE É USADO:
+/// - RadiusController._radiusKm (valor inicial)
+/// - RadiusController.resetToDefault() (ao limpar filtros)
+/// 
+/// 🎭 TELAS AFETADAS:
+/// - advanced_filters_screen.dart (slider de raio para buscar PESSOAS)
+/// 
+/// 💡 Valor: 30km (meio-termo entre MIN_RADIUS_KM e MAX_RADIUS_KM_EXTENDED)
+/// 
+/// ⚠️ NOTA:
+/// Esta constante é DIFERENTE de PEOPLE_SEARCH_RADIUS_KM.
+/// - DEFAULT_RADIUS_KM: Valor inicial do SLIDER (ajustável pelo usuário)
+/// - PEOPLE_SEARCH_RADIUS_KM: Valor FIXO do GeoService (não ajustável)
 const double DEFAULT_RADIUS_KM = 30.0;
+
+/// ========================================
+/// === 5. RAIO FIXO DE BUSCA DE PESSOAS (GeoService) ===
+/// ========================================
+/// 
+/// 🎯 O QUE FAZ:
+/// Define um raio FIXO para buscar pessoas próximas e contagem de usuários.
+/// Este valor NÃO é controlado pelo slider de filtros.
+/// 
+/// 📍 ONDE É USADO:
+/// - GeoService.getUsersWithin30Km() → Busca pessoas dentro do raio fixo
+/// - GeoService.countUsersWithin30Km() → Conta pessoas próximas
+/// - PeopleButtonController → Exibe badge com contagem
+/// 
+/// 🎭 TELAS AFETADAS:
+/// - home_screen.dart (botão "Pessoas" com badge de contagem)
+/// 
+/// 💡 Valor: 30km (fixo, não ajustável)
+/// 
+/// ⚠️ DIFERENÇA IMPORTANTE:
+/// - DEFAULT_RADIUS_KM: Slider ajustável (1-100km) em advanced_filters_screen
+/// - PEOPLE_SEARCH_RADIUS_KM: Valor FIXO (30km) usado pelo GeoService
+/// 
+/// 🔧 Para busca DINÂMICA de pessoas (com slider), use LocationQueryService,
+/// que respeita o raio do RadiusController.
+const double PEOPLE_SEARCH_RADIUS_KM = 30.0;
 
 /// === AGE FILTER LIMITS ===
 /// Minimum age for event participation and filters

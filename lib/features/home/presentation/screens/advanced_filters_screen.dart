@@ -17,7 +17,16 @@ import 'package:partiu/services/location/radius_controller.dart';
 import 'package:partiu/services/location/location_query_service.dart';
 import 'package:partiu/services/location/advanced_filters_controller.dart';
 
-/// Advanced Filters Screen (filtros avançados para descoberta de atividades)
+/// Tela de Filtros Avançados para descoberta de PESSOAS
+/// 
+/// Permite filtrar usuários por:
+/// - Raio de busca (km)
+/// - Faixa etária
+/// - Gênero
+/// - Interesses
+/// - Verificação
+/// 
+/// Utilizado em: find_people_screen.dart
 class AdvancedFiltersScreen extends StatefulWidget {
   const AdvancedFiltersScreen({super.key});
 
@@ -321,9 +330,9 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
     debugPrint('🔍 _applyFilters: Objeto filters criado com radiusKm = ${filters.radiusKm}');
     debugPrint('🔍 _applyFilters: gender final no filters = ${filters.gender}');
 
-    // 5. Atualizar serviço orquestrador (LocationQueryService)
-    // NOTA: LocationQueryService agora busca USUÁRIOS (pessoas), não eventos
-    // Este filtro será usado pela tela de descoberta de pessoas
+    // 5. Atualizar serviço de busca de pessoas (LocationQueryService)
+    // NOTA: LocationQueryService busca USUÁRIOS (pessoas)
+    // Estes filtros serão aplicados na tela de descoberta de pessoas (find_people_screen.dart)
     LocationQueryService().updateFilters(filters);
     
     // 6. Fechar

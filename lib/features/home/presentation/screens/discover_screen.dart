@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/features/home/presentation/widgets/google_map_view.dart';
-import 'package:partiu/features/home/presentation/viewmodels/apple_map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 
 /// Tela de descoberta de atividades com mapa interativo
 /// 
@@ -13,7 +13,7 @@ class DiscoverScreen extends StatefulWidget {
   });
 
   final VoidCallback? onCenterUserRequested;
-  final AppleMapViewModel mapViewModel;
+  final MapViewModel mapViewModel;
 
   @override
   State<DiscoverScreen> createState() => DiscoverScreenState();
