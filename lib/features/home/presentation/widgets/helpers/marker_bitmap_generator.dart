@@ -20,6 +20,11 @@ class MarkerBitmapGenerator {
     int size = 230,
   }) async {
     try {
+      // Adicionar padding extra para acomodar a sombra
+      final padding = 30;
+      final canvasSize = size + (padding * 2);
+      final center = canvasSize / 2;
+      
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
       
@@ -27,32 +32,36 @@ class MarkerBitmapGenerator {
           ? MarkerColorHelper.getColorForId(eventId)
           : const Color(0xFFFFFFFF);
       
+      // Sombra
       final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.25)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+        ..color = Colors.black.withOpacity(0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
       canvas.drawCircle(
-        Offset(size / 2, size / 2 + 3),
+        Offset(center, center + 4),
         size / 2,
         shadowPaint,
       );
       
+      // Borda branca
       final borderPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
       canvas.drawCircle(
-        Offset(size / 2, size / 2),
+        Offset(center, center),
         size / 2,
         borderPaint,
       );
       
+      // Círculo colorido interno
       final borderWidth = 10.0;
       final paint = Paint()..color = backgroundColor;
       canvas.drawCircle(
-        Offset(size / 2, size / 2),
+        Offset(center, center),
         (size / 2) - borderWidth,
         paint,
       );
 
+      // Emoji
       final textPainter = TextPainter(
         text: TextSpan(
           text: emoji,
@@ -64,13 +73,13 @@ class MarkerBitmapGenerator {
       textPainter.paint(
         canvas,
         Offset(
-          (size - textPainter.width) / 2,
-          (size - textPainter.height) / 2,
+          (canvasSize - textPainter.width) / 2,
+          (canvasSize - textPainter.height) / 2,
         ),
       );
 
       final picture = recorder.endRecording();
-      final img = await picture.toImage(size, size);
+      final img = await picture.toImage(canvasSize, canvasSize);
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       final uint8list = byteData!.buffer.asUint8List();
 
@@ -100,20 +109,37 @@ class MarkerBitmapGenerator {
       final frame = await codec.getNextFrame();
       final image = frame.image;
 
+      // Adicionar padding extra para acomodar a sombra
+      final padding = 25;
+      final canvasSize = size + (padding * 2);
+      final center = canvasSize / 2;
+      
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
 
+      // Sombra
+      final shadowPaint = Paint()
+        ..color = Colors.black.withOpacity(0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      canvas.drawCircle(
+        Offset(center, center + 3),
+        size / 2,
+        shadowPaint,
+      );
+
+      // Borda branca
       final borderWidth = 8.0;
       final borderPaint = Paint()..color = Colors.white;
       canvas.drawCircle(
-        Offset(size / 2, size / 2),
+        Offset(center, center),
         size / 2,
         borderPaint,
       );
 
+      // Clip para imagem circular
       final clipPath = Path()
         ..addOval(Rect.fromCircle(
-          center: Offset(size / 2, size / 2),
+          center: Offset(center, center),
           radius: (size / 2) - borderWidth,
         ));
       canvas.clipPath(clipPath);
@@ -139,8 +165,8 @@ class MarkerBitmapGenerator {
       }
       
       dstRect = Rect.fromLTWH(
-        borderWidth,
-        borderWidth,
+        padding + borderWidth,
+        padding + borderWidth,
         availableSize,
         availableSize,
       );
@@ -153,7 +179,7 @@ class MarkerBitmapGenerator {
       );
 
       final picture = recorder.endRecording();
-      final img = await picture.toImage(size, size);
+      final img = await picture.toImage(canvasSize, canvasSize);
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       final uint8list = byteData!.buffer.asUint8List();
 

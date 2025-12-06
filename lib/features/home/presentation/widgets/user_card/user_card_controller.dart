@@ -15,6 +15,7 @@ class UserCardController extends ChangeNotifier {
   bool _isLoading = true;
   String? _error;
   User? _user;
+  bool _isDisposed = false;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -32,17 +33,19 @@ class UserCardController extends ChangeNotifier {
     try {
       _isLoading = true;
       _error = null;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
 
       final doc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(userId)
           .get();
 
+      if (_isDisposed) return;
+
       if (!doc.exists) {
         _error = 'Usuário não encontrado';
         _isLoading = false;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
         return;
       }
 
@@ -57,8 +60,13 @@ class UserCardController extends ChangeNotifier {
           targetLat: lat,
           targetLng: lng,
         );
+        
+        if (_isDisposed) return;
+        
         data['distance'] = dist;
       }
+
+      if (_isDisposed) return;
 
       _user = User.fromDocument({
         'userId': doc.id,
@@ -66,12 +74,21 @@ class UserCardController extends ChangeNotifier {
       });
 
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     } catch (e) {
       debugPrint('❌ Erro ao carregar dados do UserCard: $e');
+      
+      if (_isDisposed) return;
+      
       _error = 'Erro ao carregar dados';
       _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 }

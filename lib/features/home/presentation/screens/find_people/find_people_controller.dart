@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:partiu/core/models/user.dart';
+import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/services/location/location_query_service.dart';
 import 'package:partiu/services/location/distance_isolate.dart';
 
@@ -95,20 +96,7 @@ class FindPeopleController extends ChangeNotifier {
     final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
     
     // Carregar interesses do usuário atual para calcular commonInterests
-    List<String> myInterests = [];
-    if (currentUserId != null) {
-      try {
-        final myDoc = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUserId)
-            .get();
-        if (myDoc.exists) {
-          myInterests = List<String>.from(myDoc.data()?['interests'] ?? []);
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erro ao carregar interesses do usuário atual: $e');
-      }
-    }
+    final myInterests = await InterestsHelper.loadCurrentUserInterests();
 
     final List<User> loadedUsers = [];
     
@@ -121,7 +109,7 @@ class FindPeopleController extends ChangeNotifier {
       
       // Calcular interesses em comum
       final userInterests = List<String>.from(data['interests'] ?? []);
-      final common = userInterests.toSet().intersection(myInterests.toSet()).toList();
+      final common = InterestsHelper.calculateCommonInterests(userInterests, myInterests);
       data['commonInterests'] = common;
       
       loadedUsers.add(User.fromDocument(data));

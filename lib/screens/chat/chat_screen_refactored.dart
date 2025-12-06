@@ -14,6 +14,7 @@ import 'package:partiu/screens/chat/services/application_removal_service.dart';
 import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/screens/chat/services/fee_auto_heal_service.dart';
 import 'package:partiu/screens/chat/widgets/chat_app_bar_widget.dart';
+import 'package:partiu/screens/chat/widgets/confirm_presence_widget.dart';
 import 'package:partiu/screens/chat/widgets/message_list_widget.dart';
 import 'package:partiu/screens/chat/widgets/user_presence_status_widget.dart';
 import 'package:partiu/features/conversations/utils/conversation_styles.dart';
@@ -49,6 +50,7 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
   final _applicationRemovalService = ApplicationRemovalService();
   final _feeAutoHealService = FeeAutoHealService();
   late Stream<DocumentSnapshot<Map<String, dynamic>>> _conversationDoc;
+  String? _applicationId;
   
   // B1.3: Conversa é ouvida via StreamSubscriptionMixin (sem leaks)
   
@@ -149,6 +151,11 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
     _conversationDoc = _chatService.getConversationStream(widget.user.userId);
     debugPrint('✅ ChatScreen: Iniciando stream de conversa para userId: ${widget.user.userId}');
     
+    // Carregar applicationId se for evento
+    if (widget.isEvent && widget.eventId != null) {
+      _loadApplicationId();
+    }
+    
   // B1.3: Proper stream subscription management via mixin
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? sub;
   sub = _conversationDoc.listen((snap) {
@@ -189,7 +196,7 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
     addSubscription(sub);
 
     // Check blocked user
-  final localUserId = AppState.currentUserId;
+    final localUserId = AppState.currentUserId;
     if (localUserId != null) {
       _chatService.checkBlockedUserStatus(
         remoteUserId: widget.user.userId,
@@ -197,10 +204,41 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
       );
     }
 
+    // Carregar applicationId se for evento
+    if (widget.isEvent && widget.eventId != null) {
+      _loadApplicationId();
+    }
+
     // Listen for remote user updates (simplificado para evitar conversão complexa)
     // _chatService.getUserUpdates(widget.user.userId).listen((userModel) {
     //   // Update do remote user pode ser implementado posteriormente se necessário
     // });
+  }
+
+  /// Carrega applicationId do usuário atual para este evento
+  Future<void> _loadApplicationId() async {
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null || widget.eventId == null) return;
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('EventApplications')
+          .where('eventId', isEqualTo: widget.eventId)
+          .where('userId', isEqualTo: currentUserId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        setState(() {
+          _applicationId = querySnapshot.docs.first.id;
+        });
+        debugPrint('✅ ApplicationId carregado: $_applicationId');
+      } else {
+        debugPrint('⚠️ Nenhuma application encontrada para este evento');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao carregar applicationId: $e');
+    }
   }
 
   @override
@@ -234,6 +272,13 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
       ),
       body: Column(
         children: <Widget>[
+          /// Widget de confirmação de presença (apenas para eventos)
+          if (widget.isEvent && widget.eventId != null && _applicationId != null)
+            ConfirmPresenceWidget(
+              applicationId: _applicationId!,
+              eventId: widget.eventId!,
+            ),
+
           /// Show messages
           Expanded(
             child: MessageListWidget(

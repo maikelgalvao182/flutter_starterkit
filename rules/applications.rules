@@ -45,6 +45,7 @@ match /EventApplications/{applicationId} {
     );
   
   /// ✏️ ATUALIZAR aplicação:
+  /// CASO 1: Criador do evento aprovando/rejeitando
   /// - Apenas o criador do evento pode aprovar/rejeitar
   /// - Não pode mudar eventId ou userId
   /// - Só pode mudar de "pending" para "approved" ou "rejected"
@@ -57,6 +58,20 @@ match /EventApplications/{applicationId} {
     (request.resource.data.status == 'approved' || 
      request.resource.data.status == 'rejected') &&
     request.resource.data.decisionAt != null;
+  
+  /// ✏️ ATUALIZAR presença:
+  /// CASO 2: Usuário atualizando sua própria presença
+  /// - É a própria aplicação do usuário
+  /// - Só pode mudar o campo "presence"
+  /// - Não pode mudar status, eventId ou userId
+  /// - Aplicação deve estar aprovada
+  allow update: if isSignedIn() && 
+    request.auth.uid == resource.data.userId &&
+    request.resource.data.eventId == resource.data.eventId &&
+    request.resource.data.userId == resource.data.userId &&
+    request.resource.data.status == resource.data.status &&
+    (resource.data.status == 'approved' || resource.data.status == 'autoApproved') &&
+    request.resource.data.presence in ['Vou', 'Talvez', 'Não vou'];
   
   /// 🗑️ DELETE: não permitido
   allow delete: if false;

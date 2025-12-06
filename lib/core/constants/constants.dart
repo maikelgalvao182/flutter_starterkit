@@ -10,7 +10,7 @@ const Color APP_PRIMARY_COLOR = GlimpseColors.primaryColorLight;
 const int ANDROID_APP_VERSION_NUMBER = 1; // Google Play Version Number
 const int IOS_APP_VERSION_NUMBER = 1; // App Store Version Number
 
-/// FONT FAMILY CONSTANTS
+/// Google FAMILY CONSTANTS
 const String FONT_PLUS_JAKARTA_SANS = 'Plus Jakarta Sans';
 
 /// GENDER CONSTANTS

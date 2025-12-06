@@ -24,6 +24,7 @@ class UserCard extends StatefulWidget {
     this.user,
     this.onTap,
     this.onLongPress,
+    this.trailingWidget,
     super.key,
   });
 
@@ -32,6 +33,7 @@ class UserCard extends StatefulWidget {
   final User? user;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final Widget? trailingWidget;
 
   @override
   State<UserCard> createState() => _UserCardState();
@@ -182,6 +184,7 @@ class _UserCardState extends State<UserCard> {
           ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
             StableAvatar(
@@ -287,10 +290,18 @@ class _UserCardState extends State<UserCard> {
             
             const SizedBox(width: 8),
             
-            const Icon(
-              Icons.chevron_right,
-              color: GlimpseColors.textSubTitle,
-              size: 24,
+            // Trailing widget ou chevron padrão
+            widget.trailingWidget ??
+            SizedBox(
+              height: 58, // Mesma altura do avatar para garantir centralização
+              child: Align(
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.chevron_right,
+                  color: GlimpseColors.textSubTitle,
+                  size: 24,
+                ),
+              ),
             ),
           ],
         ),
