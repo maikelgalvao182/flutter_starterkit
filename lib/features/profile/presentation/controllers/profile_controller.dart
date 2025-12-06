@@ -6,6 +6,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/models/review_model.dart';
 import 'package:partiu/core/models/review_stats_model.dart';
 import 'package:partiu/shared/stores/user_store.dart';
+import 'package:partiu/features/profile/data/services/profile_visits_service.dart';
 
 /// Controller MVVM para tela de perfil
 /// 
@@ -135,7 +136,12 @@ class ProfileController {
     await load(targetUserId);
   }
 
-  /// Registra visita ao perfil
+  /// Registra visita ao perfil usando ProfileVisitsService
+  /// 
+  /// Features:
+  /// - Anti-spam: 15min cooldown entre visitas
+  /// - TTL: 7 dias de expiração automática
+  /// - Incrementa visitCount em visitas repetidas
   Future<void> registerVisit(String currentUserId) async {
     if (currentUserId.isEmpty || currentUserId == userId) {
       debugPrint('⏭️  [ProfileController] Visita não registrada: ${currentUserId.isEmpty ? "userId vazio" : "próprio perfil"}');
@@ -145,20 +151,13 @@ class ProfileController {
     try {
       debugPrint('📝 [ProfileController] Registrando visita: ${currentUserId.substring(0, 8)}... → ${userId.substring(0, 8)}...');
       
-      await _firestore.collection('Visits').add({
-        'visitorId': currentUserId,
-        'visitedUserId': userId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'type': 'profile',
-      });
+      await ProfileVisitsService.instance.recordVisit(
+        visitedUserId: userId,
+      );
       
       debugPrint('✅ [ProfileController] Visita registrada com sucesso');
     } catch (e) {
-      if (e.toString().contains('permission-denied')) {
-        debugPrint('⚠️  [ProfileController] Permissão negada ao registrar visita - usuário pode estar deslogado');
-      } else {
-        debugPrint('❌ [ProfileController] Erro ao registrar visita: $e');
-      }
+      debugPrint('❌ [ProfileController] Erro ao registrar visita: $e');
     }
   }
 

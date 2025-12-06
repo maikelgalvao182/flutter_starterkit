@@ -1,3 +1,5 @@
+import 'package:partiu/features/profile/data/services/profile_visits_service.dart';
+
 /// Serviço para gerenciar visitas do perfil
 class VisitsService {
   VisitsService._();
@@ -10,8 +12,6 @@ class VisitsService {
 
   /// Stream para observar o número de visitas de um usuário
   Stream<int> watchUserVisitsCount(String userId) {
-    // TODO: Implementar stream real com Firebase
-    // Por agora, retorna stream com valor fixo
-    return Stream.value(0);
+    return ProfileVisitsService.instance.watchVisitsCount(userId);
   }
 }

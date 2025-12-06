@@ -1,0 +1,23 @@
+/// 👁️ Coleção de visitas ao perfil (root level para suporte TTL)
+/// Path: ProfileVisits/{visitId}
+/// 
+/// Estrutura:
+/// - visitedUserId: string (quem recebeu a visita)
+/// - visitorId: string (quem visitou)
+/// - visitedAt: timestamp
+/// - visitCount: number (incrementa em visitas repetidas)
+/// - expireAt: timestamp (TTL - 7 dias)
+/// - source: string ('profile', 'event', etc)
+
+match /ProfileVisits/{visitId} {
+  // Qualquer usuário autenticado pode ler suas próprias visitas
+  allow read: if isSignedIn() && 
+                 request.auth.uid == resource.data.visitedUserId;
+  
+  // Qualquer usuário autenticado pode registrar visitas
+  allow create, update: if isSignedIn();
+  
+  // Apenas o dono pode deletar suas visitas
+  allow delete: if isSignedIn() && 
+                   request.auth.uid == resource.data.visitedUserId;
+}

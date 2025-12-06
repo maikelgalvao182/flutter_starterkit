@@ -9,12 +9,44 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "appliedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "EventApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "eventId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "status",
           "order": "ASCENDING"
         },
         {
           "fieldPath": "appliedAt",
           "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "EventApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "eventId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "appliedAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -41,11 +73,11 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "reviewee_id",
+          "fieldPath": "revieweeId",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "created_at",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -61,6 +93,34 @@
         {
           "fieldPath": "reviewsCreated",
           "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "Events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "createdBy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ProfileVisits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "visitedUserId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visitedAt",
+          "order": "DESCENDING"
         }
       ]
     }

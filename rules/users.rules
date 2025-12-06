@@ -20,9 +20,8 @@ match /Users/{userId} {
   allow read: if isSignedIn();
   allow create, update, delete: if isOwner(userId);
   
-  /// 👁️ Subcoleção de visitas ao perfil
+  /// 👁️ Subcoleção de visitas ao perfil (legacy - deprecada)
   /// Path: Users/{userId}/visits/{visitId}
-  /// Permite que o dono veja quem visitou seu perfil
   match /visits/{visitId} {
     allow read: if isOwner(userId);
     allow create, update: if isSignedIn();

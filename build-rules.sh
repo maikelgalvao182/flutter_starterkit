@@ -96,6 +96,12 @@ cat "$RULES_DIR/messages.rules" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
 echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 👁️ Visitas ao Perfil" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/profile_visits.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
 echo "    // 🏆 Rankings" >> "$OUTPUT_FILE"
 echo "    // ======================================" >> "$OUTPUT_FILE"
 cat "$RULES_DIR/ranking.rules" >> "$OUTPUT_FILE"
