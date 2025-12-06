@@ -78,20 +78,37 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
 
       // Feedback visual
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Presença atualizada!',
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+        // SnackBar SEM Material - usando overlay direto
+        final overlay = Overlay.of(context);
+        final overlayEntry = OverlayEntry(
+          builder: (context) => Positioned(
+            bottom: 50,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: GlimpseColors.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Presença atualizada!',
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
-            backgroundColor: GlimpseColors.primary,
-            duration: const Duration(seconds: 2),
           ),
         );
+        
+        overlay.insert(overlayEntry);
+        Future.delayed(const Duration(seconds: 2), () {
+          overlayEntry.remove();
+        });
       }
     } catch (e) {
       debugPrint('❌ Erro ao atualizar presença: $e');
@@ -99,19 +116,37 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
       setState(() => _isUpdating = false);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erro ao atualizar presença',
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+        // Erro SEM Material - usando overlay direto
+        final overlay = Overlay.of(context);
+        final overlayEntry = OverlayEntry(
+          builder: (context) => Positioned(
+            bottom: 50,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: GlimpseColors.dangerRed,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Erro ao atualizar presença',
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
-            backgroundColor: GlimpseColors.dangerRed,
           ),
         );
+        
+        overlay.insert(overlayEntry);
+        Future.delayed(const Duration(seconds: 2), () {
+          overlayEntry.remove();
+        });
       }
     }
   }
@@ -127,26 +162,27 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white,
-            width: 1,
+    return RepaintBoundary(
+      child: Container(
+        decoration: const BoxDecoration(
+          color: GlimpseColors.primaryLight,
+          border: Border(
+            bottom: BorderSide(
+              color: GlimpseColors.primaryLight,
+              width: 1,
+            ),
           ),
         ),
-      ),
-      child: Column(
-        children: [
-          // Botão principal
-          Material(
-            color: GlimpseColors.primaryLight,
-            child: GestureDetector(
-              onTap: _isUpdating ? null : () {
+        child: Column(
+          children: [
+            // Botão principal - Listener captura toque ANTES do Material
+            Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: _isUpdating ? null : (_) {
                 setState(() => _isExpanded = !_isExpanded);
               },
               child: Container(
+                color: GlimpseColors.primaryLight,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
@@ -159,7 +195,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Confirmar presença',
+                      'Confirme sua presença',
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 14,
@@ -177,61 +213,61 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                 ),
               ),
             ),
-          ),
 
           // Opções expandidas
-          AnimatedExpandable(
-            isExpanded: _isExpanded,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              decoration: const BoxDecoration(
+          RepaintBoundary(
+            child: AnimatedExpandable(
+              isExpanded: _isExpanded,
+              child: Container(
                 color: GlimpseColors.primaryLight,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _PresenceButton(
-                      emoji: '✅',
-                      label: 'Eu vou',
-                      isSelected: _currentPresence == 'Vou',
-                      onTap: _isUpdating ? null : () => _updatePresence('Vou'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _PresenceButton(
+                        emoji: '✅',
+                        label: 'Eu vou',
+                        isSelected: _currentPresence == 'Vou',
+                        onTap: _isUpdating ? null : () => _updatePresence('Vou'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _PresenceButton(
-                      emoji: '🤔',
-                      label: 'Talvez',
-                      isSelected: _currentPresence == 'Talvez',
-                      onTap: _isUpdating ? null : () => _updatePresence('Talvez'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PresenceButton(
+                        emoji: '🤔',
+                        label: 'Talvez',
+                        isSelected: _currentPresence == 'Talvez',
+                        onTap: _isUpdating ? null : () => _updatePresence('Talvez'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _PresenceButton(
-                      emoji: '❌',
-                      label: 'Não vou',
-                      isSelected: _currentPresence == 'Não vou',
-                      onTap: _isUpdating ? null : () => _updatePresence('Não vou'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PresenceButton(
+                        emoji: '❌',
+                        label: 'Não vou',
+                        isSelected: _currentPresence == 'Não vou',
+                        onTap: _isUpdating ? null : () => _updatePresence('Não vou'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _PresenceButton(
-                      emoji: '👁️',
-                      label: 'Ver lista',
-                      isSelected: false,
-                      onTap: _isUpdating ? null : _openPresenceDrawer,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _PresenceButton(
+                        emoji: '👁️',
+                        label: 'Ver lista',
+                        isSelected: false,
+                        onTap: _isUpdating ? null : _openPresenceDrawer,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -253,15 +289,16 @@ class _PresenceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: onTap != null ? (_) => onTap!() : null,
       child: Container(
         height: 70,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
               ? GlimpseColors.primaryLight
-              : Colors.white,
+              : GlimpseColors.primaryLight,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
               ? Border.all(
