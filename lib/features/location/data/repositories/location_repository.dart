@@ -95,6 +95,7 @@ class LocationRepository implements LocationRepositoryInterface {
     required String country,
     required String locality,
     required String state,
+    String? formattedAddress,
   }) async {
     try {
       AppLogger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', tag: 'LocationRepository');
@@ -117,6 +118,7 @@ class LocationRepository implements LocationRepositoryInterface {
         country: country,
         locality: locality,
         state: state,
+        formattedAddress: formattedAddress,
       );
       
       // TODO: Se o backend não adicionar automaticamente, descomentar:

@@ -6,6 +6,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/home/presentation/widgets/auto_updating_badge.dart';
+import 'package:partiu/common/services/notifications_counter_service.dart';
 
 /// Ícones const pré-compilados para otimização
 class _TabIcons {
@@ -118,11 +119,25 @@ class _BottomNavBarContent extends StatelessWidget {
           index: 0,
         ),
 
-        // Aba actions
-        _buildBottomNavigationBarItem(
-          icon: currentIndex == 1 ? _TabIcons.actionsBold : _TabIcons.actionsNormal,
+        // Aba Actions (com badge)
+        BottomNavigationBarItem(
+          icon: ValueListenableBuilder<int>(
+            valueListenable: NotificationsCounterService.instance.pendingActionsCount,
+            builder: (context, count, _) {
+              return AutoUpdatingBadge(
+                count: count,
+                badgeColor: GlimpseColors.actionColor,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    currentIndex == 1 ? _TabIcons.actionsBold : _TabIcons.actionsNormal,
+                    HomeBottomNavigationBar._spacer,
+                  ],
+                ),
+              );
+            },
+          ),
           label: 'Ações',
-          index: 1,
         ),
 
         // Aba Ranking
@@ -134,15 +149,21 @@ class _BottomNavBarContent extends StatelessWidget {
 
         // Aba Conversas (com badge)
         BottomNavigationBarItem(
-          icon: MessagesBadge(
-            count: 0, // TODO: Implementar contador real
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                currentIndex == 3 ? _TabIcons.conversationBold : _TabIcons.conversationNormal,
-                HomeBottomNavigationBar._spacer,
-              ],
-            ),
+          icon: ValueListenableBuilder<int>(
+            valueListenable: NotificationsCounterService.instance.unreadConversationsCount,
+            builder: (context, count, _) {
+              return AutoUpdatingBadge(
+                count: count,
+                badgeColor: GlimpseColors.actionColor,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    currentIndex == 3 ? _TabIcons.conversationBold : _TabIcons.conversationNormal,
+                    HomeBottomNavigationBar._spacer,
+                  ],
+                ),
+              );
+            },
           ),
           label: 'Conversas',
         ),

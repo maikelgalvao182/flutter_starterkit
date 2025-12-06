@@ -106,6 +106,9 @@ export const updateLocationRanking = functions.firestore
       const locationName = location.locationName || "Local desconhecido";
       const formattedAddress = location.formattedAddress || "";
       const locality = location.locality || null;
+      const city = location.city || null;
+      const state = location.state || null;
+      const country = location.country || null;
 
       // photoReferences está no root do evento, não dentro de location
       const photoReferences = eventData.photoReferences || [];
@@ -160,9 +163,18 @@ export const updateLocationRanking = functions.firestore
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      // Adicionar locality se disponível
+      // Adicionar campos de localização separados se disponíveis
       if (locality) {
         updateData.locality = locality;
+      }
+      if (city) {
+        updateData.city = city;
+      }
+      if (state) {
+        updateData.state = state;
+      }
+      if (country) {
+        updateData.country = country;
       }
 
       // Adicionar photoReferences

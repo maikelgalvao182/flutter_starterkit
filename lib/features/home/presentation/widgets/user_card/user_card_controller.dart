@@ -1,15 +1,24 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/core/models/user.dart';
-import 'package:partiu/features/home/presentation/services/geo_service.dart';
+import 'package:partiu/core/utils/interests_helper.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
 
 /// Controller para gerenciar dados do UserCard
+/// 
+/// Responsabilidades:
+/// - Orquestrar carregamento de dados via Repository
+/// - Calcular interesses em comum e distância via Helper
+/// - Gerenciar estado do widget
 class UserCardController extends ChangeNotifier {
-  UserCardController({required this.userId}) {
+  UserCardController({
+    required this.userId,
+    UserRepository? repository,
+  }) : _repository = repository ?? UserRepository() {
     _loadUserData();
   }
 
   final String userId;
+  final UserRepository _repository;
 
   // Estado
   bool _isLoading = true;
@@ -22,56 +31,60 @@ class UserCardController extends ChangeNotifier {
   String? get error => _error;
   User? get user => _user;
 
-  // Getters de compatibilidade (opcional, se ainda usados em outros lugares)
+  // Getters de compatibilidade
   String? get fullName => _user?.fullName;
   String? get from => _user?.from;
   String? get photoUrl => _user?.profilePhotoUrl;
   double? get distanceKm => _user?.distance;
 
-  /// Carrega dados do usuário do Firestore
+  /// Carrega dados do usuário com interesses em comum e distância
+  /// 
+  /// Arquitetura limpa:
+  /// 1. Repository busca dados (queries Firestore)
+  /// 2. Helper calcula interesses e distância (lógica pura)
+  /// 3. Controller orquestra tudo e gerencia estado
   Future<void> _loadUserData() async {
     try {
       _isLoading = true;
       _error = null;
       if (!_isDisposed) notifyListeners();
 
-      final doc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userId)
-          .get();
+      // 1. Buscar dados do usuário atual via Repository (com cache)
+      final myUserData = await _repository.getCurrentUserData();
+      
+      if (_isDisposed) return;
+
+      if (myUserData == null) {
+        _error = 'Erro ao carregar usuário atual';
+        _isLoading = false;
+        if (!_isDisposed) notifyListeners();
+        return;
+      }
+
+      // 2. Buscar dados do outro usuário via Repository
+      final userData = await _repository.getUserById(userId);
 
       if (_isDisposed) return;
 
-      if (!doc.exists) {
+      if (userData == null) {
         _error = 'Usuário não encontrado';
         _isLoading = false;
         if (!_isDisposed) notifyListeners();
         return;
       }
 
-      final data = doc.data()!;
-      
-      // Calcular distância
-      final lat = (data['latitude'] as num?)?.toDouble();
-      final lng = (data['longitude'] as num?)?.toDouble();
+      // 3. Calcular interesses em comum e distância via Helper
+      final myInterests = List<String>.from(myUserData['interests'] ?? []);
+      InterestsHelper.enrichUserData(
+        userData: userData,
+        myInterests: myInterests,
+        myUserData: myUserData,
+      );
 
-      if (lat != null && lng != null) {
-        final dist = await GeoService().getDistanceToTarget(
-          targetLat: lat,
-          targetLng: lng,
-        );
-        
-        if (_isDisposed) return;
-        
-        data['distance'] = dist;
-      }
+      // 4. Converter para modelo User
+      _user = User.fromDocument(userData);
 
-      if (_isDisposed) return;
-
-      _user = User.fromDocument({
-        'userId': doc.id,
-        ...data,
-      });
+      debugPrint('✅ UserCard carregado: ${_user?.fullName} - ${_user?.commonInterests?.length ?? 0} interesses, ${_user?.distance?.toStringAsFixed(1) ?? '?'} km');
 
       _isLoading = false;
       if (!_isDisposed) notifyListeners();

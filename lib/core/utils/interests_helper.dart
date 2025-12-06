@@ -1,30 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:flutter/foundation.dart';
+import 'package:partiu/core/utils/geo_distance_helper.dart';
 
-/// Helper para calcular interesses em comum entre usuários
+/// Helper para cálculos puros relacionados a interesses e distâncias
+/// 
+/// NÃO faz queries ao Firestore - apenas cálculos em memória
+/// Para buscar dados, use UserRepository
 class InterestsHelper {
-  /// Carrega os interesses do usuário atual autenticado
-  static Future<List<String>> loadCurrentUserInterests() async {
-    final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
-    if (currentUserId == null) return [];
-
-    try {
-      final myDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUserId)
-          .get();
-
-      if (myDoc.exists) {
-        return List<String>.from(myDoc.data()?['interests'] ?? []);
-      }
-    } catch (e) {
-      debugPrint('⚠️ Erro ao carregar interesses do usuário atual: $e');
-    }
-
-    return [];
-  }
-
   /// Calcula interesses em comum entre duas listas de interesses
   static List<String> calculateCommonInterests(
     List<String> userInterests,
@@ -33,38 +13,45 @@ class InterestsHelper {
     return userInterests.toSet().intersection(myInterests.toSet()).toList();
   }
 
-  /// Carrega usuário do Firestore e adiciona interesses em comum
+  /// Calcula distância em km entre dois usuários
   /// 
-  /// Retorna um Map com os dados do usuário incluindo:
-  /// - userId
-  /// - commonInterests
-  /// - todos os campos do documento original
-  static Future<Map<String, dynamic>?> loadUserWithCommonInterests(
-    String userId,
-    List<String> myInterests,
-  ) async {
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userId)
-          .get();
+  /// Requer dados completos de ambos os usuários (latitude e longitude)
+  static double? calculateDistance(
+    Map<String, dynamic> userData1,
+    Map<String, dynamic> userData2,
+  ) {
+    final lat1 = (userData1['latitude'] as num?)?.toDouble();
+    final lng1 = (userData1['longitude'] as num?)?.toDouble();
+    final lat2 = (userData2['latitude'] as num?)?.toDouble();
+    final lng2 = (userData2['longitude'] as num?)?.toDouble();
 
-      if (!userDoc.exists) return null;
-
-      final data = Map<String, dynamic>.from(userDoc.data()!);
-      data['userId'] = userId;
-
-      // Calcular interesses em comum
-      final userInterests = List<String>.from(data['interests'] ?? []);
-      final common = calculateCommonInterests(userInterests, myInterests);
-      data['commonInterests'] = common;
-
-      debugPrint('✅ User $userId: ${common.length} interesses em comum');
-
-      return data;
-    } catch (e) {
-      debugPrint('❌ Erro ao carregar user $userId: $e');
+    if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) {
       return null;
+    }
+
+    return GeoDistanceHelper.distanceInKm(lat1, lng1, lat2, lng2);
+  }
+
+  /// Enriquece dados de um usuário com interesses em comum e distância
+  /// 
+  /// Modifica o Map passado por referência, adicionando:
+  /// - commonInterests: List<String>
+  /// - distance: double?
+  static void enrichUserData({
+    required Map<String, dynamic> userData,
+    required List<String> myInterests,
+    Map<String, dynamic>? myUserData,
+  }) {
+    // Adicionar interesses em comum
+    final userInterests = List<String>.from(userData['interests'] ?? []);
+    userData['commonInterests'] = calculateCommonInterests(userInterests, myInterests);
+
+    // Adicionar distância se dados de localização disponíveis
+    if (myUserData != null) {
+      final distance = calculateDistance(myUserData, userData);
+      if (distance != null) {
+        userData['distance'] = distance;
+      }
     }
   }
 }

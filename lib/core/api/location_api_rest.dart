@@ -21,6 +21,7 @@ class LocationApiRest {
     required String country,
     required String locality,
     required String state,
+    String? formattedAddress,
   }) async {
     if (userId.isEmpty) {
       return LocationApiResponse(
@@ -48,14 +49,20 @@ class LocationApiRest {
       AppLogger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', tag: 'LocationApiRest');
 
       // Atualiza documento do usuário com latitude e longitude diretas
-      await _firestore.collection('Users').doc(userId).update({
+      final updateData = {
         'latitude': latitude,
         'longitude': longitude,
         'country': country,
         'locality': locality,
         'state': state,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+      
+      if (formattedAddress != null && formattedAddress.isNotEmpty) {
+        updateData['formattedAddress'] = formattedAddress;
+      }
+      
+      await _firestore.collection('Users').doc(userId).update(updateData);
 
       AppLogger.success('✅ SUCCESS', tag: 'LocationApiRest');
 

@@ -9,6 +9,7 @@ import 'package:partiu/features/home/presentation/widgets/place_card/place_card.
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card_controller.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
+import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
 
 /// Tela de ranking (Tab 2)
 /// 
@@ -22,6 +23,7 @@ class RankingTab extends StatefulWidget {
 
 class _RankingTabState extends State<RankingTab> {
   late final RankingViewModel _viewModel;
+  int _selectedTabIndex = 0; // 0 = Pessoas, 1 = Lugares
 
   @override
   void initState() {
@@ -59,6 +61,23 @@ class _RankingTabState extends State<RankingTab> {
               title: LocalizationService.of(context).translate('ranking') ?? 'Ranking',
             ),
             
+            const SizedBox(height: 8),
+            
+            // Tab Header
+            GlimpseTabHeader.withTabs(
+              title: '',
+              onSearchTap: () {
+                // TODO: Implementar busca
+              },
+              tabLabels: const ['Pessoas', 'Lugares'],
+              selectedTabIndex: _selectedTabIndex,
+              onTabTap: (index) {
+                setState(() {
+                  _selectedTabIndex = index;
+                });
+              },
+            ),
+            
             const SizedBox(height: 16),
             
             // Conteúdo
@@ -88,7 +107,19 @@ class _RankingTabState extends State<RankingTab> {
       );
     }
 
-    return _buildLocationRankingList();
+    // Mostrar tab baseado na seleção
+    return _selectedTabIndex == 0 
+        ? _buildPeopleRankingList() 
+        : _buildLocationRankingList();
+  }
+
+  Widget _buildPeopleRankingList() {
+    // Por enquanto vazio
+    return Center(
+      child: GlimpseEmptyState.standard(
+        text: 'Ranking de pessoas em breve',
+      ),
+    );
   }
 
   Widget _buildLocationRankingList() {

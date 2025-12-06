@@ -9,6 +9,7 @@ import 'package:partiu/features/conversations/state/conversations_viewmodel.dart
 import 'package:partiu/features/conversations/utils/conversation_styles.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/event_emoji_avatar.dart';
+import 'package:partiu/features/home/presentation/widgets/auto_updating_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -87,37 +88,45 @@ class ConversationTile extends StatelessWidget {
       final fallbackEmoji = rawData['emoji']?.toString() ?? EventEmojiAvatar.defaultEmoji;
       final fallbackEventId = rawData['event_id']?.toString() ?? '';
       
-      leading = StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: chatService.getConversationSummary(displayData.otherUserId),
-        builder: (context, snap) {
-          // Usa dados do rawData imediatamente (evita flash)
-          String emoji = fallbackEmoji;
-          String eventId = fallbackEventId;
-          
-          // Atualiza apenas se stream tiver dados diferentes
-          if (snap.hasData && snap.data!.data() != null) {
-            final data = snap.data!.data()!;
-            emoji = data['emoji'] ?? fallbackEmoji;
-            eventId = data['event_id']?.toString() ?? fallbackEventId;
-          }
-          
-          return EventEmojiAvatar(
-            emoji: emoji,
-            eventId: eventId,
-            size: ConversationStyles.avatarSize,
-            emojiSize: ConversationStyles.eventEmojiFontSize,
-          );
-        },
+      leading = AutoUpdatingBadge(
+        count: displayData.hasUnreadMessage ? 1 : 0,
+        badgeColor: GlimpseColors.actionColor,
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: chatService.getConversationSummary(displayData.otherUserId),
+          builder: (context, snap) {
+            // Usa dados do rawData imediatamente (evita flash)
+            String emoji = fallbackEmoji;
+            String eventId = fallbackEventId;
+            
+            // Atualiza apenas se stream tiver dados diferentes
+            if (snap.hasData && snap.data!.data() != null) {
+              final data = snap.data!.data()!;
+              emoji = data['emoji'] ?? fallbackEmoji;
+              eventId = data['event_id']?.toString() ?? fallbackEventId;
+            }
+            
+            return EventEmojiAvatar(
+              emoji: emoji,
+              eventId: eventId,
+              size: ConversationStyles.avatarSize,
+              emojiSize: ConversationStyles.eventEmojiFontSize,
+            );
+          },
+        ),
       );
     } else {
-      // Avatar normal para conversas 1-1
+      // Avatar normal para conversas 1-1 com badge de não lido
       leading = SizedBox(
         width: ConversationStyles.avatarSize,
         height: ConversationStyles.avatarSize,
-        child: StableAvatar(
-          key: ValueKey('conversation_avatar_${displayData.otherUserId}'),
-          userId: displayData.otherUserId,
-          size: ConversationStyles.avatarSize,
+        child: AutoUpdatingBadge(
+          count: displayData.hasUnreadMessage ? 1 : 0,
+          badgeColor: GlimpseColors.actionColor,
+          child: StableAvatar(
+            key: ValueKey('conversation_avatar_${displayData.otherUserId}'),
+            userId: displayData.otherUserId,
+            size: ConversationStyles.avatarSize,
+          ),
         ),
       );
     }

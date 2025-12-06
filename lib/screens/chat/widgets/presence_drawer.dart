@@ -8,6 +8,7 @@ import 'package:partiu/core/models/user.dart' as app_user;
 import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
 
 /// Drawer para exibir lista de presenças confirmadas de um evento
 class PresenceDrawer extends StatefulWidget {
@@ -31,9 +32,15 @@ class _PresenceDrawerState extends State<PresenceDrawer> {
     _loadMyInterests();
   }
 
-  /// Carrega interesses do usuário atual
+  /// Carrega interesses do usuário atual via Repository
   Future<void> _loadMyInterests() async {
-    _myInterests = await InterestsHelper.loadCurrentUserInterests();
+    final repository = UserRepository();
+    final myUserData = await repository.getCurrentUserData();
+    
+    if (myUserData != null) {
+      _myInterests = List<String>.from(myUserData['interests'] ?? []);
+    }
+    
     if (mounted) {
       setState(() {});
       debugPrint('👤 Meus interesses carregados: ${_myInterests.length}');
@@ -210,18 +217,27 @@ class _PresenceUserCardState extends State<_PresenceUserCard> {
     _loadUserWithCommonInterests();
   }
 
-  /// Carrega usuário e calcula interesses em comum
+  /// Carrega usuário e calcula interesses em comum usando Repository
   Future<void> _loadUserWithCommonInterests() async {
-    final data = await InterestsHelper.loadUserWithCommonInterests(
-      widget.userId,
-      widget.myInterests,
-    );
-
-    if (data != null && mounted) {
-      setState(() {
-        _user = app_user.User.fromDocument(data);
-        _isLoading = false;
-      });
+    final repository = UserRepository();
+    
+    // Buscar dados do usuário
+    final userData = await repository.getUserById(widget.userId);
+    
+    if (userData != null) {
+      // Calcular interesses em comum usando Helper
+      final userInterests = List<String>.from(userData['interests'] ?? []);
+      userData['commonInterests'] = InterestsHelper.calculateCommonInterests(
+        userInterests,
+        widget.myInterests,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _user = app_user.User.fromDocument(userData);
+          _isLoading = false;
+        });
+      }
     } else if (mounted) {
       setState(() => _isLoading = false);
     }

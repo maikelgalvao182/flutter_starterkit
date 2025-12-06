@@ -113,8 +113,8 @@ class _UserCardState extends State<UserCard> {
     return _buildUserCard(
       fullName: user.fullName,
       from: user.from ?? '',
-      distanceKm: user.distance, // Controller deve fornecer distance se possível
-      commonInterests: user.interests ?? [],
+      distanceKm: user.distance,
+      commonInterests: user.commonInterests ?? [],
       photoUrl: user.profilePhotoUrl,
     );
   }

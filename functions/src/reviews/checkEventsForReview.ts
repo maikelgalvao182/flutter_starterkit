@@ -2,11 +2,13 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
 /**
- * Cloud Function que roda todo dia às 6h da manhã verificando eventos
+ * Cloud Function que roda a cada 5 minutos verificando eventos
  * que terminaram há 24 horas para criar PendingReviews
+ *
+ * CORREÇÃO: Query simplificada para evitar problemas de índice
  */
 export const checkEventsForReview = functions.pubsub
-  .schedule("0 6 * * *")
+  .schedule("*/5 * * * *")
   .timeZone("America/Sao_Paulo")
   .onRun(async () => {
     console.log("🔍 [checkEventsForReview] Starting...");
@@ -15,20 +17,71 @@ export const checkEventsForReview = functions.pubsub
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     try {
-      // Busca eventos que terminaram há 24h e ainda não criaram reviews
+      // Busca TODOS os eventos recentes
+      // (sem filtrar por reviewsCreated na query)
+      // Isso evita problemas com índice composto
       const eventsSnapshot = await admin
         .firestore()
         .collection("Events")
-        .where("schedule.date", "<=", twentyFourHoursAgo)
-        .where("reviewsCreated", "==", false)
-        .limit(50)
+        .orderBy("schedule.date", "desc")
+        .limit(200)
         .get();
 
-      const foundMsg = `Found ${eventsSnapshot.size} events to process`;
-      console.log(`📊 [checkEventsForReview] ${foundMsg}`);
+      console.log(
+        `📊 [checkEventsForReview] Total events: ${eventsSnapshot.size}`
+      );
 
       if (eventsSnapshot.empty) {
-        console.log("✅ [checkEventsForReview] No events to process");
+        console.log("✅ [checkEventsForReview] No events found");
+        return null;
+      }
+
+      // Filtra eventos que:
+      // 1. Terminaram há mais de 24 horas
+      // 2. Ainda não criaram reviews
+      const eventsToProcess = eventsSnapshot.docs.filter((doc) => {
+        const data = doc.data();
+
+        // Verifica se já criou reviews
+        if (data.reviewsCreated === true) {
+          return false;
+        }
+
+        // Verifica se o evento terminou há mais de 24h
+        const scheduleDate = data.schedule?.date;
+        if (!scheduleDate) {
+          console.log(
+            `⚠️ [checkEventsForReview] Event ${doc.id} has no date`
+          );
+          return false;
+        }
+
+        // Converte Timestamp para Date
+        const eventDate = scheduleDate.toDate ?
+          scheduleDate.toDate() :
+          new Date(scheduleDate);
+        const isOldEnough = eventDate <= twentyFourHoursAgo;
+
+        if (isOldEnough) {
+          const hoursAgo = Math.round(
+            (Date.now() - eventDate.getTime()) / (1000 * 60 * 60)
+          );
+          console.log(
+            `✅ Event ${doc.id} qualifies - ended ${hoursAgo}h ago`
+          );
+        }
+
+        return isOldEnough;
+      });
+
+      const foundMsg = `Found ${eventsToProcess.length} events ` +
+        `(from ${eventsSnapshot.size} total)`;
+      console.log(`📊 [checkEventsForReview] ${foundMsg}`);
+
+      if (eventsToProcess.length === 0) {
+        console.log(
+          "✅ [checkEventsForReview] No events need review creation"
+        );
         return null;
       }
 
@@ -36,8 +89,12 @@ export const checkEventsForReview = functions.pubsub
       let successCount = 0;
       let errorCount = 0;
 
-      for (const eventDoc of eventsSnapshot.docs) {
+      for (const eventDoc of eventsToProcess) {
         try {
+          console.log(
+            `\n🎯 [checkEventsForReview] Processing event: ${eventDoc.id}`
+          );
+
           await createPendingReviewsForEvent(eventDoc);
 
           // Marca evento como processado
@@ -113,8 +170,10 @@ async function createPendingReviewsForEvent(
   console.log(`   Confirmed participants: ${confirmed}`);
 
   if (confirmedParticipants.length === 0) {
-    const msg = `No confirmed participants for event ${eventId}`;
-    console.log(`⚠️ [createPendingReviews] ${msg}`);
+    console.log(
+      "⚠️ [createPendingReviews] No confirmed participants " +
+      `for event ${eventId}`
+    );
     return;
   }
 

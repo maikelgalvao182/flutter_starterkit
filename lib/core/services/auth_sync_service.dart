@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/models/user.dart' as app_user;
 import 'package:partiu/core/managers/session_manager.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/common/services/notifications_counter_service.dart';
 
 /// Serviço de orquestração de autenticação que trabalha COM SessionManager.
 /// 
@@ -66,10 +68,16 @@ class AuthSyncService extends ChangeNotifier {
         // Usuário logado - carregar dados completos do Firestore e salvar no SessionManager
         _log('✅ Usuário logado, carregando dados do Firestore: ${user.uid}');
         await _loadUserDataAndSaveToSession(user.uid);
+        
+        // Inicializar contadores de notificações
+        NotificationsCounterService.instance.initialize();
       } else {
         // Usuário deslogado - limpar SessionManager (que limpa AppState automaticamente)
         _log('🚪 Usuário deslogado, limpando SessionManager');
         await SessionManager.instance.logout();
+        
+        // Resetar contadores de notificações
+        NotificationsCounterService.instance.reset();
       }
 
       // Marca como inicializado após o primeiro evento
@@ -147,6 +155,9 @@ class AuthSyncService extends ChangeNotifier {
       // Cancela subscriptions
       await _userSubscription?.cancel();
       _userSubscription = null;
+      
+      // Limpar cache do UserRepository
+      UserRepository.clearCache();
       
       // SessionManager.logout() limpa tudo (AppState incluído)
       await SessionManager.instance.logout();

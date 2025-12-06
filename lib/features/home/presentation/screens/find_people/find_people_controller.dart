@@ -6,6 +6,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/services/location/location_query_service.dart';
 import 'package:partiu/services/location/distance_isolate.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
 
 /// Controller para gerenciar a lista de pessoas próximas
 /// 
@@ -95,8 +96,12 @@ class FindPeopleController extends ChangeNotifier {
   Future<void> _convertToUsers(List<UserWithDistance> usersWithDistance) async {
     final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
     
-    // Carregar interesses do usuário atual para calcular commonInterests
-    final myInterests = await InterestsHelper.loadCurrentUserInterests();
+    // Carregar interesses do usuário atual via Repository
+    final repository = UserRepository();
+    final myUserData = await repository.getCurrentUserData();
+    final myInterests = myUserData != null 
+        ? List<String>.from(myUserData['interests'] ?? [])
+        : <String>[];
 
     final List<User> loadedUsers = [];
     
@@ -107,7 +112,7 @@ class FindPeopleController extends ChangeNotifier {
       data['userId'] = userWithDist.userId;
       data['distance'] = userWithDist.distanceKm;
       
-      // Calcular interesses em comum
+      // Calcular interesses em comum usando Helper
       final userInterests = List<String>.from(data['interests'] ?? []);
       final common = InterestsHelper.calculateCommonInterests(userInterests, myInterests);
       data['commonInterests'] = common;

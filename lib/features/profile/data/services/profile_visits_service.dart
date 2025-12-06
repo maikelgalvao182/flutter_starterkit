@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/core/models/user.dart';
+import 'package:partiu/core/utils/interests_helper.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
 
 /// Modelo de visita ao perfil
 class ProfileVisit {
@@ -52,6 +55,7 @@ class ProfileVisitsService {
   static ProfileVisitsService get instance => _instance;
 
   final _firestore = FirebaseFirestore.instance;
+  final _userRepository = UserRepository();
   
   // Cache local para anti-spam
   final Map<String, DateTime> _lastVisitCache = {};
@@ -253,5 +257,76 @@ class ProfileVisitsService {
   void clearCache() {
     _lastVisitCache.clear();
     debugPrint('🗑️ [ProfileVisitsService] Cache limpo');
+  }
+
+  /// Stream de visitas com dados completos dos visitantes (otimizado)
+  /// 
+  /// Carrega dados dos visitantes com:
+  /// - Interesses em comum
+  /// - Distância calculada
+  /// - Informações do perfil
+  /// 
+  /// Usa Repository para queries e Helper para cálculos
+  Stream<List<User>> watchVisitsWithUserData(String userId) async* {
+    if (userId.isEmpty) {
+      yield [];
+      return;
+    }
+
+    // Stream das visitas
+    await for (final visitsSnapshot in _firestore
+        .collection('ProfileVisits')
+        .where('visitedUserId', isEqualTo: userId)
+        .orderBy('visitedAt', descending: true)
+        .limit(50)
+        .snapshots()) {
+      
+      try {
+        final visits = visitsSnapshot.docs
+            .map((doc) => ProfileVisit.fromDoc(doc))
+            .toList();
+
+        if (visits.isEmpty) {
+          yield [];
+          continue;
+        }
+
+        // 1. Buscar dados do usuário atual via Repository (cache)
+        final myUserData = await _userRepository.getCurrentUserData();
+        if (myUserData == null) {
+          debugPrint('⚠️ [ProfileVisitsService] Usuário atual não encontrado');
+          yield [];
+          continue;
+        }
+
+        final myInterests = List<String>.from(myUserData['interests'] ?? []);
+
+        // 2. Carregar dados de todos os visitantes em paralelo via Repository
+        final usersFutures = visits.map((visit) async {
+          final userData = await _userRepository.getUserById(visit.visitorId);
+          
+          if (userData != null) {
+            // 3. Calcular interesses e distância via Helper
+            InterestsHelper.enrichUserData(
+              userData: userData,
+              myInterests: myInterests,
+              myUserData: myUserData,
+            );
+            
+            return User.fromDocument(userData);
+          }
+          return null;
+        }).toList();
+
+        // Aguardar todas as requisições
+        final users = await Future.wait(usersFutures);
+        
+        // Filtrar nulos e retornar
+        yield users.whereType<User>().toList();
+      } catch (e) {
+        debugPrint('❌ [ProfileVisitsService] Erro ao carregar dados dos visitantes: $e');
+        yield [];
+      }
+    }
   }
 }

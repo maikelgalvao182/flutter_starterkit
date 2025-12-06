@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:partiu/shared/models/user_model.dart';
 
@@ -10,6 +11,16 @@ class UserRepository {
 
   UserRepository([FirebaseFirestore? firestore])
       : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  // Cache do usuário atual para evitar queries repetidas na mesma sessão
+  static Map<String, dynamic>? _currentUserCache;
+  static String? _cachedUserId;
+
+  /// Limpa o cache do usuário atual (usar no logout)
+  static void clearCache() {
+    _currentUserCache = null;
+    _cachedUserId = null;
+  }
 
   /// Referência à coleção Users
   CollectionReference get _usersCollection => _firestore.collection('Users');
@@ -180,6 +191,41 @@ class UserRepository {
       return UserModel.fromFirestore(snap.docs.first);
     } catch (e) {
       debugPrint('❌ Erro ao buscar usuário mais recente: $e');
+      return null;
+    }
+  }
+
+  /// Busca dados completos do usuário atual autenticado (com cache)
+  /// 
+  /// Usa cache estático para evitar múltiplas queries ao mesmo usuário
+  /// na mesma sessão. Útil para cálculos de distância e interesses.
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
+    final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) return null;
+
+    // Retorna do cache se disponível e válido
+    if (_currentUserCache != null && _cachedUserId == currentUserId) {
+      return _currentUserCache;
+    }
+
+    try {
+      final doc = await _usersCollection.doc(currentUserId).get();
+      
+      if (!doc.exists) {
+        debugPrint('⚠️ Usuário atual não encontrado: $currentUserId');
+        return null;
+      }
+
+      _currentUserCache = {
+        'id': doc.id,
+        ...doc.data() as Map<String, dynamic>,
+      };
+      _cachedUserId = currentUserId;
+
+      debugPrint('✅ Cache do usuário atual atualizado: $currentUserId');
+      return _currentUserCache;
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar dados do usuário atual: $e');
       return null;
     }
   }
