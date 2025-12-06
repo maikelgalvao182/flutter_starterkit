@@ -6,7 +6,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/profile/presentation/controllers/profile_controller.dart';
-import 'package:partiu/features/profile/presentation/components/profile_content_builder.dart';
+import 'package:partiu/features/profile/presentation/components/profile_content_builder_v2.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
@@ -218,20 +218,20 @@ class _ProfileScreenOptimizedState extends State<ProfileScreenOptimized>
           },
         ),
         
-        // Conteúdo usando ProfileContentBuilder
+        // Conteúdo usando ProfileContentBuilderV2
         SliverToBoxAdapter(
           child: ValueListenableBuilder<User?>(
             valueListenable: _controller.profile,
             builder: (context, profile, _) {
               final displayUser = profile ?? widget.user;
 
-              return ProfileContentBuilder(
+              return ProfileContentBuilderV2(
                 controller: _controller,
                 displayUser: displayUser,
                 myProfile: myProfile,
                 i18n: _i18n,
                 currentUserId: widget.currentUserId,
-              ).build();
+              );
             },
           ),
         ),

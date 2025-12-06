@@ -35,5 +35,13 @@ class GlimpseColors {
   // Estados / feedback
   static const Color dangerRed = Color(0xFFD32F2F);
   static const Color warningColor = Color(0xFFEF6C00);
+  static const Color warning = Color(0xFFEF6C00);
+  static const Color success = Color(0xFF5BAD46);
+  static const Color error = Color(0xFFD32F2F);
+  static const Color info = Color(0xFF2196F3);
+
+  // Text colors
+  static const Color textPrimary = Color(0xFF000000);
+  static const Color textSecondary = Color(0xFF6F6E6E);
 
 }

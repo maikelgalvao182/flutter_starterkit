@@ -124,7 +124,7 @@ Future<void> loadParticipants(List<String> userIds) async {
 Future<void> updateProfile(UserModel updatedUser) async {
   // 1. Atualiza no Firestore
   await FirebaseFirestore.instance
-      .collection('users')
+      .collection('Users')
       .doc(updatedUser.userId)
       .update(updatedUser.toMap());
   
@@ -229,7 +229,7 @@ await UserCacheService.instance.refreshUser(userId);
 
 ```dart
 // ❌ NUNCA chame Firestore direto da UI
-final doc = await FirebaseFirestore.instance.collection('users').doc(id).get();
+final doc = await FirebaseFirestore.instance.collection('Users').doc(id).get();
 
 // ❌ NUNCA guarde cache no State/ViewModel
 class MyViewModel extends ChangeNotifier {

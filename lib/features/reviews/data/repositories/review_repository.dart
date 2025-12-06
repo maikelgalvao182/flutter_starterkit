@@ -243,6 +243,52 @@ class ReviewRepository {
     });
   }
 
+  /// Stream de reviews de um usuário (para atualização em tempo real)
+  Stream<List<ReviewModel>> watchUserReviews(String userId, {int limit = 10}) {
+    return _firestore
+        .collection('Reviews')
+        .where('reviewee_id', isEqualTo: userId)
+        .orderBy('created_at', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ReviewModel.fromFirestore(doc))
+            .toList());
+  }
+
+  /// Stream de estatísticas de reviews de um usuário
+  Stream<ReviewStatsModel> watchUserStats(String userId) {
+    return _firestore
+        .collection('ReviewStats')
+        .doc(userId)
+        .snapshots()
+        .asyncMap((doc) async {
+          if (!doc.exists) {
+            // Calcula pela primeira vez
+            await _updateReviewStats(userId);
+            final recalculatedDoc =
+                await _firestore.collection('ReviewStats').doc(userId).get();
+
+            if (recalculatedDoc.exists) {
+              return ReviewStatsModel.fromFirestore(recalculatedDoc);
+            }
+            // Retorna stats vazias se ainda não há reviews
+            return ReviewStatsModel(
+              userId: userId,
+              totalReviews: 0,
+              overallRating: 0.0,
+              ratingsBreakdown: {},
+              badgesCount: {},
+              last30DaysCount: 0,
+              last90DaysCount: 0,
+              lastUpdated: DateTime.now(),
+            );
+          }
+
+          return ReviewStatsModel.fromFirestore(doc);
+        });
+  }
+
   // ==================== PRIVATE HELPERS ====================
 
   Future<void> _updateReviewStats(String userId) async {

@@ -221,7 +221,6 @@ class _ListDrawerState extends State<ListDrawer> {
     return Column(
       children: _controller.myEvents.map((eventDoc) {
         return _EventCardWrapper(
-          key: ValueKey(eventDoc.id),
           eventId: eventDoc.id,
         );
       }).toList(),
@@ -233,7 +232,6 @@ class _ListDrawerState extends State<ListDrawer> {
     return Column(
       children: events.map((event) {
         return _EventCardWrapper(
-          key: ValueKey(event.eventId),
           eventId: event.eventId,
         );
       }).toList(),
@@ -247,7 +245,6 @@ class _EventCardWrapper extends StatelessWidget {
   const _EventCardWrapper({
     required this.eventId,
     this.distanceKm,
-    super.key,
   });
 
   final String eventId;

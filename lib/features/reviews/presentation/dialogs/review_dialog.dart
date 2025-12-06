@@ -273,7 +273,7 @@ class _ReviewDialogContent extends StatelessWidget {
               onPressed: controller.isSubmitting
                   ? null
                   : () => _handleButtonPress(context, controller),
-              isLoading: controller.isSubmitting,
+              isProcessing: controller.isSubmitting,
             ),
           ),
 

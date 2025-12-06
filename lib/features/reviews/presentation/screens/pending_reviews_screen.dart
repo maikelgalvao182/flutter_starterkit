@@ -5,7 +5,6 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/data/repositories/review_repository.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/review_dialog.dart';
-import 'package:intl/intl.dart';
 
 /// Tela para exibir e gerenciar pending reviews
 class PendingReviewsScreen extends StatefulWidget {

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
 
 /// Tela de loading para inicialização do mapa
 /// 

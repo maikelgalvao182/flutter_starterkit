@@ -13,7 +13,6 @@
 /// ReviewStatsSection(stats: stats)
 /// ReviewCardV2(review: review)
 /// ```
-library presentation;
 
 // Components - Dialog Steps
 export 'components/badge_selection_step.dart';

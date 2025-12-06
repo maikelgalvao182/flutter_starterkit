@@ -32,7 +32,7 @@ class UserCacheService {
   
   /// Referência para a coleção de usuários no Firestore
   final CollectionReference _usersCollection = 
-      FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection('Users');
 
   // ==================== LEITURA ====================
 

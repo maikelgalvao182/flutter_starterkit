@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:go_router/go_router.dart';
+import 'package:partiu/core/router/app_router.dart';
 
 class ProfileVisitsChip extends StatelessWidget {
   const ProfileVisitsChip({super.key});
@@ -29,13 +31,8 @@ class ProfileVisitsChip extends StatelessWidget {
           context, 
           source: 'ProfileVisitsChip',
         );
-        if (hasAccess) {
-          // TODO: Implementar navegação para tela de visitas
-          // Navigator.of(context).push(
-          //   MaterialPageRoute(
-          //     builder: (context) => const ProfileVisitsScreenWrapper(),
-          //   ),
-          // );
+        if (hasAccess && context.mounted) {
+          context.push(AppRoutes.profileVisits);
         }
       },
       child: Container(
