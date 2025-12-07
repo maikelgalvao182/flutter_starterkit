@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:partiu/core/api/location_api_rest.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/features/location/domain/repositories/location_repository_interface.dart';
 import 'package:geocoding/geocoding.dart';
@@ -8,9 +8,10 @@ import 'package:geolocator/geolocator.dart';
 
 class LocationRepository implements LocationRepositoryInterface {
   
-  LocationRepository({LocationApiRest? locationApi}) 
-      : _locationApi = locationApi ?? LocationApiRest();
-  final LocationApiRest _locationApi;
+  final FirebaseFirestore _firestore;
+  
+  LocationRepository({FirebaseFirestore? firestore}) 
+      : _firestore = firestore ?? FirebaseFirestore.instance;
   
   @override
   Future<bool> checkLocationPermission({
@@ -109,30 +110,18 @@ class LocationRepository implements LocationRepositoryInterface {
       AppLogger.info('   state: "$state" (type: ${state.runtimeType}, isEmpty: ${state.isEmpty})', tag: 'LocationRepository');
       AppLogger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', tag: 'LocationRepository');
       
-      // ✅ REST API: Update location via backend
-      // Adiciona timestamp para tracking de usuários ativos
-      final result = await _locationApi.updateLocation(
-        userId: userId,
-        latitude: latitude,
-        longitude: longitude,
-        country: country,
-        locality: locality,
-        state: state,
-        formattedAddress: formattedAddress,
-      );
+      // Update location directly in Firestore
+      await _firestore.collection('Users').doc(userId).update({
+        'latitude': latitude,
+        'longitude': longitude,
+        'country': country,
+        'locality': locality,
+        'state': state,
+        if (formattedAddress != null) 'formattedAddress': formattedAddress,
+        'locationUpdatedAt': FieldValue.serverTimestamp(),
+      });
       
-      // TODO: Se o backend não adicionar automaticamente, descomentar:
-      // await FirebaseFirestore.instance
-      //     .collection('Users')
-      //     .doc(userId)
-      //     .update({'locationUpdatedAt': FieldValue.serverTimestamp()});
-
-      if (!result.success) {
-        AppLogger.error('❌ API returned error: ${result.error?.message}', tag: 'LocationRepository');
-        throw Exception('Failed to update location via API: ${result.error?.message}');
-      }
-      
-      AppLogger.success('✅ Location updated via REST API', tag: 'LocationRepository');
+      AppLogger.success('✅ Location updated in Firestore', tag: 'LocationRepository');
       AppLogger.success('updateUserLocation() SUCCESS', tag: 'LocationRepository');
       
     } catch (e) {

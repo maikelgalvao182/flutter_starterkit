@@ -126,7 +126,8 @@ export const processProfileViewNotifications = functions
           .doc();
 
         batch.set(notificationRef, {
-          userId: userId,
+          n_receiver_id: userId, // Campo padrão para queries
+          userId: userId, // Campo duplicado para compatibilidade
           n_type: "profile_views_aggregated",
           n_params: {
             count: data.count.toString(),
@@ -248,7 +249,8 @@ export const processProfileViewNotificationsHttp = functions.https.onRequest(
           .doc();
 
         batch.set(notificationRef, {
-          userId: userId,
+          n_receiver_id: userId, // Campo padrão para queries
+          userId: userId, // Campo duplicado para compatibilidade
           n_type: "profile_views_aggregated",
           n_params: {
             count: data.count.toString(),

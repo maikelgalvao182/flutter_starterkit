@@ -90,7 +90,8 @@ export const onEventChatMessageCreated = functions.firestore
           .doc();
 
         batch.set(notificationRef, {
-          userId: participantId,
+          n_receiver_id: participantId, // Campo padrão para queries
+          userId: participantId, // Campo duplicado para compatibilidade
           n_type: "event_chat_message",
           n_params: {
             eventId: eventId,

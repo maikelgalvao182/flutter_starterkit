@@ -39,6 +39,8 @@ class EventApplicationRepository {
       notificationRepository: notificationRepo,
       targetingService: targetingService,
       orchestrator: orchestrator,
+      geoIndexService: geoService,
+      affinityService: affinityService,
       firestore: _firestore,
     );
   }

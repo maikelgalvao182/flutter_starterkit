@@ -69,7 +69,7 @@ class NotificationTemplates {
 
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "$creatorName criou esta atividade. Vai participar?$interestsText",
+      body: "$creatorName quer $activityName, partiu?",
       preview: "$creatorName criou uma nova atividade",
       extra: {
         'commonInterests': commonInterests,
@@ -162,8 +162,8 @@ class NotificationTemplates {
     required int participantCount,
   }) {
     return NotificationMessage(
-      title: "🔥 Atividade bombando!",
-      body: "As pessoas estão participando da atividade de $creatorName! Não fique de fora!",
+      title: "Atividade bombando!🔥",
+      body: "As pessoas estão entrando na atividade de $creatorName! Não fique de fora!",
       preview: "Atividade bombando 🔥",
       extra: {
         'participantCount': participantCount,

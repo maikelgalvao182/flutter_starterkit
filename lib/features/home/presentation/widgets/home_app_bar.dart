@@ -70,8 +70,12 @@ class _HomeAppBarState extends State<HomeAppBar> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Botão de notificações (com badge usando AppState diretamente)
-              AutoUpdatingBadge(
+              // Botão de notificações (com badge reativo usando AppState)
+              Builder(
+                builder: (context) {
+                  debugPrint('🏠 [HomeAppBar] Builder reconstruído');
+                  debugPrint('🏠 [HomeAppBar] AppState.unreadNotifications.value: ${AppState.unreadNotifications.value}');
+                  return AutoUpdatingBadge(
                 fontSize: 9,
                 minBadgeSize: 14.0,
                 badgePadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -92,6 +96,8 @@ class _HomeAppBarState extends State<HomeAppBar> {
                     },
                   ),
                 ),
+              );
+                },
               ),
             ],
           ),

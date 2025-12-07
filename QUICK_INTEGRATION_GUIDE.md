@@ -56,7 +56,7 @@ class ActivityService {
     try {
       // 1. Salva atividade no Firestore
       await FirebaseFirestore.instance
-          .collection('Events')
+          .collection('events')
           .add(activity.toJson());
       
       // 2. ⚡ DISPARA NOTIFICAÇÃO PARA USUÁRIOS PRÓXIMOS
@@ -84,7 +84,7 @@ Future<void> requestToJoinActivity(
 ) async {
   // 1. Adiciona à lista de pending approvals
   await FirebaseFirestore.instance
-      .collection('Events')
+      .collection('events')
       .doc(activity.id)
       .update({
     'pendingApprovalIds': FieldValue.arrayUnion([userId]),
@@ -119,7 +119,7 @@ Future<void> approveJoinRequest(
 ) async {
   // 1. Move de pending para participants
   await FirebaseFirestore.instance
-      .collection('Events')
+      .collection('events')
       .doc(activity.id)
       .update({
     'pendingApprovalIds': FieldValue.arrayRemove([userId]),
@@ -140,7 +140,7 @@ Future<void> rejectJoinRequest(
 ) async {
   // 1. Remove de pending
   await FirebaseFirestore.instance
-      .collection('Events')
+      .collection('events')
       .doc(activity.id)
       .update({
     'pendingApprovalIds': FieldValue.arrayRemove([userId]),
@@ -166,7 +166,7 @@ Future<void> joinOpenActivity(
 ) async {
   // 1. Adiciona aos participantes
   await FirebaseFirestore.instance
-      .collection('Events')
+      .collection('events')
       .doc(activity.id)
       .update({
     'participantIds': FieldValue.arrayUnion([userId]),
@@ -212,7 +212,7 @@ Future<void> cancelActivity(String activityId) async {
   
   // 2. Marca como cancelada no Firestore
   await FirebaseFirestore.instance
-      .collection('Events')
+      .collection('events')
       .doc(activityId)
       .update({
     'isCanceled': true,

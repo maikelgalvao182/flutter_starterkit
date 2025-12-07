@@ -102,6 +102,8 @@ class ServiceLocator {
         notificationRepository: _getIt<INotificationsRepository>(),
         targetingService: _getIt<NotificationTargetingService>(),
         orchestrator: _getIt<NotificationOrchestrator>(),
+        geoIndexService: _getIt<GeoIndexService>(),
+        affinityService: _getIt<UserAffinityService>(),
       ),
     );
     

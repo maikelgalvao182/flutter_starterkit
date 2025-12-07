@@ -169,7 +169,7 @@ class NotificationTargetingService {
   Future<List<String>> _getParticipants(String activityId) async {
     try {
       final doc =
-          await _firestore.collection('Events').doc(activityId).get();
+          await _firestore.collection('events').doc(activityId).get();
 
       if (!doc.exists) return [];
 
@@ -185,7 +185,7 @@ class NotificationTargetingService {
   Future<String?> _getOwner(String activityId) async {
     try {
       final doc =
-          await _firestore.collection('Events').doc(activityId).get();
+          await _firestore.collection('events').doc(activityId).get();
 
       if (!doc.exists) return null;
 

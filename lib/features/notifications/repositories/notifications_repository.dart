@@ -9,7 +9,7 @@ class NotificationsRepository implements INotificationsRepository {
 
   // Constantes de coleções e campos do Firestore
   static const String _collectionNotifications = 'Notifications';
-  static const String _fieldReceiverId = 'n_receiver_id'; // Campo correto usado pelo Orchestrator
+  static const String _fieldReceiverId = 'n_receiver_id'; // Campo padrão do sistema
   static const String _fieldSenderId = 'n_sender_id';
   static const String _fieldSenderFullname = 'n_sender_fullname';
   static const String _fieldSenderPhotoLink = 'n_sender_photo_link';
@@ -189,7 +189,8 @@ class NotificationsRepository implements INotificationsRepository {
       }
 
       final notificationData = <String, dynamic>{
-        _fieldReceiverId: nReceiverId,
+        _fieldReceiverId: nReceiverId, // Campo padrão
+        'userId': nReceiverId,          // Campo duplicado para compatibilidade
         _fieldSenderId: currentUser.uid,
         _fieldSenderFullname: currentUser.displayName ?? 'Unknown',
         _fieldSenderPhotoLink: currentUser.photoURL ?? '',
@@ -337,7 +338,8 @@ class NotificationsRepository implements INotificationsRepository {
       print('💾 [NotificationRepository.createActivityNotification] ActualSenderName: $actualSenderName');
       
       final notificationData = <String, dynamic>{
-        _fieldReceiverId: receiverId,
+        _fieldReceiverId: receiverId, // Campo padrão
+        'userId': receiverId,          // Campo duplicado para compatibilidade
         _fieldSenderId: actualSenderId ?? '',
         _fieldSenderFullname: actualSenderName,
         _fieldSenderPhotoLink: actualSenderPhoto,

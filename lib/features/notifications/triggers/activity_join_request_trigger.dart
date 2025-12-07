@@ -88,7 +88,7 @@ class ActivityJoinRequestTrigger extends BaseActivityTrigger {
   Future<String?> _getActivityOwner(String activityId) async {
     try {
       final activityDoc = await firestore
-          .collection('Events')
+          .collection('events')
           .doc(activityId)
           .get();
 
@@ -96,6 +96,7 @@ class ActivityJoinRequestTrigger extends BaseActivityTrigger {
 
       return activityDoc.data()?['createdBy'] as String?;
     } catch (e) {
+      print('❌ [ActivityJoinRequestTrigger._getActivityOwner] ERRO: $e');
       return null;
     }
   }

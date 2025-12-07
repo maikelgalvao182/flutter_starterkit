@@ -149,7 +149,7 @@ export const checkEventsForReview = functions.pubsub
 
     // Busca eventos que terminaram há 24h
     const events = await admin.firestore()
-      .collection('Events')
+      .collection('events')
       .where('schedule.date', '<=', twentyFourHoursAgo)
       .where('reviewsCreated', '==', false) // Flag para não processar 2x
       .get();

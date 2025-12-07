@@ -26,26 +26,35 @@ class AutoUpdatingBadge extends StatelessWidget {
   static const _badgeRadius = 10.0;
   static const _badgeBorderRadius = BorderRadius.all(Radius.circular(_badgeRadius));
   static const _badgePosition = -2.0;
-  static const _badgeTop = 2.0;
+  static const _badgeTop = 6.0; // Movido 4px para baixo (era 2.0)
 
   @override
   Widget build(BuildContext context) {
-    // Se count foi passado explicitamente, usar o valor (para Actions/Conversations)
+    debugPrint('🎨 [AutoUpdatingBadge] build() chamado - count: $count');
+    
+    // Se count foi passado explicitamente, usar o valor estático
+    // NOTA: O ValueListenableBuilder deve estar FORA deste widget
     if (count != null) {
+      debugPrint('🎨 [AutoUpdatingBadge] Usando count explícito: $count');
       return _buildBadge(count!);
     }
     
-    // Caso contrário, usar AppState.unreadNotifications (padrão Advanced-Dating)
+    // Caso contrário, usar AppState.unreadNotifications com listener interno
+    debugPrint('🎨 [AutoUpdatingBadge] Usando AppState.unreadNotifications');
+    debugPrint('🎨 [AutoUpdatingBadge] AppState.unreadNotifications.value atual: ${AppState.unreadNotifications.value}');
+    
     return ValueListenableBuilder<int>(
       valueListenable: AppState.unreadNotifications,
-      child: child,
-      builder: (context, notificationCount, childWidget) {
-        return _buildBadge(notificationCount, childWidget: childWidget);
+      builder: (context, notificationCount, _) {
+        debugPrint('🎨 [AutoUpdatingBadge] ValueListenableBuilder rebuild - count: $notificationCount');
+        return _buildBadge(notificationCount);
       },
     );
   }
 
   Widget _buildBadge(int badgeCount, {Widget? childWidget}) {
+    debugPrint('🎨 [AutoUpdatingBadge] _buildBadge chamado com count: $badgeCount');
+    
     return RepaintBoundary(
       child: Stack(
         clipBehavior: Clip.none,

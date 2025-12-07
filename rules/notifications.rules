@@ -1,7 +1,8 @@
 /// 🔔 Coleção de notificações (root collection)
 /// Path usado no app:
 /// - Notifications/{notificationId}
-///   - userId: string (quem recebe)
+///   - userId: string (quem recebe - campo principal)
+///   - n_receiver_id: string (campo duplicado para compatibilidade - legacy)
 ///   - n_type: string
 ///   - n_sender_id: string
 ///   - n_sender_fullname: string
@@ -13,7 +14,14 @@
 ///   - timestamp: timestamp
 
 match /Notifications/{notificationId} {
-  allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-  allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-  allow create, update: if isSignedIn(); // Qualquer usuário logado pode criar notificações
+  // Permitir leitura se o usuário é o destinatário (validar ambos os campos)
+  allow read: if isSignedIn() && 
+    (resource.data.userId == request.auth.uid || resource.data.n_receiver_id == request.auth.uid);
+  
+  // Permitir deletar apenas se for o destinatário
+  allow delete: if isSignedIn() && 
+    (resource.data.userId == request.auth.uid || resource.data.n_receiver_id == request.auth.uid);
+  
+  // Qualquer usuário logado pode criar/atualizar notificações
+  allow create, update: if isSignedIn();
 }

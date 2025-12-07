@@ -19,6 +19,7 @@ import 'package:partiu/common/services/notifications_counter_service.dart';
 /// - SessionManager sincroniza automaticamente com AppState
 class AuthSyncService extends ChangeNotifier {
   bool _initialized = false;
+  bool _notificationServiceInitialized = false; // Flag para inicializar apenas uma vez
   StreamSubscription<fire_auth.User?>? _authSubscription;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
@@ -68,9 +69,7 @@ class AuthSyncService extends ChangeNotifier {
         // Usuário logado - carregar dados completos do Firestore e salvar no SessionManager
         _log('✅ Usuário logado, carregando dados do Firestore: ${user.uid}');
         await _loadUserDataAndSaveToSession(user.uid);
-        
-        // Inicializar contadores de notificações
-        NotificationsCounterService.instance.initialize();
+        // NOTA: NotificationsCounterService.initialize() agora é chamado dentro do snapshot listener
       } else {
         // Usuário deslogado - limpar SessionManager (que limpa AppState automaticamente)
         _log('🚪 Usuário deslogado, limpando SessionManager');
@@ -78,6 +77,9 @@ class AuthSyncService extends ChangeNotifier {
         
         // Resetar contadores de notificações
         NotificationsCounterService.instance.reset();
+        
+        // Resetar flag para permitir reinicialização no próximo login
+        _notificationServiceInitialized = false;
       }
 
       // Marca como inicializado após o primeiro evento
@@ -102,13 +104,18 @@ class AuthSyncService extends ChangeNotifier {
   /// Carrega dados do usuário do Firestore e salva no SessionManager (padrão Advanced-Dating)
   Future<void> _loadUserDataAndSaveToSession(String uid) async {
     try {
-        _log('Carregando dados do usuário do Firestore: $uid');      // Escuta atualizações do Firestore em tempo real
+        _log('🔥🔥🔥 Carregando dados do usuário do Firestore: $uid');
+        _log('🔥 Criando snapshot listener para Users/$uid...');
+        
+      // Escuta atualizações do Firestore em tempo real
       _userSubscription = FirebaseFirestore.instance
           .collection('Users')
           .doc(uid)
           .snapshots()
           .listen((snapshot) async {
         try {
+          _log('🔥 SNAPSHOT RECEBIDO para $uid - exists: ${snapshot.exists}');
+          
           if (!snapshot.exists) {
             _log('Documento do usuário não existe: $uid');
             await SessionManager.instance.logout();
@@ -134,6 +141,26 @@ class AuthSyncService extends ChangeNotifier {
           await SessionManager.instance.login(user);
           
           _log('✅ Usuário salvo no SessionManager - AppState.currentUserId: ${AppState.currentUserId}');
+          _log('🔔 _notificationServiceInitialized: $_notificationServiceInitialized');
+          
+          // Inicializar contadores de notificações APÓS o usuário estar no AppState
+          // Mas apenas uma vez (não a cada update do snapshot)
+          if (!_notificationServiceInitialized) {
+            _log('🔔🔔🔔 Inicializando NotificationsCounterService pela primeira vez...');
+            _log('🔔 AppState.currentUserId: ${AppState.currentUserId}');
+            NotificationsCounterService.instance.initialize();
+            _notificationServiceInitialized = true;
+            _log('🔔✅ NotificationsCounterService.initialize() chamado - flag: $_notificationServiceInitialized');
+          } else {
+            _log('🔔 NotificationsCounterService já foi inicializado anteriormente');
+            // Verificar se os listeners ainda estão ativos (pode ter sido resetado por hot reload)
+            if (NotificationsCounterService.instance.isActive) {
+              _log('🔔 Listeners ainda ativos, não precisa reinicializar');
+            } else {
+              _log('🔔 Listeners inativos, reinicializando...');
+              NotificationsCounterService.instance.initialize();
+            }
+          }
           
           notifyListeners();
         } catch (e, stack) {

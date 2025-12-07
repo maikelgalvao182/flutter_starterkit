@@ -86,7 +86,7 @@ class ActivityNewParticipantTrigger extends BaseActivityTrigger {
     print('👥 [ActivityNewParticipantTrigger._getActivityOwner] Buscando doc: $activityId');
     try {
       final activityDoc = await firestore
-          .collection('Events')
+          .collection('events')
           .doc(activityId)
           .get();
 

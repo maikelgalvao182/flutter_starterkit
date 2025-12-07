@@ -395,7 +395,8 @@ async function sendReviewNotifications(
   // Notificação para owner
   const ownerNotifRef = admin.firestore().collection("Notifications").doc();
   batch.set(ownerNotifRef, {
-    userId: ownerId,
+    n_receiver_id: ownerId, // Campo padrão para queries
+    userId: ownerId, // Campo duplicado para compatibilidade
     n_type: "review_request",
     n_params: {
       eventId: eventData.id,
@@ -422,7 +423,8 @@ async function sendReviewNotifications(
       .doc();
 
     batch.set(participantNotifRef, {
-      userId: participantId,
+      n_receiver_id: participantId, // Campo padrão para queries
+      userId: participantId, // Campo duplicado para compatibilidade
       n_type: "review_request",
       n_params: {
         eventId: eventData.id,

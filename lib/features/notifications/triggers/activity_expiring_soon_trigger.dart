@@ -79,7 +79,7 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
   Future<List<String>> _getActivityParticipants(String activityId) async {
     try {
       final activityDoc = await firestore
-          .collection('Events')
+          .collection('events')
           .doc(activityId)
           .get();
 

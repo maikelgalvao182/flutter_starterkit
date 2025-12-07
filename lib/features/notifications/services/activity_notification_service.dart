@@ -2,11 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/services/geo_index_service.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/models/activity_notification_types.dart';
 import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 import 'package:partiu/features/notifications/services/notification_targeting_service.dart';
 import 'package:partiu/features/notifications/services/notification_orchestrator.dart';
+import 'package:partiu/features/notifications/services/user_affinity_service.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
 import 'package:partiu/features/notifications/triggers/activity_created_trigger.dart';
 import 'package:partiu/features/notifications/triggers/activity_join_request_trigger.dart';
@@ -42,11 +44,15 @@ class ActivityNotificationService {
     required INotificationsRepository notificationRepository,
     required NotificationTargetingService targetingService,
     required NotificationOrchestrator orchestrator,
+    required GeoIndexService geoIndexService,
+    required UserAffinityService affinityService,
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
   })  : _notificationRepository = notificationRepository,
         _targetingService = targetingService,
         _orchestrator = orchestrator,
+        _geoIndexService = geoIndexService,
+        _affinityService = affinityService,
         _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance {
     _initializeTriggers();
@@ -55,6 +61,8 @@ class ActivityNotificationService {
   final INotificationsRepository _notificationRepository;
   final NotificationTargetingService _targetingService;
   final NotificationOrchestrator _orchestrator;
+  final GeoIndexService _geoIndexService;
+  final UserAffinityService _affinityService;
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
@@ -89,6 +97,8 @@ class ActivityNotificationService {
       ActivityNotificationTypes.activityHeatingUp: ActivityHeatingUpTrigger(
         notificationRepository: _notificationRepository,
         firestore: _firestore,
+        geoIndexService: _geoIndexService,
+        affinityService: _affinityService,
       ),
       ActivityNotificationTypes.activityExpiringSoon: ActivityExpiringSoonTrigger(
         notificationRepository: _notificationRepository,
@@ -351,7 +361,7 @@ class ActivityNotificationService {
       // Assumindo campo participantIds: [uid1, uid2, ...]
       
       final activityDoc = await _firestore
-          .collection('Events')
+          .collection('events')
           .doc(activityId)
           .get();
 

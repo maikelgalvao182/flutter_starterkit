@@ -239,7 +239,7 @@ class EventCardController extends ChangeNotifier {
         
         // 2. Dados essenciais do evento
         FirebaseFirestore.instance
-            .collection('Events')
+            .collection('events')
             .doc(eventId)
             .get(),
       ]);

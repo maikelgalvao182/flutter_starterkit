@@ -450,7 +450,7 @@ Future<List<String>> _findUsersInRadius({
 ```dart
 Future<List<String>> _getActivityParticipants(String activityId) async {
   final activityDoc = await firestore
-      .collection('Events')
+      .collection('events')
       .doc(activityId)
       .get();
 
@@ -1758,7 +1758,7 @@ export const createActivityNotifications = functions.https.onCall(
 
     // Buscar dados da atividade e criador
     const activityDoc = await admin.firestore()
-      .collection('Events')
+      .collection('events')
       .doc(activityId)
       .get();
 

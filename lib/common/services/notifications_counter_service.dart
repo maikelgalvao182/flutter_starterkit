@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/features/home/data/repositories/pending_applications_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 /// Serviço centralizado para gerenciar contadores de notificações
 /// 
@@ -22,19 +23,46 @@ class NotificationsCounterService {
   final unreadConversationsCount = ValueNotifier<int>(0);
   final unreadNotificationsCount = ValueNotifier<int>(0);
 
+  // StreamSubscriptions para cancelar no logout
+  StreamSubscription<List<dynamic>>? _pendingApplicationsSubscription;
+  StreamSubscription<QuerySnapshot>? _conversationsSubscription;
+  StreamSubscription<QuerySnapshot>? _notificationsSubscription;
+
+  /// Verifica se os listeners estão ativos
+  bool get isActive => _notificationsSubscription != null;
+
   /// Inicializa os listeners de contadores
   void initialize() {
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     debugPrint('🚀 [NotificationsCounter] Inicializando serviço...');
     debugPrint('🚀 [NotificationsCounter] AppState.currentUserId: ${AppState.currentUserId}');
+    debugPrint('🚀 [NotificationsCounter] AppState.unreadNotifications.value ANTES: ${AppState.unreadNotifications.value}');
+    
+    // Cancelar listeners anteriores se existirem
+    _cancelAllSubscriptions();
+    
     _listenToPendingApplications();
     _listenToUnreadConversations();
     _listenToUnreadNotifications();
+    
     debugPrint('🚀 [NotificationsCounter] Serviço inicializado');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  }
+
+  /// Cancela todas as subscriptions ativas
+  void _cancelAllSubscriptions() {
+    _pendingApplicationsSubscription?.cancel();
+    _conversationsSubscription?.cancel();
+    _notificationsSubscription?.cancel();
+    
+    _pendingApplicationsSubscription = null;
+    _conversationsSubscription = null;
+    _notificationsSubscription = null;
   }
 
   /// Escuta aplicações pendentes (Actions Tab)
   void _listenToPendingApplications() {
-    _pendingApplicationsRepo.getPendingApplicationsStream().listen(
+    _pendingApplicationsSubscription = _pendingApplicationsRepo.getPendingApplicationsStream().listen(
       (applications) {
         pendingActionsCount.value = applications.length;
         debugPrint('📊 [NotificationsCounter] Ações pendentes: ${applications.length}');
@@ -54,9 +82,10 @@ class NotificationsCounterService {
       return;
     }
 
-    _firestore
+    _conversationsSubscription = _firestore
         .collection('Connections')
-        .where('participants', arrayContains: currentUserId)
+        .doc(currentUserId)
+        .collection('Conversations')
         .snapshots()
         .listen(
       (snapshot) {
@@ -93,29 +122,48 @@ class NotificationsCounterService {
   void _listenToUnreadNotifications() {
     final currentUserId = AppState.currentUserId;
     
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🔥 [NotificationsCounter] _listenToUnreadNotifications() CHAMADO!');
     debugPrint('📊 [NotificationsCounter] Iniciando listener de notificações não lidas');
-    debugPrint('📊 [NotificationsCounter] UserId: $currentUserId');
+    debugPrint('🔥 [NotificationsCounter] UserId: $currentUserId');
     
     if (currentUserId == null) {
       debugPrint('⚠️ [NotificationsCounter] Usuário não autenticado - não pode iniciar listener');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       return;
     }
 
-    debugPrint('📊 [NotificationsCounter] Criando query: Notifications.userId == $currentUserId && n_read == false');
+    debugPrint('📊 [NotificationsCounter] Criando query: Notifications.n_receiver_id == $currentUserId && n_read == false');
+    debugPrint('📊 [NotificationsCounter] Criando snapshot listener...');
     
-    _firestore
+    _notificationsSubscription = _firestore
         .collection('Notifications')
-        .where('userId', isEqualTo: currentUserId)
+        .where('n_receiver_id', isEqualTo: currentUserId)
         .where('n_read', isEqualTo: false)
         .snapshots()
         .listen(
       (snapshot) {
         final count = snapshot.docs.length;
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugPrint('📡 [NotificationsCounter] 🔥 LISTENER DISPARADO!');
+        debugPrint('📡 [NotificationsCounter] snapshot.docs.length = $count');
+        debugPrint('📡 [NotificationsCounter] Valor ANTES: AppState.unreadNotifications.value = ${AppState.unreadNotifications.value}');
+        
         // Atualizar AppState diretamente (padrão Advanced-Dating)
         AppState.unreadNotifications.value = count;
         unreadNotificationsCount.value = count;
-        debugPrint('📊 [NotificationsCounter] ✅ Notificações não lidas atualizadas: $count');
-        debugPrint('📊 [NotificationsCounter] Documentos recebidos: ${snapshot.docs.map((d) => d.id).take(5).toList()}');
+        
+        debugPrint('📡 [NotificationsCounter] Valor DEPOIS: AppState.unreadNotifications.value = ${AppState.unreadNotifications.value}');
+        debugPrint('📡 [NotificationsCounter] ✅ Notificações não lidas atualizadas: $count');
+        debugPrint('📡 [NotificationsCounter] Documentos IDs: ${snapshot.docs.map((d) => d.id).take(5).toList()}');
+        
+        if (snapshot.docs.isNotEmpty) {
+          final firstDoc = snapshot.docs.first.data();
+          debugPrint('📡 [NotificationsCounter] Primeiro doc campos: ${firstDoc.keys.toList()}');
+          debugPrint('📡 [NotificationsCounter] n_receiver_id: ${firstDoc['n_receiver_id']}');
+          debugPrint('📡 [NotificationsCounter] n_read: ${firstDoc['n_read']}');
+        }
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       },
       onError: (error) {
         debugPrint('❌ [NotificationsCounter] Erro ao contar notificações: $error');
@@ -127,16 +175,23 @@ class NotificationsCounterService {
 
   /// Limpa os contadores (usar no logout)
   void reset() {
+    debugPrint('🗑️ [NotificationsCounter] Resetando serviço...');
+    
+    // Cancelar todas as subscriptions
+    _cancelAllSubscriptions();
+    
     // Atualizar AppState (padrão Advanced-Dating)
     AppState.unreadNotifications.value = 0;
     pendingActionsCount.value = 0;
     unreadConversationsCount.value = 0;
     unreadNotificationsCount.value = 0;
-    debugPrint('🗑️ [NotificationsCounter] Contadores resetados');
+    
+    debugPrint('✅ [NotificationsCounter] Contadores resetados e listeners cancelados');
   }
 
   /// Dispose dos listeners
   void dispose() {
+    _cancelAllSubscriptions();
     pendingActionsCount.dispose();
     unreadConversationsCount.dispose();
     unreadNotificationsCount.dispose();
