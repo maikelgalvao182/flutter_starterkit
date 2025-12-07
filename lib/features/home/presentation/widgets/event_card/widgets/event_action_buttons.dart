@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
@@ -20,6 +21,9 @@ class EventActionButtons extends StatelessWidget {
     required this.onLeavePressed,
     required this.onDeletePressed,
     required this.onSingleButtonPressed,
+    this.isApplying = false,
+    this.isLeaving = false,
+    this.isDeleting = false,
     super.key,
   });
 
@@ -34,6 +38,9 @@ class EventActionButtons extends StatelessWidget {
   final VoidCallback onLeavePressed;
   final VoidCallback onDeletePressed;
   final VoidCallback onSingleButtonPressed;
+  final bool isApplying;
+  final bool isLeaving;
+  final bool isDeleting;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +90,7 @@ class EventActionButtons extends StatelessWidget {
               onPressed: onDeletePressed,
               noPadding: true,
               fontSize: 14,
+              isProcessing: isDeleting,
             ),
           ),
         ],
@@ -128,35 +136,17 @@ class EventActionButtons extends StatelessWidget {
               onPressed: onLeavePressed,
               noPadding: true,
               fontSize: 14,
+              isProcessing: isLeaving,
             ),
           ),
         ],
       );
     }
-
     // Botão único (outros casos)
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: isEnabled ? onSingleButtonPressed : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: GlimpseColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: GlimpseColors.disabledButtonColorLight,
-          disabledForegroundColor: Colors.white, // Texto branco quando desabilitado
-          shape: RoundedRectangleBorder(
-            borderRadius: DialogStyles.buttonBorderRadius,
-          ),
-          padding: DialogStyles.buttonPadding,
-          elevation: 0,
-        ),
-        child: Text(
-          buttonText,
-          style: DialogStyles.buttonTextStyle.copyWith(
-            color: Colors.white, // Sempre branco (habilitado ou desabilitado)
-          ),
-        ),
-      ),
+    return GlimpseButton(
+      text: buttonText,
+      onPressed: (isEnabled && !isApplying) ? onSingleButtonPressed : null,
+      isProcessing: isApplying,
     );
   }
 }

@@ -129,16 +129,12 @@ class _UserAppBarContent extends StatelessWidget {
 
     return Row(
       children: [
-        // Avatar do usuário com anel de completude
-        ReactiveProfileCompletenessRing(
-          size: 44,
-          strokeWidth: 2,
-          child: StableAvatar(
-            userId: user.userId,
-            size: 38,
-            photoUrl: user.photoUrl,
-            borderRadius: BorderRadius.circular(6),
-          ),
+        // Avatar do usuário
+        StableAvatar(
+          userId: user.userId,
+          size: 38,
+          photoUrl: user.photoUrl,
+          borderRadius: BorderRadius.circular(6),
         ),
         const SizedBox(width: 12),
         // Nome e localização do usuário

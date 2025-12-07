@@ -59,6 +59,18 @@ class GoogleMapViewState extends State<GoogleMapView> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    debugPrint('🗺️ GoogleMapView didChangeDependencies → registrando handler');
+
+    MapNavigationService.instance.registerMapHandler((eventId) {
+      debugPrint('📍 GoogleMapView recebeu navegação: $eventId');
+      _handleEventNavigation(eventId);
+    });
+  }
+
+  @override
   void initState() {
     super.initState();
     

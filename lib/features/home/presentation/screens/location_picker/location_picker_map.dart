@@ -36,7 +36,6 @@ class LocationPickerMapState extends State<LocationPickerMap> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🗺️ [LocationPickerMap] build chamado');
     return GoogleMap(
       initialCameraPosition: CameraPosition(
         target: widget.initialLocation,
@@ -47,7 +46,6 @@ class LocationPickerMapState extends State<LocationPickerMap> {
       myLocationButtonEnabled: false,
       buildingsEnabled: false,
       onMapCreated: (controller) {
-        debugPrint('🗺️ [LocationPickerMap] onMapCreated callback disparado');
         if (!_controllerInitialized) {
           _controller = controller;
           _controllerInitialized = true;

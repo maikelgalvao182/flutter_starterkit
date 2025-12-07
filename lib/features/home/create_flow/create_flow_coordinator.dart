@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/features/home/create_flow/activity_draft.dart';
+import 'package:partiu/features/home/data/repositories/event_map_repository.dart';
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
 import 'package:partiu/features/home/presentation/widgets/participants/privacy_type_selector.dart';
@@ -8,6 +11,9 @@ import 'package:partiu/features/home/presentation/widgets/participants/privacy_t
 /// Gerencia o estado do rascunho conforme o usuário navega pelos drawers
 class CreateFlowCoordinator extends ChangeNotifier {
   final ActivityDraft _draft = ActivityDraft();
+  final MapViewModel? mapViewModel;
+
+  CreateFlowCoordinator({this.mapViewModel});
 
   /// Getter para o rascunho atual
   ActivityDraft get draft => _draft;
@@ -107,9 +113,29 @@ class CreateFlowCoordinator extends ChangeNotifier {
     return buffer.toString();
   }
 
+  /// Injeta o evento recém-criado diretamente no ViewModel do mapa
+  /// Isso garante que a navegação funcione imediatamente, mesmo se o evento
+  /// estiver fora do raio de busca ou ainda não indexado.
+  Future<void> loadDraftEventIntoViewModel(String eventId) async {
+    try {
+      if (mapViewModel == null) {
+        return;
+      }
+      
+      // Buscar evento completo no repositório
+      final event = await EventMapRepository().getEventById(eventId);
+
+      if (event != null) {
+        // Inserir manualmente na lista de eventos do ViewModel
+        await mapViewModel!.injectEvent(event);
+      }
+    } catch (e) {
+      // Ignorar erro de injeção
+    }
+  }
+
   @override
   void dispose() {
-    debugPrint('🔴 [CreateFlow] Coordinator disposed');
     super.dispose();
   }
 }

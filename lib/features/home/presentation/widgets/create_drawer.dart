@@ -18,13 +18,13 @@ import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 class CreateDrawer extends StatefulWidget {
   const CreateDrawer({
     super.key, 
-    this.coordinator,
+    required this.coordinator,
     this.initialName,
     this.initialEmoji,
     this.editMode = false,
   });
 
-  final CreateFlowCoordinator? coordinator;
+  final CreateFlowCoordinator coordinator;
   final String? initialName;
   final String? initialEmoji;
   final bool editMode;
@@ -42,7 +42,7 @@ class _CreateDrawerState extends State<CreateDrawer> {
   void initState() {
     super.initState();
     _controller = CreateDrawerController();
-    _coordinator = widget.coordinator ?? CreateFlowCoordinator();
+    _coordinator = widget.coordinator;
     _controller.addListener(_onControllerChanged);
     
     // Gera uma cor aleatória ao abrir o drawer

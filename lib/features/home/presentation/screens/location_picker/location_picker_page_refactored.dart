@@ -50,11 +50,11 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
   bool _isInitializing = true;
   OverlayEntry? _overlayEntry;
   bool _isProgrammaticMove = false; // Flag para indicar movimento programático do mapa
+  bool _isUpdatingSearchText = false; // Flag para ignorar onChange programático
 
   @override
   void initState() {
     super.initState();
-    debugPrint('🟢 [LocationPicker] initState');
     _initializeAsync();
   }
 
@@ -63,7 +63,6 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
       // Carregar API key do Firebase
       final configService = GoogleMapsConfigService();
       _apiKey = await configService.getGoogleMapsApiKey();
-      debugPrint('✅ [LocationPicker] API Key carregada: ${_apiKey.substring(0, 10)}...');
 
       _controller = LocationPickerController(
         placeService: PlaceService(apiKey: _apiKey),
@@ -74,7 +73,6 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
       _controller.addListener(_onControllerChanged);
 
       if (mounted) {
-        debugPrint('✅ [LocationPicker] Controller pronto, mostrando mapa');
         setState(() {
           _isInitializing = false;
           _isLoadingMap = false;
@@ -83,14 +81,11 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
         // Carregar localização após mapa estar visível
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) {
-            debugPrint('🟢 [LocationPicker] Timeout - carregando localização');
             _loadInitialLocation();
           }
         });
       }
     } catch (e, stack) {
-      debugPrint('❌ [LocationPicker] Erro ao inicializar: $e');
-      debugPrint('Stack: $stack');
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -99,13 +94,11 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
   @override
   void dispose() {
-    debugPrint('🔴 [LocationPicker] dispose iniciado');
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _overlayEntry?.remove();
     _searchController.dispose();
     _searchFocusNode.dispose();
-    debugPrint('✅ [LocationPicker] dispose concluído');
     super.dispose();
   }
 
@@ -117,10 +110,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
   /// Carrega localização inicial
   Future<void> _loadInitialLocation() async {
-    debugPrint('📍 [LocationPicker] Carregando localização inicial');
-
     final LatLng target = widget.displayLocation ?? await _getCurrentLocation();
-    debugPrint('📍 [LocationPicker] Localização inicial: $target');
 
     // Aguardar um pouco para garantir que o mapa está pronto
     await Future.delayed(const Duration(milliseconds: 300));
@@ -130,14 +120,12 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
     // PRIMEIRO: mover a câmera (instantâneo)
     final mapState = _mapKey.currentState;
     if (mapState != null && mapState.controller != null) {
-      debugPrint('📍 [LocationPicker] Movendo câmera do mapa...');
       _isProgrammaticMove = true;
       mapState.setInitialCamera(target);
       Future.delayed(const Duration(milliseconds: 500), () {
         _isProgrammaticMove = false;
       });
     } else {
-      debugPrint('⚠️ [LocationPicker] Mapa ainda não está pronto, aguardando...');
       // Tentar novamente após 500ms
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted && _mapKey.currentState != null) {
@@ -152,26 +140,21 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
   /// Obtém localização atual do dispositivo
   Future<LatLng> _getCurrentLocation() async {
     try {
-      debugPrint('📍 [LocationPicker] Obtendo localização atual...');
-      
       // Tentar última localização conhecida primeiro
       final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null) {
-        debugPrint('✅ [LocationPicker] Última localização conhecida: $lastKnown');
         return LatLng(lastKnown.latitude, lastKnown.longitude);
       }
 
       // Verificar serviço e permissões
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        debugPrint('⚠️ [LocationPicker] Serviço de localização desabilitado');
         return widget.defaultLocation;
       }
 
       final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        debugPrint('⚠️ [LocationPicker] Permissão de localização negada');
         return widget.defaultLocation;
       }
 
@@ -184,22 +167,18 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
       ).timeout(
         const Duration(seconds: 2),
         onTimeout: () {
-          debugPrint('⏰ [LocationPicker] Timeout ao obter localização');
           throw TimeoutException('Location timeout');
         },
       );
 
-      debugPrint('✅ [LocationPicker] Localização atual obtida: $position');
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
-      debugPrint('❌ [LocationPicker] Erro ao obter localização: $e');
       return widget.defaultLocation;
     }
   }
 
   /// Callback quando mapa é criado
   void _onMapCreated(GoogleMapController controller) async {
-    debugPrint('🗺️ [LocationPicker] onMapCreated disparado!');
     // Mapa criado com sucesso - não precisa fazer nada
     // A localização já será carregada pelo timeout no _initializeAsync
   }
@@ -229,6 +208,9 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
   /// Callback quando usuário digita na busca
   void _onSearchChanged(String query) {
+    // Ignorar se estamos atualizando o texto programaticamente
+    if (_isUpdatingSearchText) return;
+    
     _controller.clearSearch();
 
     if (query.isEmpty) {
@@ -248,16 +230,17 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
   /// Callback quando usuário seleciona uma sugestão
   Future<void> _onSuggestionTap(String placeId, String placeName) async {
-    debugPrint('👆 [LocationPicker] _onSuggestionTap: $placeName');
     FocusScope.of(context).unfocus();
     _clearOverlay();
     
-    // Atualizar input com o nome do lugar selecionado
+    // Atualizar input com o nome do lugar selecionado (sem disparar onChange)
+    _isUpdatingSearchText = true;
     _searchController.text = placeName;
-    debugPrint('✏️ [LocationPicker] Input atualizado com: $placeName');
+    // Aguardar um frame antes de resetar a flag
+    await Future.delayed(Duration.zero);
+    _isUpdatingSearchText = false;
 
     final location = await _controller.selectPlaceFromSuggestion(placeId);
-    debugPrint('📍 [LocationPicker] Localização retornada: $location');
     if (location != null) {
       _isProgrammaticMove = true; // Marcar como movimento programático
       _mapKey.currentState?.animateToLocation(location);
@@ -318,8 +301,6 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
   @override
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
-    debugPrint('🎨 [LocationPicker] build - _isLoadingMap: $_isLoadingMap, _isInitializing: $_isInitializing');
-    debugPrint('🟢 [LocationPicker] isLocationConfirmed: ${_controller.isLocationConfirmed}, selectedLocation: ${_controller.selectedLocation}');
     
     // Se ainda está inicializando, mostrar loading
     if (_isInitializing) {
@@ -350,10 +331,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
             onCameraMoveStarted: () {
               // Só desbloquear se for movimento manual (não programático)
               if (!_isProgrammaticMove) {
-                debugPrint('🔓 [LocationPicker] Movimento manual detectado - desbloqueando');
                 _controller.unlockLocation();
-              } else {
-                debugPrint('🤖 [LocationPicker] Movimento programático - mantendo bloqueio');
               }
             },
           ),

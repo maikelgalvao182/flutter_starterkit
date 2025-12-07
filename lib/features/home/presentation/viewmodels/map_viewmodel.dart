@@ -332,6 +332,25 @@ class MapViewModel extends ChangeNotifier {
     return await _locationService.getUserLocation();
   }
 
+  /// Injeta um evento manualmente na lista (usado após criação)
+  Future<void> injectEvent(EventModel event) async {
+    // Verificar se já existe
+    final index = _events.indexWhere((e) => e.id == event.id);
+    if (index >= 0) {
+      _events[index] = event;
+    } else {
+      _events.insert(0, event);
+    }
+    
+    // Enriquecer este evento específico
+    await _enrichEvents(); // Idealmente enriquecer só este, mas por segurança re-enriquecemos tudo
+    
+    // Regenerar markers
+    await _generateGoogleMarkers();
+    
+    notifyListeners();
+  }
+
   /// Define estado de carregamento
   void _setLoading(bool value) {
     _isLoading = value;

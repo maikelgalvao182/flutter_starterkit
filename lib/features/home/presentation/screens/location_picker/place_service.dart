@@ -39,6 +39,7 @@ class PlaceService {
           'key=$apiKey&'
           'language=${localization.languageCode}&'
           'input=$sanitizedQuery&'
+          'components=country:br&'
           'sessiontoken=$sessionToken';
 
       if (bias != null) {
@@ -85,7 +86,6 @@ class PlaceService {
         return RichSuggestion(aci, () {});
       }).toList();
     } catch (e) {
-      debugPrint('❌ Autocomplete error: $e');
       return [];
     }
   }
@@ -106,8 +106,6 @@ class PlaceService {
         'fields=name,formatted_address,geometry,address_components,place_id&'
         'placeid=$placeId',
       );
-
-      debugPrint('🟢 [PlaceService] Buscando detalhes do lugar: $placeId');
 
       final response = await _httpClient.get(url).timeout(
             const Duration(seconds: 10),
@@ -134,10 +132,6 @@ class PlaceService {
       // ✅ Extrair name e formatted_address (NUNCA plus_code)
       final name = result['name'] as String?;
       final formattedAddress = result['formatted_address'] as String?;
-
-      debugPrint('✅ [PlaceService] Lugar encontrado:');
-      debugPrint('   - name: $name');
-      debugPrint('   - formattedAddress: $formattedAddress');
 
       // Extrair componentes do endereço
       String? locality;
@@ -201,7 +195,6 @@ class PlaceService {
           shortName: subLocalityLevel2,
         );
     } catch (e) {
-      debugPrint('❌ Place details error: $e');
       return null;
     }
   }
@@ -232,17 +225,13 @@ class PlaceService {
       final responseJson = json.decode(response.body) as Map<String, dynamic>;
 
       if (responseJson['status'] != 'OK') {
-        debugPrint('❌ Place photos API error: ${responseJson['status']}');
         return [];
       }
 
       final photos = responseJson['result']?['photos'] as List<dynamic>?;
       if (photos == null || photos.isEmpty) {
-        debugPrint('⚠️ No photos found for place');
         return [];
       }
-
-      debugPrint('✅ Found ${photos.length} photos for place');
 
       // Retornar URLs reais ao invés de photo_references
       return photos.map((photo) {
@@ -250,7 +239,6 @@ class PlaceService {
         return getGooglePhotoUrl(photoReference);
       }).toList();
     } catch (e) {
-      debugPrint('❌ Place photos error: $e');
       return [];
     }
   }
@@ -282,17 +270,13 @@ class PlaceService {
       final responseJson = json.decode(response.body) as Map<String, dynamic>;
 
       if (responseJson['status'] != 'OK') {
-        debugPrint('❌ Places API error: ${responseJson['status']}');
         return [];
       }
 
       final results = responseJson['results'] as List<dynamic>?;
       if (results == null || results.isEmpty) {
-        debugPrint('⚠️ No nearby places found');
         return [];
       }
-
-      debugPrint('📍 Found ${results.length} nearby places');
 
       return results.map((item) {
         String? photoReference;
@@ -310,10 +294,9 @@ class PlaceService {
             if (rawPhotoReference != null && rawPhotoReference.isNotEmpty) {
               // Converter para URL real
               photoReference = getGooglePhotoUrl(rawPhotoReference);
-              debugPrint('✅ Photo URL created for: ${item['name']}');
             }
           } catch (e) {
-            debugPrint('⚠️ Error extracting photo: $e');
+            // Ignorar erro de extração de foto
           }
         }
 
@@ -329,7 +312,6 @@ class PlaceService {
           );
       }).toList();
     } catch (e) {
-      debugPrint('❌ Nearby places error: $e');
       return [];
     }
   }
@@ -339,7 +321,6 @@ class PlaceService {
     required LatLng location,
     required String languageCode,
   }) async {
-    debugPrint('🟢 [PlaceService] reverseGeocode iniciado para: $location');
     try {
       final url = Uri.parse(
         'https://maps.googleapis.com/maps/api/geocode/json?'
@@ -348,16 +329,12 @@ class PlaceService {
         'key=$apiKey',
       );
 
-      debugPrint('🟢 [PlaceService] Fazendo requisição HTTP...');
       final response = await _httpClient.get(url).timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              debugPrint('⏰ [PlaceService] Timeout na requisição');
               throw TimeoutException('Reverse geocode timeout');
             },
           );
-
-      debugPrint('✅ [PlaceService] Resposta recebida: ${response.statusCode}');
 
       if (response.statusCode != 200) {
         throw Exception('Reverse geocode failed: ${response.statusCode}');
@@ -366,12 +343,10 @@ class PlaceService {
       final responseJson = json.decode(response.body) as Map<String, dynamic>;
 
       if (responseJson['status'] != 'OK') {
-        debugPrint('❌ [PlaceService] API error: ${responseJson['status']}');
         throw Exception('API error: ${responseJson['status']}');
       }
 
       final result = responseJson['results'][0] as Map<String, dynamic>;
-      debugPrint('✅ [PlaceService] Processando resultado...');
 
       // Extrair componentes do endereço
       var name = '';
@@ -427,7 +402,6 @@ class PlaceService {
       locality = locality ?? administrativeAreaLevel1;
       final city = locality;
 
-      debugPrint('✅ [PlaceService] LocationResult criado com sucesso');
       return LocationResult()
         ..name = name
         ..locality = locality
@@ -454,7 +428,6 @@ class PlaceService {
           shortName: subLocalityLevel2,
         );
     } catch (e) {
-      debugPrint('❌ [PlaceService] Reverse geocode error: $e');
       return null;
     }
   }

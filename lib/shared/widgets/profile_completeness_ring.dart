@@ -79,30 +79,6 @@ class ProfileCompletenessRing extends StatelessWidget {
             height: size - (strokeWidth * 2) - 4,
             child: child,
           ),
-          // Tag de percentual centralizada na parte inferior (sobrepondo o anel)
-          Positioned(
-            bottom: -6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: ringColor,
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(
-                  color: Colors.white,
-                  width: 2,
-                ),
-              ),
-              child: Text(
-                '$percentage%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

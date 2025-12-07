@@ -142,6 +142,9 @@ class _EventCardState extends State<EventCard> {
                     chatButtonText: _controller.chatButtonText,
                     leaveButtonText: _controller.leaveButtonText,
                     deleteButtonText: _controller.deleteButtonText,
+                    isApplying: _controller.isApplying,
+                    isLeaving: _controller.isLeaving,
+                    isDeleting: _controller.isDeleting,
                     onChatPressed: () => EventCardHandler.handleButtonPress(
                       context: context,
                       controller: _controller,

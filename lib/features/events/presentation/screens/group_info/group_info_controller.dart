@@ -6,6 +6,7 @@ import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/dialogs/common_dialogs.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
+import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
@@ -186,6 +187,7 @@ class GroupInfoController extends ChangeNotifier {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => CreateDrawer(
+        coordinator: CreateFlowCoordinator(), // Coordinator vazio para modo edição
         initialName: eventName,
         initialEmoji: eventEmoji,
         editMode: true,

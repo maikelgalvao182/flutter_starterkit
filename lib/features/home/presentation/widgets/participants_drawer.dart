@@ -10,6 +10,7 @@ import 'package:partiu/features/home/presentation/widgets/controllers/participan
 import 'package:partiu/features/home/presentation/widgets/participants/age_range_filter.dart';
 import 'package:partiu/features/home/presentation/widgets/participants/privacy_type_selector.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/people_picker.dart';
+import 'package:partiu/features/home/presentation/services/map_navigation_service.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
@@ -86,8 +87,16 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
             widget.coordinator!.draft,
             currentUser.uid,
           );
+          
+          // ✅ Aguardar um momento para garantir que o Firestore processou os dados
+          // Isso garante que os listeners do EventCard receberão os dados completos
+          await Future.delayed(const Duration(milliseconds: 800));
 
-          debugPrint('✅ [ParticipantsDrawer] Atividade salva com ID: $activityId');
+          // Injetar evento no ViewModel para garantir navegação imediata
+          await widget.coordinator!.loadDraftEventIntoViewModel(activityId);
+
+          // Solicitar navegação (será processada quando o mapa aparecer)
+          MapNavigationService.instance.navigateToEvent(activityId);
 
           if (mounted) {
             // Retornar sucesso
@@ -98,7 +107,7 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
             });
           }
         } else {
-          debugPrint('⚠️ [ParticipantsDrawer] Draft incompleto, não pode salvar');
+          // Sem coordinator, apenas retornar dados
           if (mounted) {
             Navigator.of(context).pop(_controller.getParticipantsData());
           }
@@ -110,9 +119,6 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
         }
       }
     } catch (e, stack) {
-      debugPrint('❌ [ParticipantsDrawer] Erro ao salvar: $e');
-      debugPrint('Stack: $stack');
-      
       if (mounted) {
         // Mostrar erro para o usuário
         ScaffoldMessenger.of(context).showSnackBar(
@@ -258,10 +264,9 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: GlimpseButton(
-                  text: _isSaving 
-                    ? AppLocalizations.of(context).translate('creating_activity') 
-                    : AppLocalizations.of(context).translate('continue'),
-                  onPressed: _controller.canContinue && !_isSaving ? _handleContinue : null,
+                  text: AppLocalizations.of(context).translate('continue'),
+                  isProcessing: _isSaving,
+                  onPressed: _controller.canContinue ? _handleContinue : null,
                 ),
               ),
 

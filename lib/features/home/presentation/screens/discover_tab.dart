@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/presentation/screens/discover_screen.dart';
 import 'package:partiu/features/home/presentation/widgets/create_button.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
@@ -31,7 +32,9 @@ class _DiscoverTabState extends State<DiscoverTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const CreateDrawer(),
+      builder: (context) => CreateDrawer(
+        coordinator: CreateFlowCoordinator(mapViewModel: widget.mapViewModel),
+      ),
     );
   }
 

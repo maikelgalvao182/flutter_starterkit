@@ -94,7 +94,6 @@ class EventCardHandler {
     required EventCardController controller,
   }) async {
     final i18n = AppLocalizations.of(context);
-    final progressDialog = ProgressDialog(context);
     
     final eventName = controller.activityText ?? i18n.translate('this_event');
     
@@ -107,12 +106,11 @@ class EventCardHandler {
       positiveText: i18n.translate('leave'),
       negativeAction: () => Navigator.of(context).pop(),
       positiveAction: () async {
-        Navigator.of(context).pop();
-        progressDialog.show(i18n.translate('leaving_event'));
+        Navigator.of(context).pop(); // Fecha confirmação
         
         try {
+          // O loading será mostrado no botão via controller.isLeaving
           await controller.leaveEvent();
-          await progressDialog.hide();
           
           if (!context.mounted) return;
           
@@ -129,7 +127,6 @@ class EventCardHandler {
           }
         } catch (e) {
           debugPrint('❌ Erro ao sair do evento: $e');
-          await progressDialog.hide();
           
           if (!context.mounted) return;
           

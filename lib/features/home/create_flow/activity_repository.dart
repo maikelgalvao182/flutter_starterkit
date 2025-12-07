@@ -82,15 +82,10 @@ class ActivityRepository {
     // Salvar no Firestore
     try {
       final docRef = await _firestore.collection('events').add(docData);
-      debugPrint('✅ [ActivityRepository] Atividade salva com ID: ${docRef.id}');
       
       // Notificar usuários próximos
-      debugPrint('🔔 [ActivityRepository.saveActivity] Verificando serviço de notificações...');
-      debugPrint('🔔 [ActivityRepository.saveActivity] Service disponível: ${_notificationService != null}');
-      
       if (_notificationService != null) {
         try {
-          debugPrint('🔔 [ActivityRepository.saveActivity] Criando ActivityModel para notificação');
           final activity = ActivityModel(
             id: docRef.id,
             name: draft.activityText!,
@@ -100,27 +95,15 @@ class ActivityRepository {
             createdBy: userId,
             createdAt: DateTime.now(),
           );
-          debugPrint('🔔 [ActivityRepository.saveActivity] ActivityModel criado: ${activity.id}');
-          debugPrint('🔔 [ActivityRepository.saveActivity] Dados: ${activity.name} ${activity.emoji}');
-          debugPrint('🔔 [ActivityRepository.saveActivity] Localização: (${activity.latitude}, ${activity.longitude})');
-          debugPrint('🔔 [ActivityRepository.saveActivity] Criador: ${activity.createdBy}');
           
-          debugPrint('🔔 [ActivityRepository.saveActivity] Chamando notifyActivityCreated...');
           await _notificationService!.notifyActivityCreated(activity);
-          debugPrint('✅ [ActivityRepository.saveActivity] notifyActivityCreated concluído com sucesso');
         } catch (notifError, stackTrace) {
-          debugPrint('❌ [ActivityRepository.saveActivity] Erro ao enviar notificações: $notifError');
-          debugPrint('❌ [ActivityRepository.saveActivity] StackTrace: $stackTrace');
           // Não falhar a criação da atividade por erro de notificação
         }
-      } else {
-        debugPrint('⚠️ [ActivityRepository.saveActivity] NotificationService é NULL - notificações NÃO serão enviadas');
       }
       
       return docRef.id;
     } catch (e, stackTrace) {
-      debugPrint('❌ [ActivityRepository] Erro ao salvar atividade: $e');
-      debugPrint('Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -132,9 +115,7 @@ class ActivityRepository {
         ...updates,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      debugPrint('✅ [ActivityRepository] Atividade $activityId atualizada');
     } catch (e) {
-      debugPrint('❌ [ActivityRepository] Erro ao atualizar atividade: $e');
       rethrow;
     }
   }

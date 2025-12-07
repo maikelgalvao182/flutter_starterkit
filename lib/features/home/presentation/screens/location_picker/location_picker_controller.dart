@@ -66,11 +66,15 @@ class LocationPickerController extends ChangeNotifier {
         position: location,
       ),
     };
-    notifyListeners();
   }
 
   Future<void> moveToLocation(LatLng location,
       {String? placeId, bool loadNearby = false}) async {
+    // Evitar processamento se a localização não mudou significativamente
+    if (_selectedLocation != null && _isSameCoord(_selectedLocation!, location) && placeId == null) {
+      return;
+    }
+
     setMarker(location);
 
     final isExplicitSelection = placeId != null;
@@ -85,6 +89,9 @@ class LocationPickerController extends ChangeNotifier {
     await _loadReverseGeocode(location);
 
     if (loadNearby) await _loadNearbyPlaces(location);
+    
+    // Notificar apenas uma vez após todas as operações
+    notifyListeners();
   }
 
   // -------------------------------------------------------------
@@ -115,13 +122,9 @@ class LocationPickerController extends ChangeNotifier {
   }
 
   Future<LatLng?> selectPlaceFromSuggestion(String placeId) async {
-    debugPrint('🔵 [LocationPickerController] selectPlaceFromSuggestion iniciado');
     _selectedPlaceId = placeId;
     _lockOnSelectedPlace = true; // trava o mapa
     _isLocationConfirmed = true; // confirma a seleção
-    debugPrint('✅ [LocationPickerController] _isLocationConfirmed = true');
-    notifyListeners(); // Notificar imediatamente para atualizar UI (habilitar botão)
-    debugPrint('🔔 [LocationPickerController] notifyListeners() chamado');
 
     // ✅ Buscar detalhes completos do lugar (name + formatted_address)
     final locationResult = await placeService.getPlaceDetails(
@@ -131,10 +134,6 @@ class LocationPickerController extends ChangeNotifier {
 
     if (locationResult != null && locationResult.latLng != null) {
       final location = locationResult.latLng!;
-      debugPrint('📍 [LocationPickerController] Lugar selecionado:');
-      debugPrint('   - name: ${locationResult.name}');
-      debugPrint('   - formattedAddress: ${locationResult.formattedAddress}');
-      debugPrint('   - latLng: $location');
 
       // Salvar resultado completo sem fazer reverse geocode
       _locationResult = locationResult;
@@ -177,7 +176,6 @@ class LocationPickerController extends ChangeNotifier {
 
     if (result != null) {
       _locationResult = result;
-      notifyListeners();
     }
   }
 
@@ -188,7 +186,6 @@ class LocationPickerController extends ChangeNotifier {
     );
 
     _nearbyPlaces = places;
-    notifyListeners();
   }
 
   // -------------------------------------------------------------

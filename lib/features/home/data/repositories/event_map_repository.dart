@@ -93,6 +93,54 @@ class EventMapRepository {
     }
   }
 
+  /// Busca um evento específico pelo ID
+  Future<EventModel?> getEventById(String eventId) async {
+    try {
+      final doc = await _firestore.collection('events').doc(eventId).get();
+      
+      if (!doc.exists) return null;
+      
+      final data = doc.data();
+      if (data == null) return null;
+
+      final location = data['location'] as Map<String, dynamic>?;
+      if (location == null) return null;
+
+      final lat = (location['latitude'] as num?)?.toDouble();
+      final lng = (location['longitude'] as num?)?.toDouble();
+
+      if (lat == null || lng == null) return null;
+
+      final participantsData = data['participants'] as Map<String, dynamic>?;
+      final scheduleData = data['schedule'] as Map<String, dynamic>?;
+      final dateTimestamp = scheduleData?['date'] as Timestamp?;
+      
+      List<String>? photoReferences;
+      final photoRefs = location['photoReferences'] as List<dynamic>?;
+      if (photoRefs != null) {
+        photoReferences = photoRefs.map((e) => e.toString()).toList();
+      }
+
+      return EventModel(
+        id: doc.id,
+        emoji: data['emoji'] as String? ?? '🎉',
+        createdBy: data['createdBy'] as String? ?? '',
+        lat: lat,
+        lng: lng,
+        title: data['activityText'] as String? ?? '',
+        locationName: location['locationName'] as String?,
+        formattedAddress: location['formattedAddress'] as String?,
+        placeId: location['placeId'] as String?,
+        photoReferences: photoReferences,
+        scheduleDate: dateTimestamp?.toDate(),
+        privacyType: participantsData?['privacyType'] as String?,
+      );
+    } catch (e) {
+      debugPrint('❌ [EventMapRepository] Erro ao buscar evento por ID: $e');
+      return null;
+    }
+  }
+
   /// Calcula distância entre dois pontos em km usando fórmula de Haversine
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
     const double earthRadius = 6371; // km
