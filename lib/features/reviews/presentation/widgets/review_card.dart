@@ -36,9 +36,13 @@ class _ReviewCardState extends State<ReviewCard> {
   Future<void> _handleReview() async {
     if (_isProcessing) return;
 
+    debugPrint('🎯 [ReviewCard] _handleReview iniciado');
+    debugPrint('   - pendingReviewId: ${widget.pendingReview.pendingReviewId}');
+    
     setState(() => _isProcessing = true);
 
     try {
+      debugPrint('🔍 [ReviewCard] Abrindo ReviewDialog...');
       // Abre o ReviewDialog
       final result = await showModalBottomSheet<bool>(
         context: context,
@@ -51,15 +55,21 @@ class _ReviewCardState extends State<ReviewCard> {
         ),
       );
 
+      debugPrint('🔍 [ReviewCard] Dialog retornou: $result');
+
       // Se completou o review, anima remoção
       if (result == true) {
+        debugPrint('✅ [ReviewCard] Review completado, animando remoção...');
         if (mounted) {
           await _animationKey.currentState?.animateRemoval();
         }
         debugPrint('✅ Review enviado: ${widget.pendingReview.pendingReviewId}');
+      } else {
+        debugPrint('ℹ️ [ReviewCard] Review cancelado ou dispensado');
       }
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('❌ Erro ao abrir review dialog: $e');
+      debugPrint('Stack trace: $stack');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -78,17 +88,23 @@ class _ReviewCardState extends State<ReviewCard> {
   Future<void> _handleDismiss() async {
     if (_isProcessing) return;
 
+    debugPrint('🗑️ [ReviewCard] _handleDismiss iniciado');
+    debugPrint('   - pendingReviewId: ${widget.pendingReview.pendingReviewId}');
+    
     setState(() => _isProcessing = true);
 
     try {
+      debugPrint('🔍 [ReviewCard] Animando remoção...');
       // Anima remoção primeiro
       await _animationKey.currentState?.animateRemoval();
       
+      debugPrint('🔍 [ReviewCard] Marcando como dismissed no backend...');
       // Depois marca como dismissed no backend
       await _repo.dismissPendingReview(widget.pendingReview.pendingReviewId);
-      debugPrint('🗑️ Review dispensado: ${widget.pendingReview.pendingReviewId}');
-    } catch (e) {
+      debugPrint('✅ Review dispensado: ${widget.pendingReview.pendingReviewId}');
+    } catch (e, stack) {
       debugPrint('❌ Erro ao dispensar review: $e');
+      debugPrint('Stack trace: $stack');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -106,6 +122,11 @@ class _ReviewCardState extends State<ReviewCard> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🎴 [ReviewCard] build - pendingReviewId: ${widget.pendingReview.pendingReviewId}');
+    debugPrint('   - revieweeName: ${widget.pendingReview.revieweeName}');
+    debugPrint('   - eventTitle: ${widget.pendingReview.eventTitle}');
+    debugPrint('   - reviewerRole: ${widget.pendingReview.reviewerRole}');
+    
     return AnimatedRemovalWrapper(
       key: _animationKey,
       onRemove: () {
@@ -169,7 +190,7 @@ class _ReviewCardState extends State<ReviewCard> {
                       Expanded(
                         child: GlimpseButton(
                           text: 'Avaliar',
-                          backgroundColor: GlimpseColors.primaryColorLight,
+                          backgroundColor: GlimpseColors.approveButtonColor,
                           height: 38,
                           fontSize: 14,
                           noPadding: true,
@@ -181,7 +202,7 @@ class _ReviewCardState extends State<ReviewCard> {
                       Expanded(
                         child: GlimpseButton(
                           text: 'Dispensar',
-                          backgroundColor: GlimpseColors.textSubTitle,
+                          backgroundColor: GlimpseColors.rejectButtonColor,
                           height: 38,
                           fontSize: 14,
                           noPadding: true,

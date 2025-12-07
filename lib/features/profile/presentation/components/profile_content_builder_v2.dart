@@ -9,6 +9,7 @@ import 'package:partiu/features/profile/presentation/widgets/interests_profile_s
 import 'package:partiu/features/profile/presentation/widgets/languages_profile_section.dart';
 import 'package:partiu/features/profile/presentation/widgets/gallery_profile_section.dart';
 import 'package:partiu/shared/stores/user_store.dart';
+import 'package:partiu/screens/chat/chat_screen_refactored.dart';
 
 // Novo sistema de reviews
 import 'package:partiu/features/reviews/data/repositories/review_repository.dart';
@@ -16,6 +17,10 @@ import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/reviews/data/models/review_stats_model.dart';
 import 'package:partiu/features/reviews/presentation/components/review_card_v2.dart';
 import 'package:partiu/features/reviews/presentation/components/review_stats_section.dart';
+import 'package:partiu/features/reviews/presentation/components/review_badges_section.dart';
+import 'package:partiu/features/profile/presentation/widgets/comment_card.dart';
+import 'package:partiu/features/reviews/presentation/components/review_comments_section.dart';
+import 'package:partiu/features/profile/presentation/widgets/profile_actions_section.dart';
 
 /// Builder de conteúdo do perfil com NOVO sistema de reviews
 /// 
@@ -48,6 +53,9 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
   // Stream controllers para reviews
   Stream<ReviewStatsModel>? _statsStream;
   Stream<List<ReviewModel>>? _reviewsStream;
+  
+  // Widget de reviews cacheado para evitar rebuilds desnecessários
+  late Widget _reviewsSectionWidget;
 
   @override
   void initState() {
@@ -56,8 +64,15 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
   }
 
   void _loadReviewStreams() {
+    debugPrint('🔄 _loadReviewStreams iniciado para user: ${widget.displayUser.userId}');
     _statsStream = _reviewRepository.watchUserStats(widget.displayUser.userId);
     _reviewsStream = _reviewRepository.watchUserReviews(widget.displayUser.userId);
+    
+    // Inicializa o widget de reviews uma única vez
+    _reviewsSectionWidget = _ProfileReviewsSection(
+      statsStream: _statsStream,
+      reviewsStream: _reviewsStream,
+    );
   }
 
   @override
@@ -81,6 +96,7 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildAboutMe(),
+            if (!widget.myProfile) _buildActions(),
             _buildBasicInfo(),
             _buildInterests(),
             _buildLanguages(),
@@ -148,8 +164,50 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
 
   /// 🆕 Nova seção de reviews usando ReviewRepository
   Widget _buildReviewsV2() {
+    return _reviewsSectionWidget;
+  }
+
+  Widget _buildActions() {
+    return RepaintBoundary(
+      child: ProfileActionsSection(
+        onAddFriend: () {
+          debugPrint('👥 Adicionar amigo clicado');
+        },
+        onMessage: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreenRefactored(
+                user: widget.displayUser,
+                isEvent: false,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Widget separado para gerenciar estado de expansão e evitar rebuilds do pai
+class _ProfileReviewsSection extends StatefulWidget {
+  const _ProfileReviewsSection({
+    required this.statsStream,
+    required this.reviewsStream,
+  });
+
+  final Stream<ReviewStatsModel>? statsStream;
+  final Stream<List<ReviewModel>>? reviewsStream;
+
+  @override
+  State<_ProfileReviewsSection> createState() => _ProfileReviewsSectionState();
+}
+
+class _ProfileReviewsSectionState extends State<_ProfileReviewsSection> {
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<ReviewStatsModel>(
-      stream: _statsStream,
+      stream: widget.statsStream,
       builder: (context, statsSnapshot) {
         if (!statsSnapshot.hasData || !statsSnapshot.data!.hasReviews) {
           return const SizedBox.shrink();
@@ -164,51 +222,29 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
               // Estatísticas agregadas
               ReviewStatsSection(stats: stats),
               
-              const SizedBox(height: 8),
+              if (stats.badgesCount.isNotEmpty)
+                ReviewBadgesSection(badgesCount: stats.badgesCount),
               
               // Lista de reviews individuais
               StreamBuilder<List<ReviewModel>>(
-                stream: _reviewsStream,
+                stream: widget.reviewsStream,
                 builder: (context, reviewsSnapshot) {
-                  if (!reviewsSnapshot.hasData || reviewsSnapshot.data!.isEmpty) {
+                  if (reviewsSnapshot.hasError) {
+                    debugPrint('❌ Erro ao carregar reviews: ${reviewsSnapshot.error}');
+                    return const SizedBox.shrink();
+                  }
+
+                  if (!reviewsSnapshot.hasData) {
                     return const SizedBox.shrink();
                   }
 
                   final reviews = reviewsSnapshot.data!;
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Mostrar até 5 reviews recentes
-                        ...reviews.take(5).map((review) {
-                          return ReviewCardV2(review: review);
-                        }).toList(),
-                        
-                        // Botão "Ver todas" se tiver mais de 5
-                        if (reviews.length > 5)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Center(
-                              child: TextButton(
-                                onPressed: () {
-                                  // TODO: Navegar para tela de todas as reviews
-                                  debugPrint('🔍 Ver todas as ${reviews.length} reviews');
-                                },
-                                child: Text(
-                                  'Ver todas as ${reviews.length} avaliações',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
+                  if (reviews.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return ReviewCommentsSection(reviews: reviews);
                 },
               ),
             ],

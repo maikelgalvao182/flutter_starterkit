@@ -144,10 +144,14 @@ class _MessageListWidgetState extends State<MessageListWidget> {
     // Get current locale for timeago formatting
     final currentLocale = i18n.translate('lang');
     
+    // 🔥 IMPORTANTE: Limpar cache de mensagens que não existem mais
+    final currentIds = messages.map((m) => m.id).toSet();
+    _messageCache.removeWhere((id, _) => !currentIds.contains(id));
+    
     for (final message in messages) {
       final docId = message.id;
       
-      // Verificar se já está em cache
+      // Verificar se já está em cache (sempre processa mensagens novas)
       if (_messageCache.containsKey(docId)) {
         processedMessages.add(_messageCache[docId]!);
         continue;
@@ -188,9 +192,11 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       String? avatarUrl;
       String? fullName;
       
+      final bool isEventChat = widget.remoteUserId.startsWith('event_');
+
       if (!isSender) {
         // If 1-1 chat (not event), use remoteUser info
-        if (!widget.remoteUserId.startsWith('event_')) {
+        if (!isEventChat) {
            avatarUrl = widget.remoteUser.profilePhotoUrl;
            fullName = widget.remoteUser.fullName;
         }
@@ -272,37 +278,39 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       controller: widget.messagesController,
       itemCount: processedMessages.length,
       isReverse: true,
-      child: ListView.builder(
-        key: ValueKey(processedMessages.length),
-        controller: widget.messagesController,
-        // Usando BouncingScrollPhysics com configuração personalizada para efeito mais suave
-        physics: const BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.fast),
-        reverse: true, // ListView invertido: cresce de baixo para cima (mensagens novas embaixo)
-        itemCount: processedMessages.length,
-        itemBuilder: (context, index) {
-          // Com reverse: true, precisamos acessar o índice inverso
-          final reversedIndex = processedMessages.length - 1 - index;
-          final processedMsg = processedMessages[reversedIndex];
-          
-          // Usar RepaintBoundary para isolar repinturas
-          return RepaintBoundary(
-            key: ValueKey(processedMsg.id), // Key apropriada para performance
-            child: GlimpseChatBubble(
-              message: processedMsg.message,
-              isUserSender: processedMsg.isUserSender,
-              time: processedMsg.time,
-              isRead: processedMsg.isRead,
-              imageUrl: processedMsg.imageUrl,
-              isSystem: processedMsg.isSystem,
-              type: processedMsg.type,
-              params: processedMsg.params,
-              messageId: processedMsg.id,
-              senderId: processedMsg.senderId,
-              avatarUrl: processedMsg.avatarUrl,
-              fullName: processedMsg.fullName,
-            ),
-          );
-        },
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) => false, // Allow bubbling
+        child: ListView.builder(
+          key: const PageStorageKey('chat-list'), // ✅ Static key to prevent rebuilds
+          controller: widget.messagesController,
+          physics: const BouncingScrollPhysics(
+            decelerationRate: ScrollDecelerationRate.fast,
+          ),
+          reverse: true,
+          itemCount: processedMessages.length,
+          itemBuilder: (context, index) {
+            final reversedIndex = processedMessages.length - 1 - index;
+            final processedMsg = processedMessages[reversedIndex];
+
+            return RepaintBoundary(
+              key: ValueKey(processedMsg.id),
+              child: GlimpseChatBubble(
+                message: processedMsg.message,
+                isUserSender: processedMsg.isUserSender,
+                time: processedMsg.time,
+                isRead: processedMsg.isRead,
+                imageUrl: processedMsg.imageUrl,
+                isSystem: processedMsg.isSystem,
+                type: processedMsg.type,
+                params: processedMsg.params,
+                messageId: processedMsg.id,
+                senderId: processedMsg.senderId,
+                avatarUrl: processedMsg.avatarUrl,
+                fullName: processedMsg.fullName,
+              ),
+            );
+          },
+        ),
       ),
     );
   }

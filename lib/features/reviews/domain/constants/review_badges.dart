@@ -75,4 +75,10 @@ const List<ReviewBadge> availableBadges = [
     title: 'Super gato(a)',
     color: Color(0xFFFF5722), // Vermelho
   ),
+  ReviewBadge(
+    key: 'bom_de_papo',
+    emoji: '💬',
+    title: 'Bom de papo',
+    color: Color(0xFF00BCD4), // Cyan
+  ),
 ];

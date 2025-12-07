@@ -275,3 +275,4 @@ async function processEvent(
 
   console.log(`✅ [PendingReviews] Evento ${eventId} processado com sucesso`);
 }
+

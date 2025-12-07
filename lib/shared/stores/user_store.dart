@@ -218,7 +218,7 @@ class UserStore {
     });
   }
 
-  /// ✅ Cidade
+  /// ✅ City
   ValueNotifier<String?> getCityNotifier(String userId) {
     if (userId.isEmpty) return ValueNotifier<String?>(null);
     _ensureListening(userId);

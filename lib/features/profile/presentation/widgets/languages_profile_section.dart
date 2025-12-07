@@ -82,7 +82,7 @@ class LanguagesProfileSection extends StatelessWidget {
                     label: label,
                     isSelected: false,
                     onTap: null,
-                    backgroundColor: GlimpseColors.primaryLight,
+                    backgroundColor: GlimpseColors.lightTextField,
                     textColor: Colors.black,
                     borderColor: Colors.transparent,
                   );

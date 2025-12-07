@@ -70,25 +70,19 @@ class _ProfileHeaderState extends State<ProfileHeader> {
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: GlimpseStyles.horizontalMargin),
-        child: AspectRatio(
-          aspectRatio: 1 / 1.4,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(25),
-            child: Stack(
-              children: [
-                // Imagem de fundo
-                _buildImage(),
-                
-                // Gradiente overlay
-                _buildGradientOverlay(),
-                
-                // Informações do usuário
-                _buildUserInfo(),
-              ],
-            ),
-          ),
+      child: AspectRatio(
+        aspectRatio: 1 / 1.4,
+        child: Stack(
+          children: [
+            // Imagem de fundo
+            _buildImage(),
+            
+            // Gradiente overlay
+            _buildGradientOverlay(),
+            
+            // Informações do usuário
+            _buildUserInfo(),
+          ],
         ),
       ),
     );
@@ -211,7 +205,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
               child: ReactiveUserNameWithBadge(
                 userId: widget.user.userId,
                 style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -228,7 +222,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
                 return Text(
                   ', $age',
                   style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),

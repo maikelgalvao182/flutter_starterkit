@@ -12,6 +12,7 @@ import 'package:partiu/features/reviews/presentation/components/review_dialog_st
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
+import 'package:partiu/shared/widgets/glimpse_loading_screen.dart';
 
 /// Bottom sheet para avaliar um participante/owner após um evento
 class ReviewDialog extends StatelessWidget {
@@ -51,8 +52,28 @@ class _ReviewDialogContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<ReviewDialogController>();
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.85; // 85% da altura da tela
+
+    // Se estiver processando ou transicionando, mostra loading
+    if (controller.isSubmitting || controller.isTransitioning) {
+      return Container(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: const GlimpseLoadingScreen(),
+      );
+    }
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: maxHeight,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
@@ -181,28 +202,6 @@ class _ReviewDialogContent extends StatelessWidget {
                 ),
               ),
 
-              // Botão secundário (pular comentário)
-              if (_shouldShowSkipButton(controller))
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    top: 12,
-                  ),
-                  child: TextButton(
-                    onPressed: () => _handleSkipComment(context, controller),
-                    child: Text(
-                      'Pular comentário',
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: GlimpseColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-
               // Padding bottom para safe area
               SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
             ],
@@ -268,7 +267,6 @@ class _ReviewDialogContent extends StatelessWidget {
   }
 
   // ==================== HANDLERS ====================
-
   Future<void> _handleButtonPress(
     BuildContext context,
     ReviewDialogController controller,
@@ -310,7 +308,7 @@ class _ReviewDialogContent extends StatelessWidget {
     } else if (isCommentStep) {
       // Verificar se owner tem mais participantes para avaliar
       if (controller.isOwnerReview && !controller.isLastParticipant) {
-        controller.nextParticipant();
+        await controller.nextParticipant();
       } else {
         // Submit final
         final success = await controller.submitReview(

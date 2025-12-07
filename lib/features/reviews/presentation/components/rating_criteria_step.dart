@@ -20,32 +20,6 @@ class RatingCriteriaStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Título
-        Text(
-          'Avalie os critérios',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.textPrimary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        
-        // Subtítulo
-        Text(
-          'Avalie pelo menos um critério',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: GlimpseColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        
         // Lista de critérios
         ...ReviewCriteria.all.map((criterion) {
           return _CriterionItem(
@@ -128,7 +102,14 @@ class _CriterionItem extends StatelessWidget {
               final isSelected = currentRating != null && rating <= currentRating!;
 
               return GestureDetector(
-                onTap: () => onRatingChanged(rating),
+                onTap: () {
+                  debugPrint('⭐ [RatingCriteria] Tap detectado!');
+                  debugPrint('   - criterion: ${criterion['key']}');
+                  debugPrint('   - rating: $rating');
+                  debugPrint('   - currentRating: $currentRating');
+                  onRatingChanged(rating);
+                },
+                behavior: HitTestBehavior.opaque,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Icon(

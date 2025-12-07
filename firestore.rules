@@ -45,6 +45,10 @@ function isEventParticipant(eventId) {
     request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participants.participantIds;
 }
 
+function isParticipant(u1, u2) {
+  return isSignedIn() && (request.auth.uid == u1 || request.auth.uid == u2);
+}
+
     // ======================================
     // 👤 Usuários
     // ======================================
@@ -211,12 +215,20 @@ match /PendingReviews/{pendingId} {
   // Criar: apenas Cloud Functions (nenhum cliente pode criar)
   allow create: if false;
   
-  // Atualizar: apenas o reviewer pode marcar como dismissed
+  // Atualizar: apenas o reviewer pode:
+  // 1. Marcar como dismissed
+  // 2. Confirmar presença (para owners)
   allow update: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id &&
-    request.resource.data.dismissed == true &&
-    request.resource.data.diff(resource.data).affectedKeys()
-      .hasOnly(['dismissed', 'dismissed_at']);
+    (
+      // Opção 1: dismissed
+      (request.resource.data.dismissed == true &&
+       request.resource.data.diff(resource.data).affectedKeys()
+         .hasOnly(['dismissed', 'dismissed_at'])) ||
+      // Opção 2: presence_confirmed (para owners)
+      (request.resource.data.diff(resource.data).affectedKeys()
+         .hasOnly(['presence_confirmed', 'confirmed_participant_ids']))
+    );
   
   // Deletar: não permitido (Cloud Functions gerencia)
   allow delete: if false;
@@ -286,6 +298,28 @@ match /events/{eventId} {
   
   allow delete: if isSignedIn() && 
     resource.data.createdBy == request.auth.uid;
+
+  // Subcoleção: Participantes confirmados (para sistema de reviews)
+  match /ConfirmedParticipants/{participantId} {
+    // Helper para buscar o evento pai
+    function getEvent() {
+      return get(/databases/$(database)/documents/events/$(eventId)).data;
+    }
+    
+    // Ler: criador do evento e o próprio participante
+    allow read: if isSignedIn() && (
+      request.auth.uid == getEvent().createdBy ||
+      request.auth.uid == participantId
+    );
+    
+    // Criar/Atualizar: apenas o criador do evento (durante confirmação de presença no review)
+    allow create, update: if isSignedIn() && 
+      request.auth.uid == getEvent().createdBy;
+    
+    // Deletar: apenas o criador do evento
+    allow delete: if isSignedIn() && 
+      request.auth.uid == getEvent().createdBy;
+  }
 }
 
     // ======================================
@@ -522,11 +556,6 @@ match /Messages/{userId} {
       return partnerId.split('_')[1];
     }
     
-    // Helper: verifica se usuário é participante de chat 1-1
-    function isParticipant(u1, u2) {
-      return request.auth.uid == u1 || request.auth.uid == u2;
-    }
-    
     // Helper: verifica se usuário é participante aprovado do evento
     // Como EventApplications não usa padrão de ID previsível, verificamos via query
     // Simplificação: assumimos que se o documento Messages/{userId}/event_{eventId} existe,
@@ -595,6 +624,17 @@ match /ProfileVisits/{visitId} {
   // Apenas o dono pode deletar suas visitas
   allow delete: if isSignedIn() && 
                    request.auth.uid == resource.data.visitedUserId;
+}
+
+/// 👁️ Coleção de views agregadas (para notificações)
+/// Path: ProfileViews/{viewId}
+match /ProfileViews/{viewId} {
+  // Qualquer usuário autenticado pode registrar views
+  allow create: if isSignedIn();
+  
+  // Apenas o dono do perfil visualizado pode ler
+  allow read: if isSignedIn() && 
+                 request.auth.uid == resource.data.viewedUserId;
 }
 
     // ======================================

@@ -17,13 +17,13 @@ class GlimpseButton extends StatelessWidget {
     this.textColor,
     this.width,
   this.height = 48,
-    this.fontSize = 16,
+    this.fontSize = 14,
     this.fontWeight = FontWeight.w700,
     this.outline = false,
     this.isProcessing = false,
     this.noPadding = false,
     this.icon,
-    this.iconSize = 20,
+    this.iconSize = 16,
   });
   final String text;
   final VoidCallback? onTap;
@@ -57,7 +57,7 @@ class GlimpseButton extends StatelessWidget {
   
   final effectiveTextColor = outline
     ? (hasCallback
-      ? baseBgColor
+      ? (textColor ?? baseBgColor)
       : GlimpseColors.disabledButtonColorLight)
     : (textColor ?? Colors.white);
     

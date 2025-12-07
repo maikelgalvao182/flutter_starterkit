@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
-/// Widget wrapper que gerencia o auto-scroll quando novos itens são adicionados à lista.
-/// Útil para chats e logs onde a lista deve rolar automaticamente para o final.
+/// Widget wrapper que gerencia o auto-scroll quando novos itens são adicionados.
+/// Ideal para chats e feeds onde a lista deve rolar automaticamente para o final.
 class AutoScrollListHandler extends StatefulWidget {
   const AutoScrollListHandler({
     required this.controller,
@@ -22,60 +23,77 @@ class AutoScrollListHandler extends StatefulWidget {
 
 class _AutoScrollListHandlerState extends State<AutoScrollListHandler> {
   int _lastCount = 0;
+  bool _isAnimating = false;
+  Timer? _debounceTimer;
 
   @override
-  void didUpdateWidget(covariant AutoScrollListHandler oldWidget) {
+  void initState() {
+    super.initState();
+    _lastCount = widget.itemCount;
+  }
+
+  @override
+  void didUpdateWidget(AutoScrollListHandler oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!widget.controller.hasClients) return;
+    final newCount = widget.itemCount;
 
-      final newCount = widget.itemCount;
+    // Detecta incremento real
+    if (newCount > _lastCount) {
+      debugPrint("📊 [AutoScroll] Contagem mudou: $_lastCount -> $newCount");
+      
+      // Debounce para evitar múltiplos triggers
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _handleAutoScroll();
+        });
+      });
+    }
 
-      // Se chegaram novas mensagens
-      if (newCount > _lastCount) {
-        final isNearBottom = widget.isReverse
-            ? widget.controller.offset < 80
-            : widget.controller.position.maxScrollExtent - widget.controller.offset < 80;
-
-        if (isNearBottom) {
-          _scrollToBottom();
-        }
-      }
-
-      _lastCount = newCount;
-    });
+    _lastCount = newCount;
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!widget.controller.hasClients) return;
+  void _handleAutoScroll() {
+    if (!mounted || !widget.controller.hasClients || _isAnimating) {
+      debugPrint("⏸️ [AutoScroll] Abortado (mounted=$mounted, hasClients=${widget.controller.hasClients}, animating=$_isAnimating)");
+      return;
+    }
 
-      final position = widget.controller.position;
+    final position = widget.controller.position;
 
-      if (widget.isReverse) {
-        // Evitar animação cancelada (quando já está em 0)
-        if (widget.controller.offset == position.minScrollExtent) {
-          widget.controller.jumpTo(position.minScrollExtent + 1);
-        }
+    final bool isNearBottom = widget.isReverse
+        ? (widget.controller.offset < 120)
+        : (position.maxScrollExtent - widget.controller.offset < 120);
 
-        widget.controller.animateTo(
-          position.minScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      } else {
-        widget.controller.animateTo(
-          position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
+    if (!isNearBottom) {
+      debugPrint("⏳ [AutoScroll] Usuário não está no fim, NÃO auto-scroll");
+      return;
+    }
+
+    _isAnimating = true;
+    debugPrint("🔥 [AutoScroll] DISPARADO! Animando para ${widget.isReverse ? 'minScrollExtent' : 'maxScrollExtent'}");
+
+    final target = widget.isReverse
+        ? position.minScrollExtent
+        : position.maxScrollExtent;
+
+    widget.controller.animateTo(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    ).then((_) {
+      _isAnimating = false;
+      debugPrint("✅ [AutoScroll] Animação concluída");
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return widget.child;
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

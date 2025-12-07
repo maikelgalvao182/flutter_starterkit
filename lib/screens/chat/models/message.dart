@@ -17,7 +17,10 @@ class Message {
   });
 
   /// Criar Message a partir de documento Firestore
-  factory Message.fromDocument(Map<String, dynamic> data, String id) {
+  static Message? fromDocument(Map<String, dynamic> data, String id) {
+    // 🔍 DIAGNOSTIC LOG: Print raw data to identify source of bad messages
+    // print("RAW DOC [$id]: $data");
+
     DateTime? timestamp;
     try {
       final timestampField = data['timestamp'];
@@ -25,34 +28,43 @@ class Message {
         timestamp = timestampField.toDate();
       } else if (timestampField == null) {
         // 🕒 Fallback para escritas locais (latency compensation)
-        // Quando escrevemos localmente, o timestamp do servidor ainda é null
         timestamp = DateTime.now();
       }
     } catch (e) {
-      // Se houver erro ao converter timestamp, usar agora como fallback
       timestamp = DateTime.now();
     }
 
-    final senderId = data['sender_id'] as String?;
-    final receiverId = data['receiver_id'] as String?;
-    final userId = data['user_id'] as String? ?? '';
+    // 🔄 NORMALIZATION: Support both snake_case and camelCase keys
+    // Some legacy or system messages use camelCase (senderId, receiverId, etc.)
+    final senderId = (data['sender_id'] ?? data['senderId']) as String?;
+    final userId = (data['user_id'] ?? data['userId']) as String?; 
     
-    // Debug log
-    print('🔍 Message.fromDocument - id: $id');
-    print('   sender_id (raw): ${data['sender_id']}');
-    print('   receiver_id (raw): ${data['receiver_id']}');
-    print('   user_id (raw): ${data['user_id']}');
-    print('   senderId (final): $senderId');
-    print('   userId (final): $userId');
+    // 🛡️ VALIDATION: Filter out broken messages
+    if (senderId == null && (userId == null || userId.isEmpty)) {
+      print("⚠️ [Message Model] Invalid message detected (no sender_id/user_id). Ignoring id: $id");
+      print("   - Data: $data");
+      return null;
+    }
 
+    // 🔄 NORMALIZATION: Handle Event vs 1x1 Chat Schema
+    // If receiver_id starts with 'event_', treat it as null (Event Chat)
+    // This fixes legacy messages that might have 'event_...' in receiver_id
+    String? rawReceiverId = (data['receiver_id'] ?? data['receiverId']) as String?;
+    if (rawReceiverId != null && rawReceiverId.startsWith('event_')) {
+      rawReceiverId = null;
+    }
+    final receiverId = rawReceiverId;
+
+    final finalUserId = userId ?? '';
+    
     return Message(
       id: id,
       text: data['message'] ?? data['message_text'] as String?, // ✅ Suporta ambos os campos
-      imageUrl: data['message_img_link'] as String?,
-      userId: userId,
-      senderId: senderId ?? userId, // ✅ Fallback para user_id em mensagens antigas
+      imageUrl: (data['message_img_link'] ?? data['imgLink']) as String?,
+      userId: finalUserId,
+      senderId: senderId ?? finalUserId, // ✅ Fallback para user_id em mensagens antigas
       receiverId: receiverId,
-      type: data['message_type'] as String? ?? 'text',
+      type: (data['message_type'] ?? data['messageType']) as String? ?? 'text',
       timestamp: timestamp,
       isRead: data['message_read'] as bool?,
       params: data['message_params'] as Map<String, dynamic>?,

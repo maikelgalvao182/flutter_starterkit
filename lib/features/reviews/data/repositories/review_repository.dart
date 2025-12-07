@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/data/models/review_stats_model.dart';
@@ -47,11 +48,36 @@ class ReviewRepository {
   /// Stream de reviews pendentes (para ActionsTab)
   Stream<List<PendingReviewModel>> getPendingReviewsStream() {
     final userId = _auth.currentUser?.uid;
+    debugPrint('🔍 [ReviewRepository] getPendingReviewsStream');
+    debugPrint('   - userId: $userId');
+    
     if (userId == null) {
+      debugPrint('   ❌ userId é null, retornando stream vazio');
       return Stream.value([]);
     }
 
     final now = Timestamp.now();
+    debugPrint('   - now: ${now.toDate()}');
+
+    // Query de DEBUG: buscar TODOS os reviews do usuário (ignorando filtros)
+    _firestore
+        .collection('PendingReviews')
+        .where('reviewer_id', isEqualTo: userId)
+        .get()
+        .then((snapshot) {
+          debugPrint('🔍 [DEBUG] Total de PendingReviews para este usuário (sem filtros): ${snapshot.docs.length}');
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final expiresAt = data['expires_at'] as Timestamp?;
+            final dismissed = data['dismissed'] as bool?;
+            debugPrint('   📄 Doc ${doc.id}:');
+            debugPrint('      - reviewer_id: ${data['reviewer_id']}');
+            debugPrint('      - dismissed: $dismissed');
+            debugPrint('      - expires_at: ${expiresAt?.toDate()}');
+            debugPrint('      - now > expires_at? ${expiresAt != null ? now.compareTo(expiresAt) > 0 : 'null'}');
+            debugPrint('      - event_title: ${data['event_title']}');
+          }
+        });
 
     return _firestore
         .collection('PendingReviews')
@@ -63,9 +89,21 @@ class ReviewRepository {
         .limit(20)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
+          debugPrint('📦 [ReviewRepository] Stream snapshot recebido: ${snapshot.docs.length} docs');
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            debugPrint('   📄 Doc ${doc.id}:');
+            debugPrint('      - reviewer_id: ${data['reviewer_id']}');
+            debugPrint('      - dismissed: ${data['dismissed']}');
+            debugPrint('      - expires_at: ${data['expires_at']}');
+            debugPrint('      - event_title: ${data['event_title']}');
+          }
+          
+          final reviews = snapshot.docs
               .map((doc) => PendingReviewModel.fromFirestore(doc))
               .toList();
+          debugPrint('   ✅ Retornando ${reviews.length} reviews');
+          return reviews;
         });
   }
 
@@ -102,10 +140,21 @@ class ReviewRepository {
     required String pendingReviewId,
     required Map<String, dynamic> data,
   }) async {
-    await _firestore
-        .collection('PendingReviews')
-        .doc(pendingReviewId)
-        .update(data);
+    debugPrint('🔍 [ReviewRepository] updatePendingReview');
+    debugPrint('   - pendingReviewId: $pendingReviewId');
+    debugPrint('   - data: $data');
+    
+    try {
+      await _firestore
+          .collection('PendingReviews')
+          .doc(pendingReviewId)
+          .update(data);
+      debugPrint('   ✅ PendingReview atualizado com sucesso');
+    } catch (e, stack) {
+      debugPrint('   ❌ Erro ao atualizar PendingReview: $e');
+      debugPrint('   Stack trace: $stack');
+      rethrow;
+    }
   }
 
   /// Salva participante confirmado na subcoleção do evento
@@ -114,17 +163,29 @@ class ReviewRepository {
     required String participantId,
     required String confirmedBy,
   }) async {
-    await _firestore
-        .collection('Events')
-        .doc(eventId)
-        .collection('ConfirmedParticipants')
-        .doc(participantId)
-        .set({
-      'confirmed_at': FieldValue.serverTimestamp(),
-      'confirmed_by': confirmedBy,
-      'presence': 'Vou',
-      'reviewed': false,
-    });
+    debugPrint('🔍 [ReviewRepository] saveConfirmedParticipant');
+    debugPrint('   - eventId: $eventId');
+    debugPrint('   - participantId: $participantId');
+    debugPrint('   - confirmedBy: $confirmedBy');
+    
+    try {
+      await _firestore
+          .collection('events')
+          .doc(eventId)
+          .collection('ConfirmedParticipants')
+          .doc(participantId)
+          .set({
+        'confirmed_at': FieldValue.serverTimestamp(),
+        'confirmed_by': confirmedBy,
+        'presence': 'Vou',
+        'reviewed': false,
+      });
+      debugPrint('   ✅ Participante confirmado salvo com sucesso');
+    } catch (e, stack) {
+      debugPrint('   ❌ Erro ao salvar participante confirmado: $e');
+      debugPrint('   Stack trace: $stack');
+      rethrow;
+    }
   }
 
   /// Marca participante como avaliado
@@ -133,7 +194,7 @@ class ReviewRepository {
     required String participantId,
   }) async {
     await _firestore
-        .collection('Events')
+        .collection('events')
         .doc(eventId)
         .collection('ConfirmedParticipants')
         .doc(participantId)

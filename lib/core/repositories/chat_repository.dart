@@ -32,10 +32,17 @@ class ChatRepository implements IChatRepository {
           .doc(eventId)
           .collection('Messages')
           .orderBy(TIMESTAMP, descending: false)
-          .snapshots()
+          .snapshots(includeMetadataChanges: true)
           .map((snapshot) {
+        print('🔍 [REPO DEBUG] Snapshot docs: ${snapshot.docs.length}');
+        if (snapshot.docs.isNotEmpty) {
+          final lastDocs = snapshot.docs.length > 3 ? snapshot.docs.sublist(snapshot.docs.length - 3) : snapshot.docs;
+          print('🔍 [REPO DEBUG] Last 3 docs IDs: ${lastDocs.map((d) => d.id).toList()}');
+        }
         return snapshot.docs
             .map((doc) => Message.fromDocument(doc.data(), doc.id))
+            .where((m) => m != null)
+            .cast<Message>()
             .toList();
       });
     }
@@ -46,10 +53,13 @@ class ChatRepository implements IChatRepository {
         .doc(currentUserId)
         .collection(withUserId)
         .orderBy(TIMESTAMP, descending: false)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
+      print('🔍 [REPO DEBUG] Snapshot docs: ${snapshot.docs.length}');
       return snapshot.docs
           .map((doc) => Message.fromDocument(doc.data(), doc.id))
+          .where((m) => m != null)
+          .cast<Message>()
           .toList();
     });
   }
@@ -98,7 +108,7 @@ class ChatRepository implements IChatRepository {
       
       batch.set(messageRef, {
         'sender_id': senderId,
-        'receiver_id': receiverId, // ✅ Agora incluído para compatibilidade
+        'receiver_id': null, // ✅ Event Chat: receiver_id must be null
         'user_id': senderId, // Compatibilidade com modelo Message
         'sender_name': userFullName,
         'sender_photo_url': userPhotoLink,

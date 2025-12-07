@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
@@ -11,12 +12,18 @@ class ParticipantConfirmationStep extends StatelessWidget {
   final Map<String, ParticipantProfile> participantProfiles;
   final Set<String> selectedParticipants;
   final Function(String) onToggleParticipant;
+  final String eventTitle;
+  final String eventEmoji;
+  final DateTime? eventDate;
 
   const ParticipantConfirmationStep({
     required this.participantIds,
     required this.participantProfiles,
     required this.selectedParticipants,
     required this.onToggleParticipant,
+    required this.eventTitle,
+    required this.eventEmoji,
+    this.eventDate,
     super.key,
   });
 
@@ -25,23 +32,78 @@ class ParticipantConfirmationStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Instrução
-        Text(
-          'Quem realmente apareceu?',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.textPrimary,
+        // Card do Evento
+        Container(
+          margin: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: GlimpseColors.primary.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: GlimpseColors.primary.withOpacity(0.1),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Emoji
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  eventEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
+              const SizedBox(width: 12),
+              
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      eventTitle,
+                      style: GoogleFonts.getFont(
+                        FONT_PLUS_JAKARTA_SANS,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: GlimpseColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (eventDate != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat("d 'de' MMMM, HH:mm", 'pt_BR').format(eventDate!),
+                        style: GoogleFonts.getFont(
+                          FONT_PLUS_JAKARTA_SANS,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: GlimpseColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
+
+        // Instrução
         Text(
-          'Selecione os participantes que compareceram ao evento. Você só poderá avaliar quem você confirmar.',
+          'Marca aqui quem realmente deu as caras na sua atividade. Só dá pra avaliar quem apareceu de verdade!',
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
-            fontSize: 14,
-            color: GlimpseColors.textSecondary,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: GlimpseColors.primaryColorLight,
           ),
         ),
         const SizedBox(height: 24),
@@ -104,7 +166,7 @@ class ParticipantCheckboxTile extends StatelessWidget {
           color: isSelected
               ? GlimpseColors.primary
               : GlimpseColors.borderColorLight,
-          width: isSelected ? 2 : 1,
+          width: 1,
         ),
         borderRadius: BorderRadius.circular(12),
         color: isSelected
@@ -114,8 +176,14 @@ class ParticipantCheckboxTile extends StatelessWidget {
       child: CheckboxListTile(
         value: isSelected,
         onChanged: (_) => onToggle(),
+        contentPadding: const EdgeInsets.only(
+          left: 12,
+          right: 4,
+          top: 8,
+          bottom: 8,
+        ),
         secondary: CircleAvatar(
-          radius: 24,
+          radius: 28,
           backgroundColor: GlimpseColors.primary.withOpacity(0.2),
           backgroundImage:
               photoUrl != null ? CachedNetworkImageProvider(photoUrl!) : null,
@@ -124,7 +192,7 @@ class ParticipantCheckboxTile extends StatelessWidget {
                   name.isNotEmpty ? name[0].toUpperCase() : '?',
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: GlimpseColors.primary,
                   ),

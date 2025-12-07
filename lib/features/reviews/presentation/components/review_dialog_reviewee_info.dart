@@ -22,11 +22,20 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
     String displayName;
     String? displayPhotoUrl;
 
+    debugPrint('🔍 [RevieweeInfo] build');
+    debugPrint('   - isOwnerReview: ${controller.isOwnerReview}');
+    debugPrint('   - presenceConfirmed: ${controller.presenceConfirmed}');
+    debugPrint('   - currentStep: ${controller.currentStep}');
+
     if (controller.isOwnerReview && controller.presenceConfirmed) {
       // Owner avaliando participante atual
       final participantId = controller.currentParticipantId;
+      debugPrint('   - currentParticipantId: $participantId');
+      debugPrint('   - participantProfiles keys: ${controller.participantProfiles.keys.toList()}');
+      
       if (participantId != null) {
         final profile = controller.participantProfiles[participantId];
+        debugPrint('   - profile: ${profile?.name}, ${profile?.photoUrl}');
         displayName = profile?.name ?? 'Participante';
         displayPhotoUrl = profile?.photoUrl;
       } else {
@@ -35,15 +44,18 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
       }
     } else {
       // Participant avaliando owner
+      debugPrint('   - Using pendingReview data');
       displayName = pendingReview.revieweeName;
       displayPhotoUrl = pendingReview.revieweePhotoUrl;
     }
+
+    debugPrint('   ✅ Final: displayName=$displayName, displayPhotoUrl=$displayPhotoUrl');
 
     return Column(
       children: [
         // Avatar
         CircleAvatar(
-          radius: 40,
+          radius: 32,
           backgroundColor: GlimpseColors.primary.withOpacity(0.2),
           backgroundImage: displayPhotoUrl != null
               ? NetworkImage(displayPhotoUrl)
@@ -53,7 +65,7 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
                   displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 32,
+                    fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: GlimpseColors.primary,
                   ),
@@ -67,7 +79,7 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
           displayName,
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
             color: GlimpseColors.textPrimary,
           ),

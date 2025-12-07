@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/core/models/review_model.dart';
+import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/core/utils/date_helper.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
-import 'package:partiu/shared/widgets/star_rating_display.dart';
 
 /// Card que exibe uma avaliação individual no perfil
 /// 
@@ -15,22 +16,22 @@ import 'package:partiu/shared/widgets/star_rating_display.dart';
 /// - Nome e data da avaliação
 /// - Rating com estrelas
 /// - Comentário com expansão "Ver mais"
-class ReviewCard extends StatefulWidget {
+class CommentCard extends StatefulWidget {
 
-  const ReviewCard({
+  const CommentCard({
     required this.review, 
     super.key,
     this.onTap,
   });
   
-  final Review review;
+  final ReviewModel review;
   final VoidCallback? onTap;
 
   @override
-  State<ReviewCard> createState() => _ReviewCardState();
+  State<CommentCard> createState() => _CommentCardState();
 }
 
-class _ReviewCardState extends State<ReviewCard> {
+class _CommentCardState extends State<CommentCard> {
   bool _showFullComment = false;
 
   @override
@@ -43,11 +44,8 @@ class _ReviewCardState extends State<ReviewCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: GlimpseColors.lightTextField,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: GlimpseColors.textSubTitle.withValues(alpha: 0.3),
-        ),
       ),
       child: InkWell(
         onTap: widget.onTap,
@@ -76,22 +74,30 @@ class _ReviewCardState extends State<ReviewCard> {
                           userId: widget.review.reviewerId,
                           style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                             fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: GlimpseColors.textSubTitle,
+                            fontWeight: FontWeight.w700,
+                            color: GlimpseColors.primaryColorLight,
                           ),
                           iconSize: 14,
                           spacing: 4,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          widget.review.userJobTitle,
-                          style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: GlimpseColors.textSubTitle,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        ValueListenableBuilder<String?>(
+                          valueListenable: UserStore.instance.getFromNotifier(widget.review.reviewerId),
+                          builder: (context, from, _) {
+                            if (from == null || from.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Text(
+                              from,
+                              style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: GlimpseColors.textSubTitle,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -100,11 +106,7 @@ class _ReviewCardState extends State<ReviewCard> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      StarRatingDisplay(
-                        rating: widget.review.overallRating,
-                        size: 18,
-                        showNumber: false,
-                      ),
+                      _buildStars(widget.review.overallRating),
                       const SizedBox(height: 4),
                       Text(
                         reviewDate,
@@ -129,6 +131,33 @@ class _ReviewCardState extends State<ReviewCard> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStars(double rating) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        if (index < rating.floor()) {
+          return const Icon(
+            Iconsax.star1,
+            color: Colors.amber,
+            size: 18,
+          );
+        } else if (index < rating) {
+          return const Icon(
+            Iconsax.star1,
+            color: Colors.amber,
+            size: 18,
+          );
+        } else {
+          return Icon(
+            Iconsax.star,
+            color: Colors.grey.shade300,
+            size: 18,
+          );
+        }
+      }),
     );
   }
 

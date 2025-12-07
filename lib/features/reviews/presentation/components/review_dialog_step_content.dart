@@ -23,6 +23,9 @@ class ReviewDialogStepContent extends StatelessWidget {
         participantProfiles: controller.participantProfiles,
         selectedParticipants: controller.selectedParticipants,
         onToggleParticipant: controller.toggleParticipant,
+        eventTitle: controller.eventTitle,
+        eventEmoji: controller.eventEmoji,
+        eventDate: controller.eventScheduleDate,
       );
     }
 

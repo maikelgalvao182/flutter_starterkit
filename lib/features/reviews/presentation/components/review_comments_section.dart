@@ -1,0 +1,80 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/constants/glimpse_styles.dart';
+import 'package:partiu/features/reviews/data/models/review_model.dart';
+import 'package:partiu/features/profile/presentation/widgets/comment_card.dart';
+
+class ReviewCommentsSection extends StatefulWidget {
+  const ReviewCommentsSection({
+    required this.reviews,
+    super.key,
+  });
+
+  final List<ReviewModel> reviews;
+
+  @override
+  State<ReviewCommentsSection> createState() => _ReviewCommentsSectionState();
+}
+
+class _ReviewCommentsSectionState extends State<ReviewCommentsSection> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.reviews.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Lógica de exibição: 3 iniciais ou todas se expandido
+    final displayedReviews = _isExpanded ? widget.reviews : widget.reviews.take(3).toList();
+    final hasMoreReviews = widget.reviews.length > 3;
+
+    return Container(
+      padding: GlimpseStyles.profileSectionPadding,
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Últimos comentários',
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: GlimpseColors.primaryColorLight,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          ...displayedReviews.map((review) {
+            return CommentCard(review: review);
+          }).toList(),
+          
+          // Botão Ver mais / Ver menos
+          if (hasMoreReviews)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Center(
+                child: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  child: Text(
+                    _isExpanded ? 'Ver menos' : 'Ver mais',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

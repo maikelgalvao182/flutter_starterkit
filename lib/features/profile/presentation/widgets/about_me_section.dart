@@ -9,7 +9,7 @@ import 'package:partiu/shared/stores/user_store.dart';
 /// About Me section widget com espaçamento interno
 /// 
 /// - Espaçamento superior: 24px
-/// - Espaçamento inferior: 36px  
+/// - Espaçamento inferior: 16px  
 /// - Padding horizontal: 20px
 /// - Auto-oculta se bio vazia
 class AboutMeSection extends StatelessWidget {
@@ -44,7 +44,11 @@ class AboutMeSection extends StatelessWidget {
         if (trimmed.isEmpty) return const SizedBox.shrink();
         
         return Container(
-          padding: GlimpseStyles.profileAboutMePadding,
+          padding: const EdgeInsets.only(
+            left: 20,
+            right: 20,
+            bottom: 16,
+          ),
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,7 +59,7 @@ class AboutMeSection extends StatelessWidget {
                 style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
-                  color: effectiveTitleColor,
+                  color: GlimpseColors.primaryColorLight,
                 ),
                 textAlign: TextAlign.left,
               ),

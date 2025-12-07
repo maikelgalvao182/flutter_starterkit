@@ -9,7 +9,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/chat/components/glimpse_chat_input.dart';
-import 'package:partiu/screens/chat/components/glimpse_image_picker.dart';
+import 'package:partiu/shared/widgets/image_source_bottom_sheet.dart';
 import 'package:partiu/screens/chat/services/application_removal_service.dart';
 import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/screens/chat/services/fee_auto_heal_service.dart';
@@ -82,19 +82,24 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
   /// Get image from camera / gallery
   Future<void> _getImage() async {
     try {
-      await showModalBottomSheet(
-          context: context,
-          backgroundColor: Colors.transparent,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (context) => GlimpseImagePicker(
-                onImageSelected: (image) async {
-                  if (image != null && mounted) {
-                    await _sendImageMessage(image);
-                  }
-                },
-              ));
+      await showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) => ImageSourceBottomSheet(
+          onImageSelected: (file) async {
+            if (mounted) {
+              await _sendImageMessage(file);
+            }
+          },
+          cropToSquare: false, // Chat não precisa de crop quadrado
+          minWidth: 1200,
+          minHeight: 1200,
+          quality: 80,
+        ),
+      );
     } catch (e) {
       // Ignore image picker errors
     }
@@ -266,7 +271,14 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
         user: widget.user,
         chatService: _chatService,
         applicationRemovalService: _applicationRemovalService,
-        onDeleteChat: _confirmDeleteChat,
+        onDeleteChat: () {
+          _chatService.confirmDeleteChat(
+            context: context,
+            userId: widget.user.userId,
+            i18n: _i18n,
+            progressDialog: _pr,
+          );
+        },
         onRemoveApplicationSuccess: () {
           if (mounted) Navigator.of(context).pop();
         },
@@ -290,7 +302,9 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
           /// Show messages
           Expanded(
             child: MessageListWidget(
-              remoteUserId: widget.user.userId,
+              remoteUserId: widget.isEvent
+                  ? "event_${widget.eventId}"
+                  : widget.user.userId,
               remoteUser: widget.user,
               chatService: _chatService,
               messagesController: _messagesController,

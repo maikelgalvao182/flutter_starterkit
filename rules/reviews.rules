@@ -32,10 +32,20 @@ match /PendingReviews/{pendingId} {
   // Criar: apenas Cloud Functions (nenhum cliente pode criar)
   allow create: if false;
   
-  // Atualizar: apenas o reviewer pode marcar como dismissed
+  // Atualizar: apenas o reviewer pode:
+  // 1. Marcar como dismissed
+  // 2. Confirmar presença (para owners)
   allow update: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id &&
-    request.resource.data.status == 'dismissed';
+    (
+      // Opção 1: dismissed
+      (request.resource.data.dismissed == true &&
+       request.resource.data.diff(resource.data).affectedKeys()
+         .hasOnly(['dismissed', 'dismissed_at'])) ||
+      // Opção 2: presence_confirmed (para owners)
+      (request.resource.data.diff(resource.data).affectedKeys()
+         .hasOnly(['presence_confirmed', 'confirmed_participant_ids']))
+    );
   
   // Deletar: não permitido (Cloud Functions gerencia)
   allow delete: if false;

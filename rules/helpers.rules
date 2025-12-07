@@ -18,3 +18,7 @@ function isEventParticipant(eventId) {
   return isSignedIn() && 
     request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participants.participantIds;
 }
+
+function isParticipant(u1, u2) {
+  return isSignedIn() && (request.auth.uid == u1 || request.auth.uid == u2);
+}

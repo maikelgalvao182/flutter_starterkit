@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/features/home/data/repositories/pending_applications_repository.dart';
+import 'package:partiu/features/reviews/data/repositories/review_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
@@ -8,6 +9,7 @@ import 'dart:async';
 /// 
 /// Responsabilidades:
 /// - Contar aplicações pendentes (Actions Tab)
+/// - Contar reviews pendentes (Actions Tab)
 /// - Contar mensagens não lidas (Conversations Tab)
 /// - Expor streams reativos para badges
 class NotificationsCounterService {
@@ -16,6 +18,7 @@ class NotificationsCounterService {
   static final NotificationsCounterService instance = NotificationsCounterService._();
 
   final _pendingApplicationsRepo = PendingApplicationsRepository();
+  final _reviewRepository = ReviewRepository();
   final _firestore = FirebaseFirestore.instance;
 
   // ValueNotifiers para badges reativos
@@ -25,8 +28,13 @@ class NotificationsCounterService {
 
   // StreamSubscriptions para cancelar no logout
   StreamSubscription<List<dynamic>>? _pendingApplicationsSubscription;
+  StreamSubscription<List<dynamic>>? _pendingReviewsSubscription;
   StreamSubscription<QuerySnapshot>? _conversationsSubscription;
   StreamSubscription<QuerySnapshot>? _notificationsSubscription;
+
+  // Contadores internos
+  int _applicationsCount = 0;
+  int _reviewsCount = 0;
 
   /// Verifica se os listeners estão ativos
   bool get isActive => _notificationsSubscription != null;
@@ -42,6 +50,7 @@ class NotificationsCounterService {
     _cancelAllSubscriptions();
     
     _listenToPendingApplications();
+    _listenToPendingReviews();
     _listenToUnreadConversations();
     _listenToUnreadNotifications();
     
@@ -52,24 +61,49 @@ class NotificationsCounterService {
   /// Cancela todas as subscriptions ativas
   void _cancelAllSubscriptions() {
     _pendingApplicationsSubscription?.cancel();
+    _pendingReviewsSubscription?.cancel();
     _conversationsSubscription?.cancel();
     _notificationsSubscription?.cancel();
     
     _pendingApplicationsSubscription = null;
+    _pendingReviewsSubscription = null;
     _conversationsSubscription = null;
     _notificationsSubscription = null;
+  }
+
+  /// Atualiza o contador total de ações (applications + reviews)
+  void _updateActionsCount() {
+    final total = _applicationsCount + _reviewsCount;
+    pendingActionsCount.value = total;
+    debugPrint('📊 [NotificationsCounter] Total ações: $total (applications: $_applicationsCount, reviews: $_reviewsCount)');
   }
 
   /// Escuta aplicações pendentes (Actions Tab)
   void _listenToPendingApplications() {
     _pendingApplicationsSubscription = _pendingApplicationsRepo.getPendingApplicationsStream().listen(
       (applications) {
-        pendingActionsCount.value = applications.length;
-        debugPrint('📊 [NotificationsCounter] Ações pendentes: ${applications.length}');
+        _applicationsCount = applications.length;
+        _updateActionsCount();
       },
       onError: (error) {
-        debugPrint('❌ [NotificationsCounter] Erro ao contar ações: $error');
-        pendingActionsCount.value = 0;
+        debugPrint('❌ [NotificationsCounter] Erro ao contar aplicações: $error');
+        _applicationsCount = 0;
+        _updateActionsCount();
+      },
+    );
+  }
+
+  /// Escuta reviews pendentes (Actions Tab)
+  void _listenToPendingReviews() {
+    _pendingReviewsSubscription = _reviewRepository.getPendingReviewsStream().listen(
+      (reviews) {
+        _reviewsCount = reviews.length;
+        _updateActionsCount();
+      },
+      onError: (error) {
+        debugPrint('❌ [NotificationsCounter] Erro ao contar reviews: $error');
+        _reviewsCount = 0;
+        _updateActionsCount();
       },
     );
   }
@@ -179,6 +213,10 @@ class NotificationsCounterService {
     
     // Cancelar todas as subscriptions
     _cancelAllSubscriptions();
+    
+    // Resetar contadores internos
+    _applicationsCount = 0;
+    _reviewsCount = 0;
     
     // Atualizar AppState (padrão Advanced-Dating)
     AppState.unreadNotifications.value = 0;

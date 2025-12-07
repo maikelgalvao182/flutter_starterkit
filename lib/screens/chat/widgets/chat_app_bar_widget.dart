@@ -333,24 +333,7 @@ class ChatAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
       );
     }
 
-    // Chat 1:1: menu com opções
-    return Builder(
-      builder: (builderContext) {
-        return FutureBuilder<List<GlimpseActionMenuItem>>(
-          future: _buildMenuItems(builderContext, i18n, controller),
-          builder: (context, snapshot) {
-            final items = snapshot.data ?? [];
-            
-            return GlimpseActionMenuButton(
-              iconColor: GlimpseColors.primaryColorLight,
-              padding: EdgeInsets.zero,
-              buttonSize: 24,
-              iconSize: 20,
-              items: items,
-            );
-          },
-        );
-      },
-    );
+    // Chat 1:1: sem menu
+    return const SizedBox.shrink();
   }
 }

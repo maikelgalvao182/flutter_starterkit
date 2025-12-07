@@ -19,32 +19,6 @@ class BadgeSelectionStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Título
-        Text(
-          'Quer deixar um elogio?',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.textPrimary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        
-        // Subtítulo
-        Text(
-          'Selecione quantos quiser (opcional)',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: GlimpseColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        
         // Grid de badges
         GridView.builder(
           shrinkWrap: true,
@@ -149,16 +123,6 @@ class _BadgeItem extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            
-            // Check icon (quando selecionado)
-            if (isSelected) ...[
-              const SizedBox(width: 4),
-              Icon(
-                Icons.check_circle,
-                color: badge.color,
-                size: 18,
-              ),
-            ],
           ],
         ),
       ),

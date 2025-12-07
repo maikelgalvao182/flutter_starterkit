@@ -44,6 +44,7 @@ class PendingReviewModel {
   // Campos específicos do OWNER
   final bool? presenceConfirmed; // null para participant
   final List<String>? participantIds; // null para participant
+  final List<String>? confirmedParticipantIds; // null para participant
   final Map<String, ParticipantProfile>? participantProfiles; // null para participant
 
   // Campos específicos do PARTICIPANT
@@ -68,6 +69,7 @@ class PendingReviewModel {
     // Owner fields
     this.presenceConfirmed,
     this.participantIds,
+    this.confirmedParticipantIds,
     this.participantProfiles,
     // Participant fields
     this.allowedToReviewOwner,
@@ -108,6 +110,7 @@ class PendingReviewModel {
       // Owner fields
       presenceConfirmed: data['presence_confirmed'] as bool?,
       participantIds: (data['participant_ids'] as List<dynamic>?)?.cast<String>(),
+      confirmedParticipantIds: (data['confirmed_participant_ids'] as List<dynamic>?)?.cast<String>(),
       participantProfiles: profiles,
       // Participant fields
       allowedToReviewOwner: data['allowed_to_review_owner'] as bool?,
@@ -140,6 +143,9 @@ class PendingReviewModel {
     }
     if (participantIds != null) {
       map['participant_ids'] = participantIds;
+    }
+    if (confirmedParticipantIds != null) {
+      map['confirmed_participant_ids'] = confirmedParticipantIds;
     }
     if (participantProfiles != null) {
       map['participant_profiles'] = participantProfiles!.map(
@@ -198,6 +204,7 @@ class PendingReviewModel {
     String? revieweePhotoUrl,
     bool? presenceConfirmed,
     List<String>? participantIds,
+    List<String>? confirmedParticipantIds,
     Map<String, ParticipantProfile>? participantProfiles,
     bool? allowedToReviewOwner,
   }) {
@@ -219,6 +226,7 @@ class PendingReviewModel {
       revieweePhotoUrl: revieweePhotoUrl ?? this.revieweePhotoUrl,
       presenceConfirmed: presenceConfirmed ?? this.presenceConfirmed,
       participantIds: participantIds ?? this.participantIds,
+      confirmedParticipantIds: confirmedParticipantIds ?? this.confirmedParticipantIds,
       participantProfiles: participantProfiles ?? this.participantProfiles,
       allowedToReviewOwner: allowedToReviewOwner ?? this.allowedToReviewOwner,
     );

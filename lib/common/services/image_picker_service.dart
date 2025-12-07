@@ -34,6 +34,7 @@ class ImagePickerService {
       return await _picker.pickImage(
         source: source,
         imageQuality: 85,
+        requestFullMetadata: false,
       );
     } catch (e) {
       return null;

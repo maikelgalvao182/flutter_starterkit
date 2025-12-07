@@ -48,4 +48,26 @@ match /events/{eventId} {
   
   allow delete: if isSignedIn() && 
     resource.data.createdBy == request.auth.uid;
+
+  // Subcoleção: Participantes confirmados (para sistema de reviews)
+  match /ConfirmedParticipants/{participantId} {
+    // Helper para buscar o evento pai
+    function getEvent() {
+      return get(/databases/$(database)/documents/events/$(eventId)).data;
+    }
+    
+    // Ler: criador do evento e o próprio participante
+    allow read: if isSignedIn() && (
+      request.auth.uid == getEvent().createdBy ||
+      request.auth.uid == participantId
+    );
+    
+    // Criar/Atualizar: apenas o criador do evento (durante confirmação de presença no review)
+    allow create, update: if isSignedIn() && 
+      request.auth.uid == getEvent().createdBy;
+    
+    // Deletar: apenas o criador do evento
+    allow delete: if isSignedIn() && 
+      request.auth.uid == getEvent().createdBy;
+  }
 }
