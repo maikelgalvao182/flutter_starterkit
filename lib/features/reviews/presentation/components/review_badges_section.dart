@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
-import 'package:partiu/features/reviews/domain/constants/review_badges.dart';
+import 'package:partiu/shared/widgets/badge_card.dart';
 
 class ReviewBadgesSection extends StatelessWidget {
   const ReviewBadgesSection({
@@ -20,7 +20,10 @@ class ReviewBadgesSection extends StatelessWidget {
     }
 
     return Container(
-      padding: GlimpseStyles.profileSectionPadding,
+      padding: const EdgeInsets.only(
+        left: 20,
+        right: 20,
+      ),
       width: double.infinity,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,68 +37,35 @@ class ReviewBadgesSection extends StatelessWidget {
               color: GlimpseColors.primaryColorLight,
             ),
           ),
-          _buildTopBadges(),
+          const SizedBox(height: 12),
+          _buildBadgesGrid(),
         ],
       ),
     );
   }
 
-  Widget _buildTopBadges() {
+  Widget _buildBadgesGrid() {
     // Ordena badges por count
     final sortedBadges = badgesCount.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: sortedBadges.map((entry) {
-        final badge = ReviewBadge.fromKey(entry.key);
-        if (badge == null) return const SizedBox.shrink();
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: GlimpseColors.lightTextField,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                badge.emoji,
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                badge.title,
-                style: GoogleFonts.getFont(
-                  FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: GlimpseColors.primaryColorLight,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: GlimpseColors.primaryColorLight.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${entry.value}',
-                  style: GoogleFonts.getFont(
-                    FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: GlimpseColors.primaryColorLight,
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.95,
+      ),
+      itemCount: sortedBadges.length,
+      itemBuilder: (context, index) {
+        final entry = sortedBadges[index];
+        return BadgeCard(
+          badgeKey: entry.key,
+          count: entry.value,
         );
-      }).toList(),
+      },
     );
   }
 }

@@ -4,9 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
+import 'package:partiu/features/home/presentation/widgets/people_ranking_card.dart';
+import 'package:partiu/features/home/presentation/widgets/people_ranking_card_shimmer.dart';
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card.dart';
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card_controller.dart';
+import 'package:partiu/features/notifications/widgets/notification_horizontal_filters.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
@@ -22,25 +26,35 @@ class RankingTab extends StatefulWidget {
 }
 
 class _RankingTabState extends State<RankingTab> {
-  late final RankingViewModel _viewModel;
+  late final RankingViewModel _locationsViewModel;
+  late final PeopleRankingViewModel _peopleViewModel;
   int _selectedTabIndex = 0; // 0 = Pessoas, 1 = Lugares
 
   @override
   void initState() {
     super.initState();
-    _viewModel = RankingViewModel();
-    _viewModel.addListener(_onViewModelChanged);
+    debugPrint('🎴 [RankingTab] initState');
+    
+    _locationsViewModel = RankingViewModel();
+    _peopleViewModel = PeopleRankingViewModel();
+    
+    _locationsViewModel.addListener(_onViewModelChanged);
+    _peopleViewModel.addListener(_onViewModelChanged);
     
     // Inicializar rankings
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _viewModel.initialize();
+      debugPrint('🎴 [RankingTab] Inicializando ViewModels...');
+      _locationsViewModel.initialize();
+      _peopleViewModel.initialize();
     });
   }
 
   @override
   void dispose() {
-    _viewModel.removeListener(_onViewModelChanged);
-    _viewModel.dispose();
+    _locationsViewModel.removeListener(_onViewModelChanged);
+    _peopleViewModel.removeListener(_onViewModelChanged);
+    _locationsViewModel.dispose();
+    _peopleViewModel.dispose();
     super.dispose();
   }
 
@@ -72,13 +86,14 @@ class _RankingTabState extends State<RankingTab> {
               tabLabels: const ['Pessoas', 'Lugares'],
               selectedTabIndex: _selectedTabIndex,
               onTabTap: (index) {
+                debugPrint('🔄 [RankingTab] Mudando para tab: ${index == 0 ? "Pessoas" : "Lugares"}');
                 setState(() {
                   _selectedTabIndex = index;
                 });
               },
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 0),
             
             // Conteúdo
             Expanded(
@@ -91,18 +106,45 @@ class _RankingTabState extends State<RankingTab> {
   }
 
   Widget _buildContent() {
-    // Loading state
-    if (_viewModel.isLoading) {
+    // Selecionar ViewModel baseado na tab
+    final isLoadingPeople = _selectedTabIndex == 0 && _peopleViewModel.isLoading;
+    final isLoadingLocations = _selectedTabIndex == 1 && _locationsViewModel.isLoading;
+    
+    // Loading state com shimmer
+    if (isLoadingPeople) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Espaço para o filtro (vazio durante loading)
+          const SizedBox(height: 64),
+          
+          // Lista de shimmer cards
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: 5,
+              itemBuilder: (context, index) => const PeopleRankingCardShimmer(),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    if (isLoadingLocations) {
       return const Center(
         child: CupertinoActivityIndicator(radius: 16),
       );
     }
 
     // Error state
-    if (_viewModel.error != null) {
+    final error = _selectedTabIndex == 0 
+        ? _peopleViewModel.error 
+        : _locationsViewModel.error;
+    
+    if (error != null) {
       return Center(
         child: GlimpseEmptyState.standard(
-          text: _viewModel.error!,
+          text: error,
         ),
       );
     }
@@ -114,16 +156,88 @@ class _RankingTabState extends State<RankingTab> {
   }
 
   Widget _buildPeopleRankingList() {
-    // Por enquanto vazio
-    return Center(
-      child: GlimpseEmptyState.standard(
-        text: 'Ranking de pessoas em breve',
-      ),
+    debugPrint('👥 [RankingTab] _buildPeopleRankingList');
+    
+    final rankings = _peopleViewModel.peopleRankings;
+    final cities = _peopleViewModel.availableCities;
+    
+    debugPrint('   - rankings.length: ${rankings.length}');
+    debugPrint('   - cities.length: ${cities.length}');
+    debugPrint('   - isLoading: ${_peopleViewModel.isLoading}');
+    debugPrint('   - error: ${_peopleViewModel.error}');
+    
+    if (rankings.isEmpty) {
+      debugPrint('   ⚠️ Rankings vazio, mostrando empty state');
+      return Center(
+        child: GlimpseEmptyState.standard(
+          text: 'Nenhuma pessoa no ranking ainda',
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Filtro de cidade
+        if (cities.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          _buildCityFilter(cities),
+          const SizedBox(height: 12),
+        ],
+        
+        // Lista de pessoas
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _peopleViewModel.refresh,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: rankings.length,
+              itemBuilder: (context, index) {
+                final ranking = rankings[index];
+                final position = index + 1;
+
+                return PeopleRankingCard(
+                  ranking: ranking,
+                  position: position,
+                  badgesCount: ranking.badgesCount,
+                  criteriaRatings: ranking.criteriaRatings,
+                  totalComments: ranking.totalComments,
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCityFilter(List<String> cities) {
+    final selectedCity = _peopleViewModel.selectedCity;
+    
+    // Criar lista com "Todas" + cidades
+    final items = ['Todas', ...cities];
+    
+    // Index selecionado (0 = Todas, 1+ = cidades)
+    final selectedIndex = selectedCity == null 
+        ? 0 
+        : cities.indexOf(selectedCity) + 1;
+    
+    return NotificationHorizontalFilters(
+      items: items,
+      selectedIndex: selectedIndex,
+      onSelected: (index) {
+        if (index == 0) {
+          _peopleViewModel.selectCity(null);
+        } else {
+          _peopleViewModel.selectCity(cities[index - 1]);
+        }
+      },
+      padding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }
 
   Widget _buildLocationRankingList() {
-    final rankings = _viewModel.locationRankings;
+    final rankings = _locationsViewModel.locationRankings;
     
     if (rankings.isEmpty) {
       return Center(
@@ -134,7 +248,7 @@ class _RankingTabState extends State<RankingTab> {
     }
 
     return RefreshIndicator(
-      onRefresh: _viewModel.refresh,
+      onRefresh: _locationsViewModel.refresh,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: rankings.length,
