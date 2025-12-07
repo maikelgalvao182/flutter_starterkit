@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/data/models/review_stats_model.dart';
+import 'package:partiu/features/reviews/presentation/services/pending_reviews_listener_service.dart';
 
 /// Repository para gerenciar reviews no Firestore
 class ReviewRepository {
@@ -12,6 +13,11 @@ class ReviewRepository {
   // ==================== PENDING REVIEWS ====================
 
   /// Busca reviews pendentes do usuário atual
+  /// 
+  /// Retorna apenas reviews que:
+  /// - Ainda não expiraram
+  /// - Não foram dismissed
+  /// - Pertencem ao usuário logado
   Future<List<PendingReviewModel>> getPendingReviews() async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
@@ -20,6 +26,7 @@ class ReviewRepository {
 
     final now = Timestamp.now();
 
+    // Query simplificada - apenas os filtros essenciais
     final snapshot = await _firestore
         .collection('PendingReviews')
         .where('reviewer_id', isEqualTo: userId)
@@ -30,27 +37,36 @@ class ReviewRepository {
         .limit(20)
         .get();
 
-    // Filtra reviews já submetidos
-    final pendingReviews = <PendingReviewModel>[];
+    // Converte diretamente sem verificação extra
+    // (A verificação de duplicata será feita no momento do submit)
+    return snapshot.docs
+        .map((doc) => PendingReviewModel.fromFirestore(doc))
+        .toList();
+  }
 
-    for (final doc in snapshot.docs) {
-      final pending = PendingReviewModel.fromFirestore(doc);
-
-      // Verifica se já existe review
-      final existingReview = await _firestore
-          .collection('Reviews')
-          .where('reviewer_id', isEqualTo: userId)
-          .where('reviewee_id', isEqualTo: pending.revieweeId)
-          .where('event_id', isEqualTo: pending.eventId)
-          .limit(1)
-          .get();
-
-      if (existingReview.docs.isEmpty) {
-        pendingReviews.add(pending);
-      }
+  /// Stream de reviews pendentes (para ActionsTab)
+  Stream<List<PendingReviewModel>> getPendingReviewsStream() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      return Stream.value([]);
     }
 
-    return pendingReviews;
+    final now = Timestamp.now();
+
+    return _firestore
+        .collection('PendingReviews')
+        .where('reviewer_id', isEqualTo: userId)
+        .where('dismissed', isEqualTo: false)
+        .where('expires_at', isGreaterThan: now)
+        .orderBy('expires_at')
+        .orderBy('created_at', descending: true)
+        .limit(20)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => PendingReviewModel.fromFirestore(doc))
+              .toList();
+        });
   }
 
   /// Busca count de reviews pendentes (para badge)
@@ -67,25 +83,7 @@ class ReviewRepository {
         .where('expires_at', isGreaterThan: now)
         .get();
 
-    // Conta apenas os que não foram submetidos
-    int count = 0;
-    for (final doc in snapshot.docs) {
-      final pending = PendingReviewModel.fromFirestore(doc);
-
-      final existingReview = await _firestore
-          .collection('Reviews')
-          .where('reviewer_id', isEqualTo: userId)
-          .where('reviewee_id', isEqualTo: pending.revieweeId)
-          .where('event_id', isEqualTo: pending.eventId)
-          .limit(1)
-          .get();
-
-      if (existingReview.docs.isEmpty) {
-        count++;
-      }
-    }
-
-    return count;
+    return snapshot.docs.length;
   }
 
   /// Marca pending review como dismissed
@@ -94,6 +92,100 @@ class ReviewRepository {
       'dismissed': true,
       'dismissed_at': FieldValue.serverTimestamp(),
     });
+    
+    // Notifica o listener para remover do cache local
+    PendingReviewsListenerService.instance.clearPendingReview(pendingReviewId);
+  }
+
+  /// Atualiza PendingReview (ex: presenceConfirmed)
+  Future<void> updatePendingReview({
+    required String pendingReviewId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _firestore
+        .collection('PendingReviews')
+        .doc(pendingReviewId)
+        .update(data);
+  }
+
+  /// Salva participante confirmado na subcoleção do evento
+  Future<void> saveConfirmedParticipant({
+    required String eventId,
+    required String participantId,
+    required String confirmedBy,
+  }) async {
+    await _firestore
+        .collection('Events')
+        .doc(eventId)
+        .collection('ConfirmedParticipants')
+        .doc(participantId)
+        .set({
+      'confirmed_at': FieldValue.serverTimestamp(),
+      'confirmed_by': confirmedBy,
+      'presence': 'Vou',
+      'reviewed': false,
+    });
+  }
+
+  /// Marca participante como avaliado
+  Future<void> markParticipantAsReviewed({
+    required String eventId,
+    required String participantId,
+  }) async {
+    await _firestore
+        .collection('Events')
+        .doc(eventId)
+        .collection('ConfirmedParticipants')
+        .doc(participantId)
+        .update({'reviewed': true});
+  }
+
+  /// Cria PendingReview para participante avaliar owner
+  Future<void> createParticipantPendingReview({
+    required String eventId,
+    required String participantId,
+    required String ownerId,
+    required String ownerName,
+    required String? ownerPhotoUrl,
+    required String eventTitle,
+    required String eventEmoji,
+    required String? eventLocationName,
+    required DateTime? eventScheduleDate,
+  }) async {
+    final pendingReviewId = '${eventId}_participant_$participantId';
+    final expiresAt = DateTime.now().add(const Duration(days: 30));
+
+    await _firestore.collection('PendingReviews').doc(pendingReviewId).set({
+      'pending_review_id': pendingReviewId,
+      'event_id': eventId,
+      'application_id': '',
+      'reviewer_id': participantId,
+      'reviewee_id': ownerId,
+      'reviewee_name': ownerName,
+      'reviewee_photo_url': ownerPhotoUrl,
+      'reviewer_role': 'participant',
+      'event_title': eventTitle,
+      'event_emoji': eventEmoji,
+      'event_location': eventLocationName,
+      'event_date': eventScheduleDate != null
+          ? Timestamp.fromDate(eventScheduleDate)
+          : FieldValue.serverTimestamp(),
+      'allowed_to_review_owner': true,
+      'created_at': FieldValue.serverTimestamp(),
+      'expires_at': Timestamp.fromDate(expiresAt),
+      'dismissed': false,
+    });
+  }
+
+  /// Deleta PendingReview
+  Future<void> deletePendingReview(String pendingReviewId) async {
+    await _firestore
+        .collection('PendingReviews')
+        .doc(pendingReviewId)
+        .delete();
+    
+    // Notifica o listener
+    PendingReviewsListenerService.instance.clearPendingReview(pendingReviewId);
   }
 
   // ==================== REVIEWS ====================
@@ -106,6 +198,7 @@ class ReviewRepository {
     required Map<String, int> criteriaRatings,
     List<String> badges = const [],
     String? comment,
+    String? pendingReviewId,
   }) async {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
@@ -157,7 +250,13 @@ class ReviewRepository {
     await _updateReviewStats(revieweeId);
 
     // Remove pending review
-    await _removePendingReview(userId, revieweeId, eventId);
+    if (pendingReviewId != null && pendingReviewId.isNotEmpty) {
+      await _removePendingReviewById(pendingReviewId);
+      // Notifica o listener
+      PendingReviewsListenerService.instance.clearPendingReview(pendingReviewId);
+    } else {
+      await _removePendingReview(userId, revieweeId, eventId);
+    }
   }
 
   /// Busca reviews de um usuário
@@ -331,6 +430,18 @@ class ReviewRepository {
 
     if (snapshot.docs.isNotEmpty) {
       await snapshot.docs.first.reference.delete();
+    }
+  }
+
+  /// Remove pending review por ID direto
+  Future<void> _removePendingReviewById(String pendingReviewId) async {
+    try {
+      await _firestore
+          .collection('PendingReviews')
+          .doc(pendingReviewId)
+          .delete();
+    } catch (e) {
+      // Falha silenciosa - o documento pode já ter sido deletado
     }
   }
 }

@@ -76,21 +76,28 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
     }
   }
 
+  /// Busca IDs dos participantes aprovados do evento
   Future<List<String>> _getActivityParticipants(String activityId) async {
+    print('⏰ [ActivityExpiringSoonTrigger._getActivityParticipants] Buscando aplicações aprovadas para: $activityId');
     try {
-      final activityDoc = await firestore
-          .collection('events')
-          .doc(activityId)
+      final querySnapshot = await firestore
+          .collection('EventApplications')
+          .where('eventId', isEqualTo: activityId)
+          .where('status', whereIn: ['approved', 'autoApproved'])
           .get();
 
-      if (!activityDoc.exists) return [];
+      print('⏰ [ActivityExpiringSoonTrigger._getActivityParticipants] Encontradas ${querySnapshot.docs.length} aplicações aprovadas');
 
-      final data = activityDoc.data();
-      final participantIds = data?['participantIds'] as List<dynamic>?;
+      if (querySnapshot.docs.isEmpty) return [];
 
-      return participantIds?.map((e) => e.toString()).toList() ?? [];
+      final participantIds = querySnapshot.docs
+          .map((doc) => doc.data()['userId'] as String)
+          .toList();
+
+      print('⏰ [ActivityExpiringSoonTrigger._getActivityParticipants] ParticipantIds: $participantIds');
+      return participantIds;
     } catch (e) {
-      print('[ActivityExpiringSoonTrigger] Erro ao buscar participantes: $e');
+      print('❌ [ActivityExpiringSoonTrigger._getActivityParticipants] Erro ao buscar participantes: $e');
       return [];
     }
   }

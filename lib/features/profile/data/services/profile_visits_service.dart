@@ -101,21 +101,36 @@ class ProfileVisitsService {
       final now = DateTime.now();
       final expireAt = now.add(_visitTTL);
       
-      // ID do documento: {visitedUserId}_{visitorId} (evita duplicatas)
+      // Buscar dados do visitante para incluir na notificação
+      final visitorData = await _userRepository.getUserById(visitorId);
+      final visitorName = visitorData?['fullName'] as String? ?? 'Alguém';
+      final visitorPhotoUrl = visitorData?['profilePhotoUrl'] as String?;
+      
+      // 1. Salvar na coleção ProfileVisits (para UI de visitas)
       final docId = '${visitedUserId}_$visitorId';
       final docRef = _firestore
           .collection('ProfileVisits')
           .doc(docId);
 
-      // Merge: Atualiza se já existe, cria se não existe
       await docRef.set({
         'visitedUserId': visitedUserId,
         'visitorId': visitorId,
         'visitedAt': FieldValue.serverTimestamp(),
         'source': source ?? 'profile',
         'expireAt': Timestamp.fromDate(expireAt),
-        'visitCount': FieldValue.increment(1), // Incrementa contador
+        'visitCount': FieldValue.increment(1),
       }, SetOptions(merge: true));
+
+      // 2. Salvar também na coleção ProfileViews (para notificações agregadas)
+      // A Cloud Function processProfileViewNotifications monitora esta coleção
+      await _firestore.collection('ProfileViews').add({
+        'viewerId': visitorId,
+        'viewedUserId': visitedUserId,
+        'viewedAt': FieldValue.serverTimestamp(),
+        'notified': false, // Será marcado como true pela Cloud Function
+        'viewerName': visitorName,
+        'viewerPhotoUrl': visitorPhotoUrl,
+      });
 
       // Atualizar cache local
       _lastVisitCache[cacheKey] = now;

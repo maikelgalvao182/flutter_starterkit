@@ -394,10 +394,6 @@ export * from "./events";
 // Importa e exporta as Cloud Functions de ranking
 export * from "./ranking/updateRanking";
 
-// ===== REVIEW FUNCTIONS =====
-// Importa e exporta as Cloud Functions de reviews
-export * from "./reviews/checkEventsForReview";
-
 // ===== NOTIFICATION FUNCTIONS =====
 // Importa e exporta as Cloud Functions de notificações agregadas
 export * from "./profileViewNotifications";
@@ -405,6 +401,14 @@ export * from "./profileViewNotifications";
 // ===== EVENT CHAT NOTIFICATIONS =====
 // Importa e exporta as Cloud Functions de notificações de EventChat
 export * from "./eventChatNotifications";
+
+// ===== CHAT PUSH NOTIFICATIONS =====
+// Importa e exporta as Cloud Functions de push notifications de chat
+export * from "./chatPushNotifications";
+
+// ===== REVIEW FUNCTIONS =====
+// Importa e exporta as Cloud Functions de reviews
+export * from "./reviews/createPendingReviews";
 
 // ===== DEBUG FUNCTIONS =====
 export * from "./debug";

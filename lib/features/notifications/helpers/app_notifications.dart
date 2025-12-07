@@ -45,6 +45,13 @@ class AppNotifications {
         }
         break;
       
+      // Notificação de visitas ao perfil
+      case 'profile_views_aggregated':
+        if (context.mounted) {
+          context.push(AppRoutes.profileVisits);
+        }
+        break;
+      
       // Notificações de atividades/eventos
       case ActivityNotificationTypes.activityCreated:
       case ActivityNotificationTypes.activityJoinRequest:

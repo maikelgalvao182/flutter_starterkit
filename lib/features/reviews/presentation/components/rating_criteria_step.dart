@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/reviews/domain/constants/review_criteria.dart';
 
-/// Step de avaliação por critérios (Step 0)
+/// Step de avaliação por critérios (Step 1)
 class RatingCriteriaStep extends StatelessWidget {
   final Map<String, int> ratings;
   final Function(String, int) onRatingChanged;
@@ -18,7 +19,6 @@ class RatingCriteriaStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Título
         Text(
@@ -29,6 +29,7 @@ class RatingCriteriaStep extends StatelessWidget {
             fontWeight: FontWeight.w700,
             color: GlimpseColors.textPrimary,
           ),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         
@@ -41,6 +42,7 @@ class RatingCriteriaStep extends StatelessWidget {
             fontWeight: FontWeight.w400,
             color: GlimpseColors.textSecondary,
           ),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
         
@@ -72,61 +74,53 @@ class _CriterionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: currentRating != null
-            ? GlimpseColors.primary.withOpacity(0.05)
-            : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: currentRating != null
               ? GlimpseColors.primary.withOpacity(0.3)
-              : Colors.grey.shade200,
+              : GlimpseColors.borderColorLight,
+          width: currentRating != null ? 2 : 1,
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header com ícone e título
-          Row(
-            children: [
-              Text(
-                criterion['icon']!,
-                style: const TextStyle(fontSize: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      criterion['title']!,
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: GlimpseColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      criterion['description']!,
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: GlimpseColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          // Emoji e título
+          Text(
+            criterion['icon']!,
+            style: const TextStyle(fontSize: 32),
           ),
+          const SizedBox(height: 12),
+          
+          Text(
+            criterion['title']!,
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          
+          Text(
+            criterion['description']!,
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: GlimpseColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
           const SizedBox(height: 16),
           
-          // Rating com estrelas
+          // Rating com estrelas (Iconsax)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(5, (index) {
@@ -136,13 +130,13 @@ class _CriterionItem extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onRatingChanged(rating),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Icon(
-                    isSelected ? Icons.star : Icons.star_border,
+                    isSelected ? Iconsax.star1 : Iconsax.star,
                     color: isSelected
-                        ? GlimpseColors.warning
-                        : Colors.grey.shade300,
-                    size: 36,
+                        ? const Color(0xFFFFC107) // Amarelo
+                        : GlimpseColors.borderColorLight,
+                    size: 32,
                   ),
                 ),
               );

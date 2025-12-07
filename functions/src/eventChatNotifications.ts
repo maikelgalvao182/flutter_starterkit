@@ -43,6 +43,12 @@ export const onEventChatMessageCreated = functions.firestore
       console.log(`   Tipo: ${messageType}`);
       console.log(`   Mensagem: ${messageText}`);
 
+      // Ignorar mensagens do sistema (não geram notificações)
+      if (messageType === "system" || senderId === "system") {
+        console.log("⏭️ Mensagem do sistema - não criar notificação");
+        return;
+      }
+
       // Buscar dados do evento para obter participantes e título
       const eventChatDoc = await admin
         .firestore()

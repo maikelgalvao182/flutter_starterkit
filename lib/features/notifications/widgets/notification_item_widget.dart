@@ -128,8 +128,8 @@ class NotificationItemWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                // Avatar - para mensagens de sistema, mostrar emoji da atividade
-                if (senderId == 'system' && emoji != null)
+                // Avatar - para mensagens de sistema, mostrar emoji se disponível
+                if ((senderId.isEmpty || senderId == 'system') && emoji != null && emoji.isNotEmpty)
                   Container(
                     width: 42,
                     height: 42,

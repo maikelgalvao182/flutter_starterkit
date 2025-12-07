@@ -213,7 +213,10 @@ class NotificationTemplates {
   // --------------------------------------------------
   //  TEMPLATE 9: Nova mensagem no chat
   // --------------------------------------------------
-  /// Para mensagens do chat
+  /// Para mensagens 1-1 do chat privado
+  /// 
+  /// IMPORTANTE: Esta notificação é APENAS para push notification (FCM)
+  /// NÃO deve ser salva na coleção Notifications (in-app)
   static NotificationMessage newMessage({
     required String senderName,
     String? messagePreview,
@@ -233,7 +236,88 @@ class NotificationTemplates {
   }
 
   // --------------------------------------------------
-  //  TEMPLATE 10: Alerta do sistema
+  //  TEMPLATE 10: Nova mensagem no chat de evento
+  // --------------------------------------------------
+  /// Para mensagens do EventChat (grupo)
+  /// 
+  /// IMPORTANTE: Esta notificação é APENAS para push notification (FCM)
+  /// NÃO deve ser salva na coleção Notifications (in-app)
+  static NotificationMessage eventChatMessage({
+    required String senderName,
+    required String eventName,
+    required String emoji,
+    String? messagePreview,
+  }) {
+    final body = messagePreview != null && messagePreview.isNotEmpty
+        ? "$senderName: $messagePreview"
+        : "$senderName enviou uma mensagem";
+
+    return NotificationMessage(
+      title: "$eventName $emoji",
+      body: body,
+      preview: "$senderName no grupo",
+      extra: {
+        if (messagePreview != null) 'messagePreview': messagePreview,
+      },
+    );
+  }
+
+  // --------------------------------------------------
+  //  TEMPLATE 11: Visualizações de perfil agregadas
+  // --------------------------------------------------
+  /// Notificação agregada de visualizações de perfil
+  /// Disparada pela Cloud Function a cada 15 minutos
+  /// 
+  /// Exemplos:
+  /// - "3 pessoas visualizaram seu perfil"
+  /// - "João e Maria visualizaram seu perfil"
+  /// - "10 pessoas visualizaram seu perfil nas últimas 3 horas"
+  static NotificationMessage profileViewsAggregated({
+    required int count,
+    String? lastViewedAt,
+    List<String>? viewerNames,
+  }) {
+    String body;
+    
+    if (count == 1 && viewerNames != null && viewerNames.isNotEmpty) {
+      // Uma pessoa específica
+      body = "${viewerNames.first} visualizou seu perfil";
+    } else if (count == 2 && viewerNames != null && viewerNames.length == 2) {
+      // Duas pessoas específicas
+      body = "${viewerNames[0]} e ${viewerNames[1]} visualizaram seu perfil";
+    } else if (count <= 5 && viewerNames != null && viewerNames.length == count) {
+      // Até 5 pessoas com nomes
+      final names = viewerNames.take(3).join(", ");
+      final remaining = count - 3;
+      if (remaining > 0) {
+        body = "$names e mais $remaining ${remaining == 1 ? 'pessoa visualizou' : 'pessoas visualizaram'} seu perfil";
+      } else {
+        body = "$names visualizaram seu perfil";
+      }
+    } else {
+      // Apenas contador
+      body = "$count pessoas da região visualizaram seu perfil";
+    }
+
+    // Adiciona tempo relativo se disponível
+    if (lastViewedAt != null && lastViewedAt.isNotEmpty) {
+      body += " $lastViewedAt";
+    }
+
+    return NotificationMessage(
+      title: "👀 Visitas ao perfil",
+      body: body,
+      preview: "$count ${count == 1 ? 'nova visita' : 'novas visitas'}",
+      extra: {
+        'count': count,
+        if (viewerNames != null) 'viewerNames': viewerNames,
+        if (lastViewedAt != null) 'lastViewedAt': lastViewedAt,
+      },
+    );
+  }
+
+  // --------------------------------------------------
+  //  TEMPLATE 12: Alerta do sistema
   // --------------------------------------------------
   /// Para alertas gerais do sistema
   static NotificationMessage systemAlert({
@@ -249,7 +333,7 @@ class NotificationTemplates {
   }
 
   // --------------------------------------------------
-  //  TEMPLATE 11: Notificação customizada
+  //  TEMPLATE 13: Notificação customizada
   // --------------------------------------------------
   /// Para casos especiais que não se encaixam nos templates acima
   static NotificationMessage custom({

@@ -1,0 +1,28 @@
+/// 🔑 Coleção de tokens FCM para push notifications
+/// Path usado no app:
+/// - DeviceTokens/{tokenId}
+///   - userId: string (ID do usuário dono do token)
+///   - token: string (FCM token)
+///   - deviceId: string (ID único do dispositivo)
+///   - deviceName: string (nome do dispositivo)
+///   - platform: string ("android" | "ios")
+///   - createdAt: timestamp
+///   - updatedAt: timestamp
+///   - lastUsedAt: timestamp
+///
+/// Regras:
+/// - Usuário pode ler apenas seus próprios tokens
+/// - Usuário pode criar/atualizar apenas seus próprios tokens
+/// - Usuário pode deletar apenas seus próprios tokens
+/// - Cloud Functions podem ler/escrever em qualquer token
+
+match /DeviceTokens/{tokenId} {
+  // Permite leitura apenas se for o dono do token
+  allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+  
+  // Permite criação/atualização apenas se o userId no documento for o próprio usuário
+  allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+  
+  // Permite exclusão apenas se for o dono do token
+  allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+}

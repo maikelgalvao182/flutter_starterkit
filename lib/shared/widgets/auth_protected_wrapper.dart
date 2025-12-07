@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
+import 'package:partiu/features/reviews/presentation/services/pending_reviews_checker_service.dart';
 
 /// Widget que protege telas que necessitam de usuário autenticado.
 /// Mostra loader enquanto aguarda inicialização completa do AuthSyncService.
-class AuthProtectedWrapper extends StatelessWidget {
+/// Após autenticação, verifica automaticamente se há pending reviews.
+class AuthProtectedWrapper extends StatefulWidget {
   final Widget child;
   final String? loadingMessage;
+  final bool checkPendingReviews;
   
   const AuthProtectedWrapper({
     super.key,
     required this.child,
     this.loadingMessage,
+    this.checkPendingReviews = true,
   });
+
+  @override
+  State<AuthProtectedWrapper> createState() => _AuthProtectedWrapperState();
+}
+
+class _AuthProtectedWrapperState extends State<AuthProtectedWrapper> {
+  bool _hasCheckedPendingReviews = false;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +31,9 @@ class AuthProtectedWrapper extends StatelessWidget {
       builder: (context, authSync, _) {
         // Se ainda não inicializou ou não está logado, mostra loader
         if (!authSync.initialized || !authSync.isLoggedIn) {
+          // Reset flag quando usuário desloga
+          _hasCheckedPendingReviews = false;
+          
           return Scaffold(
             backgroundColor: Colors.white,
             body: Center(
@@ -27,10 +41,10 @@ class AuthProtectedWrapper extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(),
-                  if (loadingMessage != null) ...[
+                  if (widget.loadingMessage != null) ...[
                     const SizedBox(height: 16),
                     Text(
-                      loadingMessage!,
+                      widget.loadingMessage!,
                       style: const TextStyle(
                         color: Colors.grey,
                         fontSize: 14,
@@ -43,8 +57,21 @@ class AuthProtectedWrapper extends StatelessWidget {
           );
         }
 
+        // Usuário autenticado - verifica pending reviews uma vez
+        if (widget.checkPendingReviews && !_hasCheckedPendingReviews) {
+          _hasCheckedPendingReviews = true;
+          
+          // Agenda verificação após o frame atual
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              PendingReviewsCheckerService()
+                  .checkAndShowPendingReviews(context);
+            }
+          });
+        }
+
         // Usuário autenticado - mostra tela protegida
-        return child;
+        return widget.child;
       },
     );
   }

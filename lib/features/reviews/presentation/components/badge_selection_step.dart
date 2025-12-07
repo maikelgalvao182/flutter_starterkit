@@ -4,7 +4,7 @@ import 'package:partiu/features/reviews/domain/constants/review_badges.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 
-/// Step de seleção de badges (Step 1)
+/// Step de seleção de badges (Step 2)
 class BadgeSelectionStep extends StatelessWidget {
   final List<String> selectedBadges;
   final Function(String) onBadgeToggle;
@@ -18,11 +18,10 @@ class BadgeSelectionStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Título
         Text(
-          'Quer deixar um elogio? Escolha um badge!',
+          'Quer deixar um elogio?',
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
             fontSize: 18,
@@ -54,7 +53,7 @@ class BadgeSelectionStep extends StatelessWidget {
             crossAxisCount: 2,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 2.5,
+            childAspectRatio: 1.2,
           ),
           itemCount: availableBadges.length,
           itemBuilder: (context, index) {
@@ -111,45 +110,44 @@ class _BadgeItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? badge.color.withOpacity(0.15)
-              : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? badge.color : Colors.grey.shade300,
+            color: isSelected 
+                ? GlimpseColors.primary.withOpacity(0.3)
+                : GlimpseColors.borderColorLight,
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Row(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Emoji
             Text(
               badge.emoji,
-              style: const TextStyle(fontSize: 24),
+              style: const TextStyle(fontSize: 32),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(height: 8),
             
             // Título
-            Flexible(
-              child: Text(
-                badge.title,
-                style: GoogleFonts.getFont(
-                  FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                  color: isSelected
-                      ? badge.color.withOpacity(0.9)
-                      : GlimpseColors.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            Text(
+              badge.title,
+              style: GoogleFonts.getFont(
+                FONT_PLUS_JAKARTA_SANS,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected
+                    ? GlimpseColors.primary
+                    : GlimpseColors.textPrimary,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             
             // Check icon (quando selecionado)

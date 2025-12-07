@@ -133,8 +133,9 @@ export const processProfileViewNotifications = functions
             count: data.count.toString(),
             lastViewedAt: formatRelativeTime(data.lastViewedAt.toDate()),
             viewerIds: data.viewerIds.join(","),
+            emoji: "👀", // Emoji para exibição no widget
           },
-          n_related_id: null,
+          n_related_id: "profile_visits", // Identificador para navegação
           n_read: false,
           n_sender_id: "",
           n_sender_fullname: "Sistema",

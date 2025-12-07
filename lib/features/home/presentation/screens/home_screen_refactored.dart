@@ -37,6 +37,14 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
     _selectedIndex = widget.initialIndex;
     // Carregar página inicial
     _ensurePage(_selectedIndex);
+    
+    // ❌ DESATIVADO: Listener automático de pending reviews
+    // Agora os reviews aparecem na ActionsTab como cards
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   if (mounted) {
+    //     PendingReviewsListenerService.instance.startListening(context);
+    //   }
+    // });
   }
 
   /// Garante que a página está instanciada
@@ -92,6 +100,8 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
 
   @override
   void dispose() {
+    // ❌ DESATIVADO: Listener automático removido
+    // PendingReviewsListenerService.instance.stopListening();
     widget.mapViewModel.dispose();
     super.dispose();
   }

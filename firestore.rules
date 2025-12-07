@@ -8,6 +8,7 @@
 /// - rules/users.rules          → Coleção Users/{userId}
 /// - rules/app_config.rules     → Coleção AppInfo/{configName}
 /// - rules/notifications.rules  → Subcoleção Users/{userId}/Notifications/{notificationId}
+/// - rules/device_tokens.rules  → Coleção DeviceTokens/{tokenId}
 /// - rules/reviews.rules        → Coleção Reviews/{reviewId}
 /// - rules/events.rules         → Coleção events/{eventId}
 /// - rules/applications.rules   → Coleção EventApplications/{applicationId} [CORRIGIDO: permite leitura de aprovados]
@@ -142,6 +143,38 @@ match /Notifications/{notificationId} {
 }
 
     // ======================================
+    // 🔑 Tokens FCM
+    // ======================================
+/// 🔑 Coleção de tokens FCM para push notifications
+/// Path usado no app:
+/// - DeviceTokens/{tokenId}
+///   - userId: string (ID do usuário dono do token)
+///   - token: string (FCM token)
+///   - deviceId: string (ID único do dispositivo)
+///   - deviceName: string (nome do dispositivo)
+///   - platform: string ("android" | "ios")
+///   - createdAt: timestamp
+///   - updatedAt: timestamp
+///   - lastUsedAt: timestamp
+///
+/// Regras:
+/// - Usuário pode ler apenas seus próprios tokens
+/// - Usuário pode criar/atualizar apenas seus próprios tokens
+/// - Usuário pode deletar apenas seus próprios tokens
+/// - Cloud Functions podem ler/escrever em qualquer token
+
+match /DeviceTokens/{tokenId} {
+  // Permite leitura apenas se for o dono do token
+  allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+  
+  // Permite criação/atualização apenas se o userId no documento for o próprio usuário
+  allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+  
+  // Permite exclusão apenas se for o dono do token
+  allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+}
+
+    // ======================================
     // ⭐ Reviews/Avaliações
     // ======================================
 /// ⭐ Sistema completo de Reviews/Avaliações
@@ -181,7 +214,9 @@ match /PendingReviews/{pendingId} {
   // Atualizar: apenas o reviewer pode marcar como dismissed
   allow update: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id &&
-    request.resource.data.status == 'dismissed';
+    request.resource.data.dismissed == true &&
+    request.resource.data.diff(resource.data).affectedKeys()
+      .hasOnly(['dismissed', 'dismissed_at']);
   
   // Deletar: não permitido (Cloud Functions gerencia)
   allow delete: if false;

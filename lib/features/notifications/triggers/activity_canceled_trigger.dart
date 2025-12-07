@@ -66,24 +66,26 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
     }
   }
 
+  /// Busca IDs dos participantes aprovados do evento
   Future<List<String>> _getActivityParticipants(String activityId) async {
-    print('🚫 [ActivityCanceledTrigger._getActivityParticipants] Buscando doc: $activityId');
+    print('🚫 [ActivityCanceledTrigger._getActivityParticipants] Buscando aplicações aprovadas para: $activityId');
     try {
-      final activityDoc = await firestore
-          .collection('events')
-          .doc(activityId)
+      final querySnapshot = await firestore
+          .collection('EventApplications')
+          .where('eventId', isEqualTo: activityId)
+          .where('status', whereIn: ['approved', 'autoApproved'])
           .get();
 
-      if (!activityDoc.exists) {
-        print('⚠️ [ActivityCanceledTrigger._getActivityParticipants] Documento não existe');
-        return [];
-      }
+      print('🚫 [ActivityCanceledTrigger._getActivityParticipants] Encontradas ${querySnapshot.docs.length} aplicações aprovadas');
 
-      final data = activityDoc.data();
-      final participantIds = data?['participantIds'] as List<dynamic>?;
-      print('✅ [ActivityCanceledTrigger._getActivityParticipants] ParticipantIds: $participantIds');
+      if (querySnapshot.docs.isEmpty) return [];
 
-      return participantIds?.map((e) => e.toString()).toList() ?? [];
+      final participantIds = querySnapshot.docs
+          .map((doc) => doc.data()['userId'] as String)
+          .toList();
+
+      print('🚫 [ActivityCanceledTrigger._getActivityParticipants] ParticipantIds: $participantIds');
+      return participantIds;
     } catch (e, stackTrace) {
       print('❌ [ActivityCanceledTrigger._getActivityParticipants] ERRO: $e');
       print('❌ [ActivityCanceledTrigger._getActivityParticipants] StackTrace: $stackTrace');

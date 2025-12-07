@@ -9,6 +9,7 @@ import 'package:partiu/core/managers/session_manager.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/common/services/notifications_counter_service.dart';
+import 'package:partiu/features/notifications/services/fcm_token_service.dart';
 
 /// Serviço de orquestração de autenticação que trabalha COM SessionManager.
 /// 
@@ -149,6 +150,11 @@ class AuthSyncService extends ChangeNotifier {
             _log('🔔🔔🔔 Inicializando NotificationsCounterService pela primeira vez...');
             _log('🔔 AppState.currentUserId: ${AppState.currentUserId}');
             NotificationsCounterService.instance.initialize();
+            
+            // Inicializar FCM Token Service
+            _log('🔑 Inicializando FcmTokenService...');
+            await FcmTokenService.instance.initialize();
+            
             _notificationServiceInitialized = true;
             _log('🔔✅ NotificationsCounterService.initialize() chamado - flag: $_notificationServiceInitialized');
           } else {
@@ -169,11 +175,6 @@ class AuthSyncService extends ChangeNotifier {
       });
     } catch (e, stack) {
       _logError('Erro ao carregar dados do usuário', e, stack);
-    }
-  }
-
-
-
   /// Força logout do usuário (delega para SessionManager)
   Future<void> signOut() async {
     try {
@@ -182,6 +183,10 @@ class AuthSyncService extends ChangeNotifier {
       // Cancela subscriptions
       await _userSubscription?.cancel();
       _userSubscription = null;
+      
+      // Limpar tokens FCM
+      _log('🔑 Removendo FCM tokens...');
+      await FcmTokenService.instance.clearTokens();
       
       // Limpar cache do UserRepository
       UserRepository.clearCache();
@@ -192,6 +197,11 @@ class AuthSyncService extends ChangeNotifier {
       // Firebase signOut por último (dispara authStateChanges que confirma o logout)
       await fire_auth.FirebaseAuth.instance.signOut();
       
+      _log('Logout completado');
+    } catch (e, stack) {
+      _logError('Erro durante logout', e, stack);
+    }
+  }   
       _log('Logout completado');
     } catch (e, stack) {
       _logError('Erro durante logout', e, stack);
