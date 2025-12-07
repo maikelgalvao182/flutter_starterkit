@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/screens/chat/chat_screen_refactored.dart';
-import 'package:partiu/core/models/user.dart';
+import 'package:partiu/core/models/user.dart' as app_models;
 
 /// Ultra-simplified conversation navigation service
 class ConversationNavigationService {
@@ -12,6 +13,7 @@ class ConversationNavigationService {
     required BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>>? doc,
     required Map<String, dynamic> data,
+    String? conversationId,
   }) async {
     try {
       // 1. Verificar se é chat de evento
@@ -37,8 +39,9 @@ class ConversationNavigationService {
       );
 
       // Mark as read in background after navigation starts
-      if (doc != null) {
-        _markAsReadInBackground(doc);
+      final id = conversationId ?? doc?.id;
+      if (id != null) {
+        _markAsReadInBackground(id, doc);
       }
     } catch (e) {
       // Ignore navigation errors
@@ -47,7 +50,7 @@ class ConversationNavigationService {
   }
 
   /// Create user object from conversation data to avoid async fetch
-  User _createUserFromConversationData(Map<String, dynamic> data, String userId) {
+  app_models.User _createUserFromConversationData(Map<String, dynamic> data, String userId) {
     // 🔍 DEBUG: Log dos dados recebidos
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     debugPrint('🔍 _createUserFromConversationData:');
@@ -68,7 +71,7 @@ class ConversationNavigationService {
     
     // ✅ CORRIGIDO: Usar campos corretos do SessionManager/User model
     // Seguindo o padrão de: sessionManager._userToMap() e User.fromDocument()
-    return User.fromDocument({
+    return app_models.User.fromDocument({
       'userId': userId,              // ✅ userId (não user_id)
       'fullName': userName,          // ✅ fullName (não fullname)
       'profilePhotoUrl': userPhoto,  // ✅ profilePhotoUrl (não user_profile_photo)
@@ -95,15 +98,32 @@ class ConversationNavigationService {
 
   /// Background task to mark message as read (non-blocking)
   void _markAsReadInBackground(
-      QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+      String conversationId, QueryDocumentSnapshot<Map<String, dynamic>>? doc) {
     // Use microtask to execute after current frame
     Future.microtask(() {
-      doc.reference.update({
-        'message_read': true,
-        'unread_count': 0,
-      }).catchError((e) {
+      try {
+        if (doc != null) {
+          doc.reference.update({
+            'message_read': true,
+            'unread_count': 0,
+          });
+        } else {
+          final userId = FirebaseAuth.instance.currentUser?.uid;
+          if (userId != null) {
+            FirebaseFirestore.instance
+                .collection('Connections')
+                .doc(userId)
+                .collection('Conversations')
+                .doc(conversationId)
+                .update({
+              'message_read': true,
+              'unread_count': 0,
+            });
+          }
+        }
+      } catch (_) {
         // Silent fail - not critical for navigation
-      });
+      }
     });
   }
 }

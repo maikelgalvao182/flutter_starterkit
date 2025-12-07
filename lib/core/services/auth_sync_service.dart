@@ -40,10 +40,15 @@ class AuthSyncService extends ChangeNotifier {
   String? get userId => AppState.currentUserId;
 
   AuthSyncService() {
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🏗️ AuthSyncService() construtor chamado!');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     _initializeAuth();
   }
 
   void _initializeAuth() {
+    _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    _log('🔄 _initializeAuth() CHAMADO!');
     _log('🔄 Inicializando AuthSyncService');
     
     // Carregar usuário inicial do SessionManager se existir
@@ -52,15 +57,21 @@ class AuthSyncService extends ChangeNotifier {
       _log('📱 Usuário encontrado no SessionManager: ${sessionUser.userId}');
     }
     
+    _log('🔄 Criando listener de authStateChanges...');
     // Escuta mudanças no Firebase Auth
     _authSubscription = fire_auth.FirebaseAuth.instance
         .authStateChanges()
         .listen(_handleAuthStateChange);
+    _log('✅ Listener de authStateChanges criado!');
+    _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
   Future<void> _handleAuthStateChange(fire_auth.User? user) async {
     try {
+      _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      _log('🔄 _handleAuthStateChange DISPARADO!');
       _log('🔄 Auth state changed: ${user?.uid ?? 'null'}');
+      _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       // Cancela subscription anterior do usuário se existir
       await _userSubscription?.cancel();
@@ -105,8 +116,11 @@ class AuthSyncService extends ChangeNotifier {
   /// Carrega dados do usuário do Firestore e salva no SessionManager (padrão Advanced-Dating)
   Future<void> _loadUserDataAndSaveToSession(String uid) async {
     try {
+        _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        _log('🔥🔥🔥 _loadUserDataAndSaveToSession CHAMADO!');
         _log('🔥🔥🔥 Carregando dados do usuário do Firestore: $uid');
         _log('🔥 Criando snapshot listener para Users/$uid...');
+        _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
       // Escuta atualizações do Firestore em tempo real
       _userSubscription = FirebaseFirestore.instance
@@ -115,7 +129,9 @@ class AuthSyncService extends ChangeNotifier {
           .snapshots()
           .listen((snapshot) async {
         try {
+          _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           _log('🔥 SNAPSHOT RECEBIDO para $uid - exists: ${snapshot.exists}');
+          _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
           if (!snapshot.exists) {
             _log('Documento do usuário não existe: $uid');

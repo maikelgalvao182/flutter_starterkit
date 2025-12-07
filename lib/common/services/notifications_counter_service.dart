@@ -111,11 +111,19 @@ class NotificationsCounterService {
   /// Escuta conversas não lidas (Conversations Tab)
   void _listenToUnreadConversations() {
     final currentUserId = AppState.currentUserId;
+    
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('💬 [NotificationsCounter] _listenToUnreadConversations() CHAMADO!');
+    debugPrint('💬 [NotificationsCounter] UserId: $currentUserId');
+    
     if (currentUserId == null) {
-      debugPrint('⚠️ [NotificationsCounter] Usuário não autenticado');
+      debugPrint('⚠️ [NotificationsCounter] Usuário não autenticado - não pode iniciar listener');
+      debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       return;
     }
 
+    debugPrint('💬 [NotificationsCounter] Criando listener: Connections/$currentUserId/Conversations');
+    
     _conversationsSubscription = _firestore
         .collection('Connections')
         .doc(currentUserId)
@@ -123,27 +131,54 @@ class NotificationsCounterService {
         .snapshots()
         .listen(
       (snapshot) {
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugPrint('💬 [NotificationsCounter] 🔥 CONVERSATIONS LISTENER DISPARADO!');
+        debugPrint('💬 [NotificationsCounter] Total de conversas: ${snapshot.docs.length}');
+        
         int unreadCount = 0;
         
         for (final doc in snapshot.docs) {
           final data = doc.data();
           
-          // Verificar se há mensagem não lida
-          final hasUnread = data['has_unread_message'] as bool? ?? false;
+          // Verificar se há mensagem não lida usando AMBOS os campos (compatibilidade)
+          final hasUnreadMessage = data['has_unread_message'] as bool? ?? false;
+          final messageRead = data['message_read'] as bool? ?? true;
+          final unreadCountField = data['unread_count'] as int? ?? 0;
+          
+          // Considera não lida se:
+          // 1. has_unread_message == true OU
+          // 2. message_read == false OU
+          // 3. unread_count > 0
+          final hasUnread = hasUnreadMessage || !messageRead || unreadCountField > 0;
           
           // Verificar se a última mensagem não é do usuário atual
           final lastMessageSender = data['last_message_sender'] as String?;
-          final isFromOther = lastMessageSender != null && lastMessageSender != currentUserId;
+          
+          // Se há mensagens não lidas (unread_count > 0), assume que são de outra pessoa
+          // Caso contrário, verifica o last_message_sender
+          final isFromOther = unreadCountField > 0 || 
+                             (lastMessageSender != null && lastMessageSender != currentUserId);
+          
+          debugPrint('💬 [NotificationsCounter]   - Doc ${doc.id}:');
+          debugPrint('💬 [NotificationsCounter]     has_unread_message: $hasUnreadMessage');
+          debugPrint('💬 [NotificationsCounter]     message_read: $messageRead');
+          debugPrint('💬 [NotificationsCounter]     unread_count: $unreadCountField');
+          debugPrint('💬 [NotificationsCounter]     last_message_sender: $lastMessageSender');
+          debugPrint('💬 [NotificationsCounter]     isFromOther: $isFromOther');
+          debugPrint('💬 [NotificationsCounter]     hasUnread (combinado): $hasUnread');
+          debugPrint('💬 [NotificationsCounter]     conta?: ${hasUnread && isFromOther}');
           
           if (hasUnread && isFromOther) {
             unreadCount++;
           }
         }
         
+        debugPrint('💬 [NotificationsCounter] Valor ANTES: unreadConversationsCount.value = ${unreadConversationsCount.value}');
         unreadConversationsCount.value = unreadCount;
         AppState.unreadMessages.value = unreadCount; // Atualiza AppState também
-        
-        debugPrint('📊 [NotificationsCounter] Conversas não lidas: $unreadCount');
+        debugPrint('💬 [NotificationsCounter] Valor DEPOIS: unreadConversationsCount.value = ${unreadConversationsCount.value}');
+        debugPrint('💬 [NotificationsCounter] ✅ Conversas não lidas: $unreadCount');
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       },
       onError: (error) {
         debugPrint('❌ [NotificationsCounter] Erro ao contar conversas: $error');

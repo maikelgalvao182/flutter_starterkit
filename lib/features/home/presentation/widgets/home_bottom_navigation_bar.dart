@@ -7,6 +7,8 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/home/presentation/widgets/auto_updating_badge.dart';
 import 'package:partiu/common/services/notifications_counter_service.dart';
+import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 /// Ícones const pré-compilados para otimização
 class _TabIcons {
@@ -21,8 +23,8 @@ class _TabIcons {
   static const discoverBold = Icon(Iconsax.location5, size: _size, color: _selectedColor);
 
   // actions icons
-  static const actionsNormal = Icon(IconsaxPlusLinear.flash, size: _size, color: _unselectedColor);
-  static const actionsBold = Icon(IconsaxPlusBold.flash, size: _size, color: _selectedColor);
+  static const actionsNormal = Icon(IconsaxPlusLinear.flash_1, size: _size, color: _unselectedColor);
+  static const actionsBold = Icon(IconsaxPlusBold.flash_1, size: _size, color: _selectedColor);
 
   // Ranking icons
   static const rankingNormal = Icon(Iconsax.cup, size: _size, color: _unselectedColor);
@@ -124,16 +126,24 @@ class _BottomNavBarContent extends StatelessWidget {
           icon: ValueListenableBuilder<int>(
             valueListenable: NotificationsCounterService.instance.pendingActionsCount,
             builder: (context, count, _) {
+              final iconWidget = Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  currentIndex == 1 ? _TabIcons.actionsBold : _TabIcons.actionsNormal,
+                  HomeBottomNavigationBar._spacer,
+                ],
+              );
+
+              // Se não há contador, retorna só o ícone
+              if (count == 0) return iconWidget;
+
+              // Se há contador, adiciona badge
               return AutoUpdatingBadge(
                 count: count,
                 badgeColor: GlimpseColors.actionColor,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    currentIndex == 1 ? _TabIcons.actionsBold : _TabIcons.actionsNormal,
-                    HomeBottomNavigationBar._spacer,
-                  ],
-                ),
+                top: -4,
+                right: -4,
+                child: iconWidget,
               );
             },
           ),
@@ -149,19 +159,31 @@ class _BottomNavBarContent extends StatelessWidget {
 
         // Aba Conversas (com badge)
         BottomNavigationBarItem(
-          icon: ValueListenableBuilder<int>(
-            valueListenable: NotificationsCounterService.instance.unreadConversationsCount,
-            builder: (context, count, _) {
-              return AutoUpdatingBadge(
-                count: count,
-                badgeColor: GlimpseColors.actionColor,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    currentIndex == 3 ? _TabIcons.conversationBold : _TabIcons.conversationNormal,
-                    HomeBottomNavigationBar._spacer,
-                  ],
-                ),
+          icon: Consumer<ConversationsViewModel>(
+            builder: (context, viewModel, _) {
+              return ValueListenableBuilder<int>(
+                valueListenable: viewModel.visibleUnreadCount,
+                builder: (context, count, _) {
+                  final iconWidget = Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      currentIndex == 3 ? _TabIcons.conversationBold : _TabIcons.conversationNormal,
+                      HomeBottomNavigationBar._spacer,
+                    ],
+                  );
+
+                  // Se não há contador, retorna só o ícone
+                  if (count == 0) return iconWidget;
+
+                  // Se há contador, adiciona badge
+                  return AutoUpdatingBadge(
+                    count: count,
+                    badgeColor: GlimpseColors.actionColor,
+                    top: -4,
+                    right: -4,
+                    child: iconWidget,
+                  );
+                },
               );
             },
           ),

@@ -43,12 +43,17 @@ class ConversationsTab extends StatelessWidget {
                         )
                       : ConversationStreamWidget(
                           isVipEffective: viewModel.isVipEffective,
-                          onTap: (QueryDocumentSnapshot<Map<String, dynamic>>? doc, Map<String, dynamic> data) =>
+                          onTap: (QueryDocumentSnapshot<Map<String, dynamic>>? doc, Map<String, dynamic> data, String? conversationId) {
                               viewModel.navigationService.handleConversationTap(
-                            context: context,
-                            doc: doc,
-                            data: data,
-                          ),
+                                context: context,
+                                doc: doc,
+                                data: data,
+                                conversationId: conversationId,
+                              );
+                              if (conversationId != null) {
+                                viewModel.markAsRead(conversationId);
+                              }
+                          },
                           stateService: viewModel.stateService,
                         ),
                 ),

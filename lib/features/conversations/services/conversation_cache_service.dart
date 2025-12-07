@@ -126,6 +126,22 @@ class ConversationCacheService {
     // Return existing notifier
     final existing = _displayDataNotifiers[cacheKey];
     if (existing != null) {
+      // Update value if changed to ensure UI reflects latest data (e.g. read status)
+      final newData = ConversationDataProcessor.processConversationDataSync(
+        data: data,
+        isVipEffective: isVipEffective,
+        i18n: i18n,
+      );
+      
+      // Check for changes in critical fields
+      final current = existing.value;
+      if (current.hasUnreadMessage != newData.hasUnreadMessage || 
+          current.lastMessage != newData.lastMessage ||
+          current.timeAgo != newData.timeAgo ||
+          current.displayName != newData.displayName ||
+          current.photoUrl != newData.photoUrl) {
+         existing.value = newData;
+      }
       return existing;
     }
 

@@ -25,6 +25,34 @@ class ConversationItem {
     this.eventId,
   });
 
+  ConversationItem copyWith({
+    String? id,
+    String? userId,
+    String? userFullname,
+    String? userPhotoUrl,
+    String? lastMessage,
+    String? lastMessageType,
+    DateTime? lastMessageAt,
+    int? unreadCount,
+    bool? isRead,
+    bool? isEventChat,
+    String? eventId,
+  }) {
+    return ConversationItem(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      userFullname: userFullname ?? this.userFullname,
+      userPhotoUrl: userPhotoUrl ?? this.userPhotoUrl,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageType: lastMessageType ?? this.lastMessageType,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      unreadCount: unreadCount ?? this.unreadCount,
+      isRead: isRead ?? this.isRead,
+      isEventChat: isEventChat ?? this.isEventChat,
+      eventId: eventId ?? this.eventId,
+    );
+  }
+
   factory ConversationItem.fromJson(Map<String, dynamic> json) {
     DateTime? parseTimestamp(dynamic value) {
       if (value == null) return null;

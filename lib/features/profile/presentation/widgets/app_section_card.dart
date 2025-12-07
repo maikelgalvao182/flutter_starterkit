@@ -69,39 +69,6 @@ class _AppSectionCardState extends State<AppSectionCard> {
           Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
           _buildListItem(
             context,
-            icon: Icons.language,
-            title: i18n.translate('language') ?? 'Idioma',
-            onTap: () {
-              final localeService = Provider.of<LocaleService>(context, listen: false);
-              LanguageSelectorDialog.show(context, localeService);
-            },
-          ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.location,
-            title: 'Teste Location Picker',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const LocationPickerPageRefactored(),
-                  fullscreenDialog: true,
-                ),
-              );
-            },
-          ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.heart,
-            title: i18n.translate('likes') ?? 'Curtidas',
-            onTap: () {
-              // TODO: Implementar navegação para tela de likes
-            },
-          ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
             icon: Iconsax.user_remove,
             title: i18n.translate('blocked_users') ?? 'Usuários Bloqueados',
             onTap: () {

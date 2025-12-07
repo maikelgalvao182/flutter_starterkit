@@ -21,7 +21,7 @@ class ConversationStreamWidget extends StatelessWidget {
     required this.isVipEffective, required this.onTap, required this.stateService, super.key,
   });
   final bool isVipEffective;
-  final void Function(QueryDocumentSnapshot<Map<String, dynamic>>?, Map<String, dynamic>) onTap;
+  final void Function(QueryDocumentSnapshot<Map<String, dynamic>>?, Map<String, dynamic>, String?) onTap;
   final ConversationStateService stateService;
   
   // Singleton ChatService para time-ago reativo
@@ -86,7 +86,7 @@ class ConversationStreamWidget extends StatelessWidget {
           isLast: isLast,
           chatService: _chatService,
           onTap: () {
-            onTap(null, data);
+            onTap(null, data, item.id);
           },
         );
       },

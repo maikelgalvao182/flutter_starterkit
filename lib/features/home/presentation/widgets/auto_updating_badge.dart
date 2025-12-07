@@ -13,6 +13,8 @@ class AutoUpdatingBadge extends StatelessWidget {
     this.fontSize = 10,
     this.minBadgeSize = 16.0,
     this.badgePadding = const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    this.top,
+    this.right,
   });
 
   final Widget child;
@@ -22,6 +24,8 @@ class AutoUpdatingBadge extends StatelessWidget {
   final double fontSize;
   final double minBadgeSize;
   final EdgeInsets badgePadding;
+  final double? top;
+  final double? right;
 
   static const _badgeRadius = 10.0;
   static const _badgeBorderRadius = BorderRadius.all(Radius.circular(_badgeRadius));
@@ -62,8 +66,8 @@ class AutoUpdatingBadge extends StatelessWidget {
           childWidget ?? child,
           if (badgeCount > 0)
             Positioned(
-              right: _badgePosition,
-              top: _badgeTop,
+              right: right ?? _badgePosition,
+              top: top ?? _badgeTop,
               child: IgnorePointer(
                 child: Container(
                   padding: badgePadding,

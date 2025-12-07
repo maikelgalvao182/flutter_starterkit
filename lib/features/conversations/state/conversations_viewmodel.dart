@@ -37,6 +37,9 @@ class ConversationsViewModel extends ChangeNotifier {
   String _searchQuery = '';
   int _wsUnreadCount = 0;
   
+  // ValueNotifier para badge de conversas não lidas (apenas visíveis)
+  final ValueNotifier<int> visibleUnreadCount = ValueNotifier<int>(0);
+  
   // UI state
   bool _isProcessingPayment = false;
   bool _isRefreshing = false;
@@ -207,7 +210,17 @@ class ConversationsViewModel extends ChangeNotifier {
     }
 
     _wsConversations = list;
+    _updateVisibleUnreadCount(); // Atualiza contador de não lidas visíveis
     notifyListeners();
+  }
+
+  /// Atualiza o contador de conversas não lidas VISÍVEIS
+  /// Usa a mesma lógica da UI para consistência
+  void _updateVisibleUnreadCount() {
+    final visible = filteredWsConversations;
+    final unread = visible.where((c) => !c.isRead || c.unreadCount > 0).length;
+    visibleUnreadCount.value = unread;
+    _log('📊 Conversas não lidas visíveis: $unread de ${visible.length}');
   }
 
   /// Carrega conversas existentes diretamente do Firestore (uma vez),
@@ -283,6 +296,7 @@ class ConversationsViewModel extends ChangeNotifier {
       _log('📥 _loadInitialFromFirestore: Processados ${items.length} items');
       if (items.isNotEmpty && _wsConversations.isEmpty) {
         _wsConversations = items;
+        _updateVisibleUnreadCount(); // Atualiza contador
         _log('📥 _loadInitialFromFirestore: _wsConversations atualizado com ${items.length} items');
       }
     } catch (e, stack) {
@@ -363,6 +377,7 @@ class ConversationsViewModel extends ChangeNotifier {
       final normalized = q.trim();
       _searchQuery = normalized;
       _paginationService.updateQuery(normalized);
+      _updateVisibleUnreadCount(); // Atualiza contador quando filtro muda
       notifyListeners();
     });
   }
@@ -448,6 +463,22 @@ class ConversationsViewModel extends ChangeNotifier {
   /// Optimistically remove conversation by userId
   void optimisticRemoveByUserId(String userId) {
     _paginationService.optimisticRemoveByUserId(userId);
+  }
+
+  /// Optimistically mark conversation as read
+  void markAsRead(String conversationId) {
+    final index = _wsConversations.indexWhere((c) => c.id == conversationId);
+    if (index != -1) {
+      final old = _wsConversations[index];
+      if (!old.isRead || old.unreadCount > 0) {
+        _wsConversations[index] = old.copyWith(
+          isRead: true,
+          unreadCount: 0,
+        );
+        _updateVisibleUnreadCount();
+        notifyListeners();
+      }
+    }
   }
 
   /// Set processing payment state

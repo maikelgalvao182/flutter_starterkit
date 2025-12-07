@@ -11,7 +11,10 @@ class ConversationListSkeleton extends StatelessWidget {
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: itemCount,
-        separatorBuilder: (_, __) => const Divider(height: 0),
+        separatorBuilder: (_, __) => const Divider(
+          height: 0,
+          color: GlimpseColors.lightTextField,
+        ),
         itemBuilder: (_, __) => const _ConversationSkeletonTile(),
       ),
     );

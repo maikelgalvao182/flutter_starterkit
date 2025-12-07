@@ -18,29 +18,12 @@ class ProfileActionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 22),
-      child: Row(
-        children: [
-          Expanded(
-            child: GlimpseButton(
-              text: 'Adicionar',
-              outline: true,
-              backgroundColor: GlimpseColors.borderColorLight,
-              textColor: GlimpseColors.primaryColorLight,
-              icon: Iconsax.profile_2user,
-              onTap: onAddFriend ?? () {},
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GlimpseButton(
-              text: 'Mensagem',
-              backgroundColor: GlimpseColors.primary,
-              textColor: Colors.white,
-              icon: Iconsax.message,
-              onTap: onMessage ?? () {},
-            ),
-          ),
-        ],
+      child: GlimpseButton(
+        text: 'Enviar mensagem',
+        backgroundColor: GlimpseColors.primary,
+        textColor: Colors.white,
+        icon: Iconsax.message,
+        onTap: onMessage ?? () {},
       ),
     );
   }
