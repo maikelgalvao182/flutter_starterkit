@@ -17,10 +17,7 @@ import 'package:rxdart/rxdart.dart';
 class MapDiscoveryService {
   // Singleton
   static final MapDiscoveryService _instance = MapDiscoveryService._internal();
-  factory MapDiscoveryService() {
-    debugPrint('🔧 MapDiscoveryService: Factory chamado (retornando singleton)');
-    return _instance;
-  }
+  factory MapDiscoveryService() => _instance;
   
   MapDiscoveryService._internal() {
     debugPrint('🎉 MapDiscoveryService: Singleton criado (primeira vez)');
@@ -28,14 +25,14 @@ class MapDiscoveryService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Stream para atualizar o drawer
+  // ValueNotifier para eventos próximos (evita rebuilds desnecessários)
+  final ValueNotifier<List<EventLocation>> nearbyEvents = ValueNotifier([]);
+  
+  // Stream para atualizar o drawer (mantido para compatibilidade)
   // BehaviorSubject mantém o último valor emitido, então novos listeners
   // recebem imediatamente os dados já disponíveis
   final _eventsController = BehaviorSubject<List<EventLocation>>.seeded(const []);
-  Stream<List<EventLocation>> get eventsStream {
-    debugPrint('📡 MapDiscoveryService: Stream acessado (valor atual: ${_eventsController.value.length} eventos)');
-    return _eventsController.stream;
-  }
+  Stream<List<EventLocation>> get eventsStream => _eventsController.stream;
 
   // Cache
   List<EventLocation> _cachedEvents = [];
@@ -80,11 +77,9 @@ class MapDiscoveryService {
     final quadkey = bounds.toQuadkey();
     
     if (_shouldUseCache(quadkey)) {
-      debugPrint('📦 MapDiscoveryService: Usando cache (quadkey: $quadkey)');
-      debugPrint('📦 Cache tem ${_cachedEvents.length} eventos');
-      debugPrint('📦 BehaviorSubject valor atual: ${_eventsController.value.length} eventos');
+      debugPrint('📦 [MapDiscovery] Cache: ${_cachedEvents.length} eventos');
+      nearbyEvents.value = _cachedEvents;
       _eventsController.add(_cachedEvents);
-      debugPrint('📦 Eventos emitidos para stream (novos listeners receberão automaticamente)');
       return;
     }
 
@@ -99,10 +94,8 @@ class MapDiscoveryService {
       _lastQuadkey = quadkey;
       
       debugPrint('✅ MapDiscoveryService: ${events.length} eventos encontrados');
-      debugPrint('✅ BehaviorSubject valor atual antes: ${_eventsController.value.length} eventos');
+      nearbyEvents.value = events;
       _eventsController.add(events);
-      debugPrint('✅ BehaviorSubject valor atual depois: ${_eventsController.value.length} eventos');
-      debugPrint('✅ Eventos emitidos para stream (novos listeners receberão automaticamente)');
     } catch (error) {
       debugPrint('❌ MapDiscoveryService: Erro na query: $error');
       _eventsController.addError(error);

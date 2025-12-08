@@ -5,6 +5,7 @@ import 'package:partiu/features/home/presentation/widgets/create_button.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/list_button.dart';
 import 'package:partiu/features/home/presentation/widgets/list_drawer.dart';
+import 'package:partiu/features/home/presentation/widgets/list_drawer/list_drawer_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/navigate_to_user_button.dart';
 import 'package:partiu/features/home/presentation/widgets/people_button.dart';
 import 'package:partiu/features/home/presentation/screens/find_people_screen.dart';
@@ -41,12 +42,8 @@ class _DiscoverTabState extends State<DiscoverTab> {
   }
 
   void _showListDrawer(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const ListDrawer(),
-    );
+    // Usa bottom sheet nativo
+    ListDrawer.show(context);
   }
 
   void _centerOnUser() {

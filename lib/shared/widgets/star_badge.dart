@@ -17,8 +17,6 @@ class StarBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('⭐ StarBadge.build: rating=${rating.toStringAsFixed(1)}');
-    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
       decoration: BoxDecoration(

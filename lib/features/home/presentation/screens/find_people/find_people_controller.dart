@@ -120,12 +120,8 @@ class FindPeopleController {
       // Extrair userIds para buscar ratings
       final userIds = usersWithDistance.map((u) => u.userId).toList();
       
-      debugPrint('📊 FindPeopleController: Buscando ratings para ${userIds.length} usuários...');
-      
       // Buscar ratings em batch usando UserDataService
       final ratingsMap = await _userDataService.getRatingsByUserIds(userIds);
-      
-      debugPrint('✅ FindPeopleController: ${ratingsMap.length} ratings obtidos do cache/firestore');
       
       for (final userWithDist in usersWithDistance) {
         final data = Map<String, dynamic>.from(userWithDist.userData);
@@ -142,11 +138,8 @@ class FindPeopleController {
         // Adicionar rating do cache
         final rating = ratingsMap[userWithDist.userId];
         if (rating != null) {
-          data['overallRating'] = rating.averageRating;  // ✅ Corrigido: overallRating em vez de averageRating
+          data['overallRating'] = rating.averageRating;
           data['totalReviews'] = rating.totalReviews;
-          debugPrint('⭐ User ${userWithDist.userId.substring(0, 8)}: rating ${rating.averageRating}');
-        } else {
-          debugPrint('⚪ User ${userWithDist.userId.substring(0, 8)}: sem rating');
         }
         
         loadedUsers.add(User.fromDocument(data));
@@ -159,10 +152,7 @@ class FindPeopleController {
         return distA.compareTo(distB);
       });
 
-      debugPrint('📋 FindPeopleController: Atualizando users.value com ${loadedUsers.length} usuários (TODOS com ratings)');
       users.value = loadedUsers;
-      
-      debugPrint('✅ FindPeopleController: users.value atualizado - ${users.value.length} usuários');
     } finally {
       _isConverting = false;
     }

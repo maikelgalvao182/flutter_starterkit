@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
@@ -12,36 +13,52 @@ import 'package:partiu/features/home/presentation/widgets/list_drawer/list_drawe
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/features/home/presentation/widgets/list_card_shimmer.dart';
 
-/// Drawer/Bottom sheet para exibir lista de atividades na região
-class ListDrawer extends StatefulWidget {
-  const ListDrawer({super.key});
+/// Cache global de ListCardController para evitar recriação
+class ListCardControllerCache {
+  static final Map<String, ListCardController> _cache = {};
 
-  @override
-  State<ListDrawer> createState() => _ListDrawerState();
+  /// Obtém ou cria um controller para o eventId
+  static ListCardController get(String eventId) {
+    return _cache.putIfAbsent(
+      eventId,
+      () {
+        debugPrint('🎯 ListCardControllerCache: Criando controller para $eventId');
+        return ListCardController(eventId: eventId);
+      },
+    );
+  }
+  
+  /// Limpa o cache (útil para testes ou memory management)
+  static void clear() {
+    _cache.clear();
+    debugPrint('🗑️ ListCardControllerCache: Cache limpo');
+  }
+  
+  /// Remove um controller específico
+  static void remove(String eventId) {
+    _cache.remove(eventId);
+    debugPrint('🗑️ ListCardControllerCache: Controller $eventId removido');
+  }
 }
 
-class _ListDrawerState extends State<ListDrawer> {
-  late final ListDrawerController _controller;
-  final MapDiscoveryService _discoveryService = MapDiscoveryService();
+/// Bottom sheet para exibir lista de atividades na região
+/// 
+/// ✅ Usa ListDrawerController (singleton) para gerenciar lista
+/// ✅ Cache de controllers por eventId
+/// ✅ Bottom sheet nativo do Flutter
+class ListDrawer extends StatelessWidget {
+  const ListDrawer({super.key});
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = ListDrawerController();
-    _controller.addListener(_onControllerChanged);
-  }
-
-  @override
-  void dispose() {
-    _controller.removeListener(_onControllerChanged);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onControllerChanged() {
-    if (mounted) {
-      setState(() {});
-    }
+  /// Mostra o bottom sheet
+  static Future<void> show(BuildContext context) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => const ListDrawer(),
+    );
   }
 
   @override
@@ -58,70 +75,67 @@ class _ListDrawerState extends State<ListDrawer> {
           topRight: Radius.circular(20),
         ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          color: Colors.white,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle e header
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: 12,
-                  left: 20,
-                  right: 20,
-                ),
-                child: Column(
-                  children: [
-                    // Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: GlimpseColors.borderColorLight,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle e header
+          Padding(
+            padding: const EdgeInsets.only(
+              top: 12,
+              left: 20,
+              right: 20,
+            ),
+            child: Column(
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: GlimpseColors.borderColorLight,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // Título centralizado
-                    Text(
-                      i18n?.translate('activities_in_region') ?? 'Atividades na região',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: GlimpseColors.primaryColorLight,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 24),
-
-              // Lista de atividades
-              Expanded(
-                child: _buildContent(),
-              ),
-            ],
+                const SizedBox(height: 16),
+                
+                // Título centralizado
+                Text(
+                  i18n?.translate('activities_in_region') ?? 'Atividades na região',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.getFont(
+                    FONT_PLUS_JAKARTA_SANS,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: GlimpseColors.primaryColorLight,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          
+          const SizedBox(height: 24),
+
+          // Lista de atividades
+          Expanded(
+            child: _ListDrawerContent(),
+          ),
+        ],
       ),
     );
   }
+}
 
-  /// Constrói conteúdo baseado no estado do controller
-  Widget _buildContent() {
+/// Conteúdo interno do drawer (separado para usar controller)
+class _ListDrawerContent extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final controller = ListDrawerController();
+    final discoveryService = MapDiscoveryService();
+    
     // Usuário não autenticado
-    if (_controller.currentUserId == null) {
+    if (controller.currentUserId == null) {
       return Center(
         child: GlimpseEmptyState.standard(
           text: 'Usuário não autenticado',
@@ -129,82 +143,85 @@ class _ListDrawerState extends State<ListDrawer> {
       );
     }
 
-    // Stream de eventos próximos do mapa
-    return StreamBuilder<List<EventLocation>>(
-      stream: _discoveryService.eventsStream,
-      builder: (context, snapshot) {
-        // Debug: verificar estado do stream
-        debugPrint('🔍 ListDrawer StreamBuilder:');
-        debugPrint('   - hasData: ${snapshot.hasData}');
-        debugPrint('   - data length: ${snapshot.data?.length ?? 0}');
-        debugPrint('   - isLoading: ${_discoveryService.isLoading}');
-        debugPrint('   - hasError: ${snapshot.hasError}');
-        
-        // Loading state - mostrar shimmer apenas no carregamento inicial
-        if (!snapshot.hasData && _controller.isLoadingMyEvents) {
-          debugPrint('   ⏳ Mostrando shimmer (loading inicial)');
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                const ListCardShimmer(),
-                const ListCardShimmer(),
-                const ListCardShimmer(),
-              ],
-            ),
-          );
-        }
+    // ValueNotifier de eventos próximos (Singleton - lista viva sem rebuild)
+    return ValueListenableBuilder<List<EventLocation>>(
+      valueListenable: discoveryService.nearbyEvents,
+      builder: (context, nearbyEventsList, _) {
+        final hasNearbyEvents = nearbyEventsList.isNotEmpty;
 
-        final nearbyEvents = snapshot.data ?? [];
-        final hasNearbyEvents = nearbyEvents.isNotEmpty;
+        // ValueListenableBuilder para "Minhas atividades"
+        return ValueListenableBuilder<bool>(
+          valueListenable: controller.isLoadingMyEvents,
+          builder: (context, isLoading, _) {
+            // Loading state inicial
+            if (isLoading && controller.myEvents.value.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    SizedBox(height: 20),
+                    ListCardShimmer(),
+                    ListCardShimmer(),
+                    ListCardShimmer(),
+                  ],
+                ),
+              );
+            }
 
-        debugPrint('   📊 nearbyEvents: ${nearbyEvents.length}');
-        debugPrint('   📊 myEvents: ${_controller.myEvents.length}');
+            return ValueListenableBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+              valueListenable: controller.myEvents,
+              builder: (context, myEventsList, _) {
+                final hasMyEvents = myEventsList.isNotEmpty;
 
-        // Empty state (terminou de carregar e não tem nada)
-        if (!hasNearbyEvents && !_controller.hasMyEvents) {
-          return Center(
-            child: GlimpseEmptyState.standard(
-              text: 'Nenhuma atividade encontrada',
-            ),
-          );
-        }
+                // Empty state
+                if (!hasNearbyEvents && !hasMyEvents) {
+                  return Center(
+                    child: GlimpseEmptyState.standard(
+                      text: 'Nenhuma atividade encontrada',
+                    ),
+                  );
+                }
 
-        // Content with data
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // SEÇÃO: Atividades próximas (do mapa)
-                if (hasNearbyEvents) ...[
-                  _buildSectionLabel('Atividades próximas'),
-                  const SizedBox(height: 12),
-                  _buildNearbyEventsList(nearbyEvents),
-                  const SizedBox(height: 32),
-                ],
+                // Content with data
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // SEÇÃO: Atividades próximas (do mapa)
+                        if (hasNearbyEvents) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _buildSectionLabel('Atividades próximas'),
+                          ),
+                          _buildNearbyEventsList(context, nearbyEventsList),
+                        ],
 
-                // SEÇÃO: Suas atividades
-                if (_controller.hasMyEvents) ...[
-                  _buildSectionLabel('Suas atividades'),
-                  const SizedBox(height: 12),
-                  _buildMyEventsList(),
-                  const SizedBox(height: 32),
-                ],
-                
-                SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-              ],
-            ),
-          ),
+                        // SEÇÃO: Suas atividades
+                        if (hasMyEvents) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(top: 24, bottom: 16),
+                            child: _buildSectionLabel('Suas atividades'),
+                          ),
+                          _buildMyEventsList(context, myEventsList),
+                        ],
+                        
+                        SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
   }
 
-  /// Constrói label de seção (widget const reutilizável)
+  /// Constrói label de seção
   Widget _buildSectionLabel(String text) {
     return Text(
       text,
@@ -218,34 +235,44 @@ class _ListDrawerState extends State<ListDrawer> {
   }
 
   /// Constrói lista de eventos criados pelo usuário
-  Widget _buildMyEventsList() {
-    return Column(
-      children: _controller.myEvents.map((eventDoc) {
+  Widget _buildMyEventsList(BuildContext context, List<QueryDocumentSnapshot<Map<String, dynamic>>> myEventsList) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: myEventsList.length,
+      itemBuilder: (context, index) {
+        final eventDoc = myEventsList[index];
         return _EventCardWrapper(
+          key: ValueKey('my_${eventDoc.id}'),
           eventId: eventDoc.id,
-          onEventTap: () => _handleEventTap(eventDoc.id),
+          onEventTap: () => _handleEventTap(context, eventDoc.id),
         );
-      }).toList(),
+      },
     );
   }
 
   /// Constrói lista de eventos próximos (do mapa)
-  Widget _buildNearbyEventsList(List<EventLocation> events) {
-    return Column(
-      children: events.map((event) {
+  Widget _buildNearbyEventsList(BuildContext context, List<EventLocation> events) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: events.length,
+      itemBuilder: (context, index) {
+        final event = events[index];
         return _EventCardWrapper(
+          key: ValueKey('nearby_${event.eventId}'),
           eventId: event.eventId,
-          onEventTap: () => _handleEventTap(event.eventId),
+          onEventTap: () => _handleEventTap(context, event.eventId),
         );
-      }).toList(),
+      },
     );
   }
 
   /// Manipula tap em um evento
-  void _handleEventTap(String eventId) {
-    debugPrint('🎯 [ListDrawer] Evento clicado: $eventId');
-    
-    // Fechar o drawer
+  void _handleEventTap(BuildContext context, String eventId) {
+    // Fechar o bottom sheet
     Navigator.of(context).pop();
     
     // Navegar para o marker no mapa
@@ -253,10 +280,11 @@ class _ListDrawerState extends State<ListDrawer> {
   }
 }
 
-/// Widget wrapper para ListCard com FutureBuilder
+/// Widget wrapper para ListCard com cache de controller
 /// Separado para evitar rebuilds desnecessários
-class _EventCardWrapper extends StatelessWidget {
+class _EventCardWrapper extends StatefulWidget {
   const _EventCardWrapper({
+    super.key,
     required this.eventId,
     required this.onEventTap,
     this.distanceKm,
@@ -267,15 +295,30 @@ class _EventCardWrapper extends StatelessWidget {
   final double? distanceKm;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = ListCardController(eventId: eventId);
+  State<_EventCardWrapper> createState() => _EventCardWrapperState();
+}
 
-    return FutureBuilder(
-      future: controller.load(),
-      builder: (context, snapshot) {
+class _EventCardWrapperState extends State<_EventCardWrapper> {
+  late final ListCardController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Usa cache - nunca recria o controller
+    _controller = ListCardControllerCache.get(widget.eventId);
+    // Dispara load apenas se ainda não carregou
+    _controller.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ValueListenableBuilder reage apenas quando dados estão prontos
+    return ValueListenableBuilder<bool>(
+      valueListenable: _controller.dataReadyNotifier,
+      builder: (context, isReady, _) {
         return ListCard(
-          controller: controller,
-          onTap: onEventTap,
+          controller: _controller,
+          onTap: widget.onEventTap,
         );
       },
     );

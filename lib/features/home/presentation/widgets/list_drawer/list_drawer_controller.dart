@@ -9,38 +9,37 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// Responsabilidades:
 /// - Escutar streams de eventos do usuário (seus eventos criados)
 /// 
+/// ✅ SINGLETON com ValueNotifiers para evitar rebuilds desnecessários
+/// ✅ Cache mantido entre aberturas do drawer
+/// 
 /// NOTA: A funcionalidade de "eventos próximos" foi REMOVIDA.
 /// LocationQueryService agora busca apenas USUÁRIOS (pessoas), não eventos.
 /// Para eventos próximos, use o mapa (AppleMapViewModel + EventMapRepository).
-class ListDrawerController extends ChangeNotifier {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+class ListDrawerController {
+  // Singleton
+  static final ListDrawerController _instance = ListDrawerController._internal();
+  factory ListDrawerController() => _instance;
+  
+  ListDrawerController._internal() {
+    debugPrint('🎉 ListDrawerController: Singleton criado');
+    _initialize();
+  }
 
-  // Estado processado
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> _myEvents = [];
-  bool _isLoadingMyEvents = true;
-  String? _error;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Estado usando ValueNotifiers (rebuild granular)
+  final ValueNotifier<List<QueryDocumentSnapshot<Map<String, dynamic>>>> myEvents = 
+      ValueNotifier([]);
+  final ValueNotifier<bool> isLoadingMyEvents = ValueNotifier(true);
+  final ValueNotifier<String?> error = ValueNotifier(null);
 
   // Subscriptions
   StreamSubscription<QuerySnapshot>? _myEventsSubscription;
 
-  ListDrawerController({
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance {
-    _initialize();
-  }
-
-  // Getters - Estado processado e pronto para UI
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> get myEvents => _myEvents;
-  bool get isLoadingMyEvents => _isLoadingMyEvents;
-  bool get isLoading => _isLoadingMyEvents;
-  String? get error => _error;
-  
-  bool get hasMyEvents => _myEvents.isNotEmpty;
-  bool get isEmpty => !_isLoadingMyEvents && _myEvents.isEmpty;
-
+  // Getters convenientes
+  bool get hasMyEvents => myEvents.value.isNotEmpty;
+  bool get isEmpty => !isLoadingMyEvents.value && myEvents.value.isEmpty;
   String? get currentUserId => _auth.currentUser?.uid;
 
   /// Inicializa listeners das streams
@@ -48,9 +47,9 @@ class ListDrawerController extends ChangeNotifier {
     final userId = currentUserId;
     
     if (userId == null) {
-      _error = 'Usuário não autenticado';
-      _isLoadingMyEvents = false;
-      notifyListeners();
+      error.value = 'Usuário não autenticado';
+      isLoadingMyEvents.value = false;
+      debugPrint('❌ ListDrawerController: Usuário não autenticado');
       return;
     }
 
@@ -64,37 +63,35 @@ class ListDrawerController extends ChangeNotifier {
           _onMyEventsChanged,
           onError: _onMyEventsError,
         );
+    
+    debugPrint('✅ ListDrawerController: Stream inicializado para userId: ${userId.substring(0, 8)}...');
   }
 
   /// Handler para mudanças nos eventos do usuário
   void _onMyEventsChanged(QuerySnapshot snapshot) {
-    _myEvents = snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
-    _isLoadingMyEvents = false;
-    notifyListeners();
-    debugPrint('✅ ListDrawerController: ${_myEvents.length} eventos do usuário carregados');
+    myEvents.value = snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
+    isLoadingMyEvents.value = false;
+    debugPrint('✅ ListDrawerController: ${myEvents.value.length} eventos do usuário carregados');
   }
 
   /// Handler para erros nos eventos do usuário
-  void _onMyEventsError(dynamic error) {
-    _error = 'Erro ao carregar suas atividades';
-    _isLoadingMyEvents = false;
-    notifyListeners();
-    debugPrint('❌ ListDrawerController: Erro ao carregar eventos do usuário: $error');
+  void _onMyEventsError(dynamic err) {
+    error.value = 'Erro ao carregar suas atividades';
+    isLoadingMyEvents.value = false;
+    debugPrint('❌ ListDrawerController: Erro ao carregar eventos do usuário: $err');
   }
 
   /// Recarrega os dados
   void refresh() {
-    _isLoadingMyEvents = true;
-    _error = null;
-    notifyListeners();
+    isLoadingMyEvents.value = true;
+    error.value = null;
     
     // A stream já vai recarregar automaticamente
     debugPrint('🔄 ListDrawerController: Refresh solicitado');
   }
 
-  @override
   void dispose() {
-    _myEventsSubscription?.cancel();
-    super.dispose();
+    // Singleton não deve ser disposto
+    debugPrint('⚠️ ListDrawerController: dispose() chamado (singleton não será destruído)');
   }
 }

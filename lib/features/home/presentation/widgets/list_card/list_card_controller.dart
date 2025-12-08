@@ -25,7 +25,12 @@ class ListCardController extends ChangeNotifier {
   int _totalParticipantsCount = 0;
 
   bool _loaded = false;
+  bool _isLoading = false;
   String? _error;
+  
+  // ValueNotifiers para rebuild granular
+  final ValueNotifier<bool> loadingNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> dataReadyNotifier = ValueNotifier(false);
 
   ListCardController({
     required this.eventId,
@@ -51,6 +56,12 @@ class ListCardController extends ChangeNotifier {
 
   /// Carrega todos os dados necessários para o card
   Future<void> load() async {
+    // Se já carregou ou está carregando, não faz nada
+    if (_loaded || _isLoading) return;
+    
+    _isLoading = true;
+    loadingNotifier.value = true;
+    
     try {
       // Carregar dados do evento e participantes em paralelo
       final results = await Future.wait([
@@ -80,10 +91,15 @@ class ListCardController extends ChangeNotifier {
       _totalParticipantsCount = results[2] as int;
 
       _loaded = true;
+      _isLoading = false;
+      loadingNotifier.value = false;
+      dataReadyNotifier.value = true;
       notifyListeners();
     } catch (e) {
       _error = 'Erro ao carregar dados: $e';
       _loaded = false;
+      _isLoading = false;
+      loadingNotifier.value = false;
       notifyListeners();
       debugPrint('❌ Erro no ListCardController: $e');
     }

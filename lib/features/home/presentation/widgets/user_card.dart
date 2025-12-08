@@ -50,20 +50,12 @@ class _UserCardState extends State<UserCard> {
   void initState() {
     super.initState();
     
-    // Debug: verificar valores recebidos
-    debugPrint('🔍 UserCard.initState: userId=${widget.userId.substring(0, 8)}');
-    debugPrint('   - widget.overallRating: ${widget.overallRating}');
-    debugPrint('   - widget.user?.overallRating: ${widget.user?.overallRating}');
-    
     // Só buscar rating via controller se não foi fornecido
     _needsRatingFromController = widget.overallRating == null && widget.user?.overallRating == null;
     
     if (_needsRatingFromController) {
-      debugPrint('🎴 UserCard iniciado para userId: ${widget.userId} (buscar rating via controller)');
       _controller = UserCardController(userId: widget.userId);
       _controller!.addListener(_onControllerChanged);
-    } else {
-      debugPrint('🎴 UserCard iniciado para userId: ${widget.userId} (rating já fornecido: ${widget.overallRating ?? widget.user?.overallRating})');
     }
   }
 
@@ -86,10 +78,6 @@ class _UserCardState extends State<UserCard> {
   Widget build(BuildContext context) {
     // Determinar rating: fornecido ou do controller
     final rating = widget.overallRating ?? widget.user?.overallRating ?? _controller?.overallRating;
-    
-    if (widget.user != null && rating != null) {
-      debugPrint('🎴 UserCard.build: ${widget.userId.substring(0, 8)} → rating=$rating');
-    }
     
     // 1. Prioridade: UserWithMeta (se fornecido)
     if (widget.userWithMeta != null) {
