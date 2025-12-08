@@ -14,7 +14,6 @@
   "dont_have_account": "Não tem uma conta?",
   "already_have_account": "Já tem uma conta?",
   "cancel": "Cancelar",
-  "CANCEL": "CANCELAR",
   "continue": "Continuar",
   "back": "Voltar",
   "next": "Próximo",
@@ -568,11 +567,37 @@
   
   "notification_profile_views_aggregated": "{count} pessoas visualizaram seu perfil ✨",
   
+  
   "notif_filter_all": "Todas",
   "notif_filter_messages": "Mensagens",
   "notif_filter_activities": "Atividades",
   "notif_filter_requests": "Pedidos",
   "notif_filter_social": "Social",
-  "notif_filter_system": "Sistema"
+  "notif_filter_system": "Sistema",
+  
+  "help_us_keep_community_safe": "Bora manter esse lugar seguro?",
+  "report_dialog_description": "Este usuário está sendo desrespeitoso ou inadequado? Conte para a gente o que aconteceu. Vamos analisar e tomar as medidas necessárias.",
+  "create_report": "Criar denúncia",
+  "Block": "Bloquear",
+  "report": "Denunciar",
+  "report_details_title": "Conte o que aconteceu",
+  "report_details_description": "Sua denúncia é anônima e nos ajuda a manter a comunidade segura. Descreva o que aconteceu com detalhes.",
+  "report_details_placeholder": "Ex: Essa pessoa teve comportamento inadequado no chat, enviou mensagens ofensivas...",
+  "report_message_empty": "Por favor, descreva o que aconteceu",
+  "report_message_too_short": "Por favor, forneça mais detalhes (mínimo 10 caracteres)",
+  "send_report": "Enviar Denúncia",
+  "report_sent_successfully": "✅ Denúncia enviada com sucesso! Vamos analisar e tomar as medidas necessárias.",
+  "report_error": "❌ Erro ao enviar denúncia. Tente novamente.",
+  "user_blocked_cannot_message": "Você não pode enviar mensagens para este usuário",
+  "profile_unavailable": "Perfil não disponível",
+  "blocked_user_profile_message": "Você não pode visualizar este perfil",
+  
+  "blocked_users": "Usuários Bloqueados",
+  "no_blocked_users": "Nenhum usuário bloqueado",
+  "unblock_user": "Desbloquear Usuário",
+  "unblock_user_confirmation": "Deseja desbloquear {name}?",
+  "unblock": "Desbloquear",
+  "user_unblocked_successfully": "Usuário desbloqueado com sucesso",
+  "error_unblocking_user": "Erro ao desbloquear usuário"
 }
 

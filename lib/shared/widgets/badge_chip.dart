@@ -23,46 +23,45 @@ class BadgeChip extends StatelessWidget {
     if (badge == null) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: badge.color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        color: badge.color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             badge.emoji,
-            style: const TextStyle(fontSize: 14, height: 1),
+            style: const TextStyle(fontSize: 12, height: 1),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Text(
             badge.title,
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: GlimpseColors.primaryColorLight,
               height: 1,
             ),
           ),
           if (showCount && count > 0) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Container(
-              width: 24,
-              height: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: badge.color.withOpacity(0.17),
-                shape: BoxShape.circle,
+                color: badge.color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
               ),
-              alignment: Alignment.center,
               child: Text(
                 '$count',
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
                   color: GlimpseColors.primaryColorLight,
+                  height: 1,
                 ),
               ),
             ),

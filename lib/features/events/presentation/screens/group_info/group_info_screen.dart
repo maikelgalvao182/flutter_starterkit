@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/events/presentation/screens/group_info/group_info_controller.dart';
@@ -36,10 +37,18 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     super.initState();
     _controller = GroupInfoController(eventId: widget.eventId);
     _controller.addListener(_onControllerChanged);
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+  }
+  
+  void _onBlockedUsersChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     super.dispose();

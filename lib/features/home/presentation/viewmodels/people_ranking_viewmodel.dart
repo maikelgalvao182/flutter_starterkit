@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:partiu/features/home/data/models/user_ranking_model.dart';
 import 'package:partiu/features/home/data/services/people_ranking_service.dart';
+import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/common/state/app_state.dart';
 
 /// ViewModel para gerenciar estado do ranking de pessoas
 /// 
@@ -41,11 +43,42 @@ class PeopleRankingViewModel extends ChangeNotifier {
   /// Inicializa o ViewModel carregando rankings e cidades
   Future<void> initialize() async {
     debugPrint('🚀 [PeopleRankingViewModel] Inicializando...');
+    
+    // ⬅️ ESCUTA BlockService via ChangeNotifier (REATIVO INSTANTÂNEO)
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+    
     await Future.wait([
       loadPeopleRanking(),
       _loadAvailableCities(),
     ]);
     debugPrint('✅ [PeopleRankingViewModel] Inicialização completa');
+  }
+  
+  /// Callback quando BlockService muda (via ChangeNotifier)
+  void _onBlockedUsersChanged() {
+    debugPrint('🔄 Bloqueios mudaram - refiltrando ranking de pessoas...');
+    _refilterPeopleRanking();
+  }
+  
+  /// Re-filtra ranking removendo usuários bloqueados
+  void _refilterPeopleRanking() {
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null) return;
+    
+    final beforeCount = _peopleRankings.length;
+    final blockedIds = BlockService.instance.getAllBlockedIds(currentUserId);
+    
+    _peopleRankings = _peopleRankings
+        .where((person) => !blockedIds.contains(person.userId))
+        .toList();
+    
+    final afterCount = _peopleRankings.length;
+    final removedCount = beforeCount - afterCount;
+    
+    if (removedCount > 0) {
+      debugPrint('🚫 [PeopleRankingViewModel] $removedCount pessoas removidas do ranking');
+      notifyListeners();
+    }
   }
 
   /// Carrega ranking de pessoas
@@ -64,6 +97,20 @@ class PeopleRankingViewModel extends ChangeNotifier {
         limit: 50,
       );
       debugPrint('✅ Ranking de pessoas carregado: ${_peopleRankings.length} pessoas');
+      
+      // Filtra usuários bloqueados imediatamente
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId != null) {
+        final blockedIds = BlockService.instance.getAllBlockedIds(currentUserId);
+        final beforeFilter = _peopleRankings.length;
+        _peopleRankings = _peopleRankings
+            .where((person) => !blockedIds.contains(person.userId))
+            .toList();
+        final afterFilter = _peopleRankings.length;
+        if (beforeFilter != afterFilter) {
+          debugPrint('🚫 ${beforeFilter - afterFilter} pessoas bloqueadas filtradas');
+        }
+      }
       
       if (_peopleRankings.isNotEmpty) {
         debugPrint('   - Top 3:');
@@ -122,5 +169,11 @@ class PeopleRankingViewModel extends ChangeNotifier {
   /// Recarrega ranking
   Future<void> refresh() async {
     await initialize();
+  }
+  
+  @override
+  void dispose() {
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
+    super.dispose();
   }
 }

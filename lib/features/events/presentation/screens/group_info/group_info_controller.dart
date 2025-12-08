@@ -13,12 +13,15 @@ import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/screens/chat/services/event_application_removal_service.dart';
 import 'package:partiu/screens/chat/services/event_deletion_service.dart';
 import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/block_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 
 /// Controller para a tela de informações do grupo/evento
 class GroupInfoController extends ChangeNotifier {
   GroupInfoController({required this.eventId}) {
     _init();
+    _initBlockListener();
   }
 
   final String eventId;
@@ -53,9 +56,25 @@ class GroupInfoController extends ChangeNotifier {
   int? get maxParticipants => _eventData?['maxParticipants'] as int?;
   int get participantCount => _participants.length;
   List<Map<String, dynamic>> get participants => _participants;
-  List<String> get participantUserIds => _participants
-      .map((p) => p['userId'] as String)
-      .toList();
+  
+  /// Retorna lista de IDs de participantes, filtrando usuários bloqueados
+  /// Se for o criador, mostra todos. Se for participante, oculta bloqueados.
+  List<String> get participantUserIds {
+    final allUserIds = _participants
+        .map((p) => p['userId'] as String)
+        .toList();
+    
+    // Criador vê todos os participantes
+    if (isCreator) return allUserIds;
+    
+    // Participantes não veem bloqueados
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null) return allUserIds;
+    
+    return allUserIds
+        .where((userId) => !BlockService().isBlockedCached(currentUserId, userId))
+        .toList();
+  }
   bool get isMuted => _isMuted;
   bool get isPrivate => _eventData?['privacyType'] == 'private';
   bool get isCreator => _eventData?['createdBy'] == AppState.currentUserId;
@@ -327,6 +346,24 @@ class GroupInfoController extends ChangeNotifier {
         }
       },
     );
+  }
+
+  /// Inicializa listener para mudanças no sistema de bloqueio
+  void _initBlockListener() {
+    // ⬅️ ESCUTA BlockService via ChangeNotifier (REATIVO INSTANTÂNEO)
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+  }
+  
+  /// Callback quando BlockService muda (via ChangeNotifier)
+  void _onBlockedUsersChanged() {
+    debugPrint('🔄 Bloqueios mudaram - refiltrando participantes');
+    notifyListeners(); // Notifica UI para recomputar participantUserIds
+  }
+
+  @override
+  void dispose() {
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
+    super.dispose();
   }
 
   Future<void> openInMaps() async {

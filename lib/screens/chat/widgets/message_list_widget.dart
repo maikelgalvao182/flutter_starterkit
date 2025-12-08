@@ -8,6 +8,7 @@ import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/screens/chat/widgets/glimpse_chat_bubble.dart';
 import 'package:partiu/shared/widgets/my_circular_progress.dart';
 import 'package:partiu/shared/widgets/auto_scroll_list_handler.dart';
+import 'package:partiu/core/services/block_service.dart';
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -61,6 +62,7 @@ class _MessageListWidgetState extends State<MessageListWidget> {
   
   // State for messages
   List<Message>? _messages;
+  List<Message>? _allMessages; // Armazena todas as mensagens antes da filtragem
   bool _isLoading = true;
   String? _error;
   StreamSubscription? _subscription;
@@ -71,6 +73,7 @@ class _MessageListWidgetState extends State<MessageListWidget> {
   void initState() {
     super.initState();
     _initStream();
+    _initBlockListener();
   }
 
   @override
@@ -90,7 +93,55 @@ class _MessageListWidgetState extends State<MessageListWidget> {
   @override
   void dispose() {
     _subscription?.cancel();
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
     super.dispose();
+  }
+  
+  /// Listener para re-filtrar mensagens quando bloqueios mudam
+  void _initBlockListener() {
+    final isEventChat = widget.remoteUserId.startsWith('event_');
+    if (!isEventChat) return; // Apenas para chats de grupo
+    
+    // ⬅️ ESCUTA BlockService via ChangeNotifier (REATIVO INSTANTÂNEO)
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+  }
+  
+  /// Callback quando BlockService muda (via ChangeNotifier)
+  void _onBlockedUsersChanged() {
+    debugPrint('🔄 Bloqueios mudaram via ChangeNotifier, re-filtrando mensagens...');
+    _refilterMessages();
+  }
+  
+  /// Re-filtra mensagens removendo usuários bloqueados
+  void _refilterMessages() {
+    if (_allMessages == null) return;
+    
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null) return;
+    
+    final beforeCount = _allMessages!.length;
+    final filteredMessages = _allMessages!.where((msg) {
+      // Não filtrar minhas próprias mensagens
+      if (msg.senderId == currentUserId) return true;
+      
+      // Se não tem senderId, manter a mensagem
+      if (msg.senderId == null || msg.senderId!.isEmpty) return true;
+      
+      // Filtrar mensagens de usuários bloqueados
+      final isBlocked = BlockService().isBlockedCached(currentUserId, msg.senderId!);
+      return !isBlocked;
+    }).toList();
+    
+    final filteredCount = beforeCount - filteredMessages.length;
+    if (filteredCount > 0) {
+      debugPrint('🚫 $filteredCount mensagens removidas após mudança de bloqueio');
+    }
+    
+    if (mounted) {
+      setState(() {
+        _messages = filteredMessages;
+      });
+    }
   }
 
   void _initStream() {
@@ -101,9 +152,41 @@ class _MessageListWidgetState extends State<MessageListWidget> {
     _subscription = widget.chatService.getMessages(widget.remoteUserId).listen(
       (messages) {
         debugPrint("📋 MessageListWidget: Received ${messages.length} messages");
+        
+        // Armazenar todas as mensagens para re-filtragem futura
+        _allMessages = messages;
+        
+        // 🚫 Filtrar mensagens de usuários bloqueados (apenas em chats de grupo/evento)
+        final isEventChat = widget.remoteUserId.startsWith('event_');
+        final currentUserId = AppState.currentUserId;
+        
+        List<Message> filteredMessages = messages;
+        if (isEventChat && currentUserId != null) {
+          final beforeCount = messages.length;
+          filteredMessages = messages.where((msg) {
+            // Não filtrar minhas próprias mensagens
+            if (msg.senderId == currentUserId) return true;
+            
+            // Se não tem senderId, manter a mensagem
+            if (msg.senderId == null || msg.senderId!.isEmpty) return true;
+            
+            // Filtrar mensagens de usuários bloqueados
+            final isBlocked = BlockService().isBlockedCached(currentUserId, msg.senderId!);
+            if (isBlocked) {
+              debugPrint('🚫 Mensagem de ${msg.senderId} bloqueada');
+            }
+            return !isBlocked;
+          }).toList();
+          
+          final filteredCount = beforeCount - filteredMessages.length;
+          if (filteredCount > 0) {
+            debugPrint('🚫 $filteredCount mensagens filtradas (usuários bloqueados)');
+          }
+        }
+        
         if (mounted) {
           setState(() {
-            _messages = messages;
+            _messages = filteredMessages;
             _isLoading = false;
             _error = null;
             _retryCount = 0; // Reset retries on success

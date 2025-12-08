@@ -12,7 +12,6 @@ import 'package:partiu/features/reviews/presentation/components/review_dialog_st
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
-import 'package:partiu/shared/widgets/glimpse_loading_screen.dart';
 
 /// Bottom sheet para avaliar um participante/owner após um evento
 class ReviewDialog extends StatelessWidget {
@@ -54,21 +53,6 @@ class _ReviewDialogContent extends StatelessWidget {
     final controller = context.watch<ReviewDialogController>();
     final screenHeight = MediaQuery.of(context).size.height;
     final maxHeight = screenHeight * 0.85; // 85% da altura da tela
-
-    // Se estiver processando ou transicionando, mostra loading
-    if (controller.isSubmitting || controller.isTransitioning) {
-      return Container(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: const GlimpseLoadingScreen(),
-      );
-    }
 
     return Container(
       constraints: BoxConstraints(
@@ -196,6 +180,7 @@ class _ReviewDialogContent extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: GlimpseButton(
                   text: _getButtonText(controller),
+                  isProcessing: controller.isSubmitting || controller.isTransitioning,
                   onPressed: _canProceed(controller)
                       ? () => _handleButtonPress(context, controller)
                       : null,

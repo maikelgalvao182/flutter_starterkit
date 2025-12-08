@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:partiu/core/models/user.dart';
+import 'package:partiu/core/models/user.dart' as app_user;
+import 'package:partiu/core/services/block_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/models/map_bounds.dart';
 import 'package:partiu/features/home/data/services/map_discovery_service.dart';
@@ -385,7 +389,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
             final emoji = event.emoji;
             
             // Criar User com dados do evento usando campos corretos do SessionManager
-            final chatUser = User.fromDocument({
+            final chatUser = app_user.User.fromDocument({
               'userId': 'event_${event.id}',
               'fullName': eventName,
               'profilePhotoUrl': emoji,
@@ -408,6 +412,19 @@ class GoogleMapViewState extends State<GoogleMapView> {
               'totalVisits': 0,
               'isOnline': false,
             });
+            
+            // Verificar se usuário está bloqueado
+            final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+            if (currentUserId.isNotEmpty && 
+                BlockService().isBlockedCached(currentUserId, event.createdBy)) {
+              final i18n = AppLocalizations.of(context);
+              ToastService.showWarning(
+                context: context,
+                title: i18n?.translate('user_blocked_cannot_message') ?? 
+                'Você não pode enviar mensagens para este usuário',
+              );
+              return;
+            }
             
             // Usar o navigator capturado anteriormente
             navigator.push(

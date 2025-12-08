@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/services/block_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Controlador de notificações simples inspirado no padrão Chatter.
 /// - Lista única por filtro (source of truth)
@@ -179,17 +181,27 @@ class SimplifiedNotificationController extends ChangeNotifier {
         filterKey: key,
       );
 
+      // 🚫 Filtrar notificações de usuários bloqueados
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      final filteredDocs = currentUserId != null
+          ? result.docs.where((doc) {
+              final senderId = doc.data()?['n_sender_id'] as String?;
+              if (senderId == null || senderId.isEmpty) return true;
+              return !BlockService().isBlockedCached(currentUserId, senderId);
+            }).toList()
+          : result.docs;
+
       if (shouldRefresh) {
-        _notificationsByFilter[key] = result.docs;
+        _notificationsByFilter[key] = filteredDocs;
       } else {
         _notificationsByFilter[key] = [
           ...(_notificationsByFilter[key] ?? []),
-          ...result.docs,
+          ...filteredDocs,
         ];
       }
 
-      if (result.docs.isNotEmpty) {
-        _lastDocumentByFilter[key] = result.docs.last;
+      if (filteredDocs.isNotEmpty) {
+        _lastDocumentByFilter[key] = filteredDocs.last;
       }
 
       _hasMoreByFilter[key] = result.docs.length >= _pageSize;

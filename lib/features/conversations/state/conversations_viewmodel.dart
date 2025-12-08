@@ -12,9 +12,10 @@ import 'package:partiu/features/conversations/services/conversation_pagination_s
 import 'package:partiu/features/conversations/services/conversation_state_service.dart';
 import 'package:partiu/features/conversations/state/optimistic_removal_bus.dart';
 import 'package:partiu/core/services/auth_state_service.dart';
-import 'package:partiu/core/services/blocked_users_filter_service.dart';
+import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/services/socket_service.dart';
 import 'package:partiu/core/services/subscription_monitoring_service.dart';
+import 'package:partiu/common/state/app_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -48,7 +49,6 @@ class ConversationsViewModel extends ChangeNotifier {
   final ScrollController _scrollController = ScrollController();
   
   // Blocked users integration
-  StreamSubscription<Set<String>>? _blockedSub;
   Timer? _searchDebounce;
 
   // Getters - delegate to services where appropriate
@@ -177,7 +177,27 @@ class ConversationsViewModel extends ChangeNotifier {
       }
     }
 
-    _wsConversations = items;
+    // 🚫 Filtrar conversas de usuários bloqueados
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId != null) {
+      _log('🔍 Filtrando ${items.length} conversas. CurrentUserId: $currentUserId');
+      final blockedIds = BlockService().getAllBlockedIds(currentUserId);
+      _log('🔍 IDs bloqueados: $blockedIds');
+      
+      final filteredItems = items.where((conv) {
+        final isBlocked = BlockService().isBlockedCached(currentUserId, conv.userId);
+        if (isBlocked) {
+          _log('🚫 Conversa com ${conv.userId} (${conv.userFullname}) BLOQUEADA');
+        }
+        return !isBlocked;
+      }).toList();
+      
+      _log('✅ ${items.length - filteredItems.length} conversas filtradas');
+      _wsConversations = filteredItems;
+    } else {
+      _wsConversations = items;
+    }
+    
     _hasReceivedFirstSnapshot = true;
     notifyListeners();
   }
@@ -209,7 +229,13 @@ class ConversationsViewModel extends ChangeNotifier {
       }
     }
 
-    _wsConversations = list;
+    // 🚫 Filtrar conversas de usuários bloqueados
+    final currentUserId = AppState.currentUserId;
+    final filteredList = currentUserId != null
+        ? list.where((conv) => !BlockService().isBlockedCached(currentUserId, conv.userId)).toList()
+        : list;
+
+    _wsConversations = filteredList;
     _updateVisibleUnreadCount(); // Atualiza contador de não lidas visíveis
     notifyListeners();
   }
@@ -295,9 +321,15 @@ class ConversationsViewModel extends ChangeNotifier {
 
       _log('📥 _loadInitialFromFirestore: Processados ${items.length} items');
       if (items.isNotEmpty && _wsConversations.isEmpty) {
-        _wsConversations = items;
+        // 🚫 Filtrar conversas de usuários bloqueados
+        final currentUserId = AppState.currentUserId;
+        final filteredItems = currentUserId != null
+            ? items.where((conv) => !BlockService().isBlockedCached(currentUserId, conv.userId)).toList()
+            : items;
+        
+        _wsConversations = filteredItems;
         _updateVisibleUnreadCount(); // Atualiza contador
-        _log('📥 _loadInitialFromFirestore: _wsConversations atualizado com ${items.length} items');
+        _log('📥 _loadInitialFromFirestore: _wsConversations atualizado com ${filteredItems.length} items (${items.length - filteredItems.length} bloqueados removidos)');
       }
     } catch (e, stack) {
       _log('❌ _loadInitialFromFirestore: ERRO - $e');
@@ -358,9 +390,66 @@ class ConversationsViewModel extends ChangeNotifier {
 
   /// Setup blocked users filtering
   void _initBlockedUsersFiltering() {
-    _blockedSub = BlockedUsersFilterService().blockedIdsStream.listen((blockedIds) {
-      _paginationService.updateBlockedIds(blockedIds);
-    });
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null || currentUserId.isEmpty) {
+      _log('⚠️ Blocked users filtering não inicializado (usuário não autenticado)');
+      return;
+    }
+    
+    // ⬅️ ESCUTA BlockService via ChangeNotifier (REATIVO INSTANTÂNEO)
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+    
+    // Carrega IDs iniciais
+    final initialBlockedIds = BlockService().getAllBlockedIds(currentUserId);
+    _paginationService.updateBlockedIds(initialBlockedIds);
+    _log('🚫 Blocked IDs iniciais: ${initialBlockedIds.length}');
+  }
+  
+  /// Callback quando BlockService muda (via ChangeNotifier)
+  void _onBlockedUsersChanged() {
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null) return;
+    
+    final blockedIds = BlockService().getAllBlockedIds(currentUserId);
+    _paginationService.updateBlockedIds(blockedIds);
+    _log('🚫 Blocked IDs atualizados via ChangeNotifier: ${blockedIds.length}');
+    
+    // 🔥 Re-filtrar conversas quando bloqueios mudam
+    _refilterConversations();
+  }
+  
+  /// Re-filtra conversas removendo usuários bloqueados
+  /// Chamado automaticamente quando bloqueios mudam
+  void _refilterConversations() {
+    final currentUserId = AppState.currentUserId;
+    if (currentUserId == null) return;
+    
+    final beforeCount = _wsConversations.length;
+    _log('🔍 Re-filtrando $beforeCount conversas após mudança de bloqueio');
+    
+    final blockedIds = BlockService().getAllBlockedIds(currentUserId);
+    _log('🔍 IDs bloqueados: $blockedIds');
+    
+    _wsConversations = _wsConversations
+        .where((conv) {
+          final isBlocked = BlockService().isBlockedCached(currentUserId, conv.userId);
+          if (isBlocked) {
+            _log('🚫 Removendo conversa com ${conv.userId} (${conv.userFullname})');
+          }
+          return !isBlocked;
+        })
+        .toList();
+    
+    final afterCount = _wsConversations.length;
+    final removedCount = beforeCount - afterCount;
+    
+    if (removedCount > 0) {
+      _log('🚫 $removedCount conversas removidas (usuários bloqueados)');
+      _updateVisibleUnreadCount();
+      notifyListeners();
+    } else {
+      _log('ℹ️ Nenhuma conversa foi removida');
+    }
   }
 
   /// Handle removal bus changes
@@ -494,9 +583,10 @@ class ConversationsViewModel extends ChangeNotifier {
   }
 
   @override
+  @override
   void dispose() {
     _searchDebounce?.cancel();
-    _blockedSub?.cancel();
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
     _paginationService.removeListener(_onPaginationChanged);
     _paginationService.dispose();
     _cacheService.dispose();

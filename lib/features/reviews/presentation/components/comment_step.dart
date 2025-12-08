@@ -24,6 +24,7 @@ class CommentStep extends StatelessWidget {
           hintText: 'Ex: Foi uma experiência incrível! A pessoa é muito...',
           maxLines: 6,
           maxLength: 500,
+          textCapitalization: TextCapitalization.sentences,
         ),
         
         const SizedBox(height: 16),

@@ -5,6 +5,7 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/data/models/event_location.dart';
 import 'package:partiu/features/home/data/services/map_discovery_service.dart';
+import 'package:partiu/features/home/presentation/services/map_navigation_service.dart';
 import 'package:partiu/features/home/presentation/widgets/list_card.dart';
 import 'package:partiu/features/home/presentation/widgets/list_card/list_card_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/list_drawer/list_drawer_controller.dart';
@@ -222,6 +223,7 @@ class _ListDrawerState extends State<ListDrawer> {
       children: _controller.myEvents.map((eventDoc) {
         return _EventCardWrapper(
           eventId: eventDoc.id,
+          onEventTap: () => _handleEventTap(eventDoc.id),
         );
       }).toList(),
     );
@@ -233,9 +235,21 @@ class _ListDrawerState extends State<ListDrawer> {
       children: events.map((event) {
         return _EventCardWrapper(
           eventId: event.eventId,
+          onEventTap: () => _handleEventTap(event.eventId),
         );
       }).toList(),
     );
+  }
+
+  /// Manipula tap em um evento
+  void _handleEventTap(String eventId) {
+    debugPrint('🎯 [ListDrawer] Evento clicado: $eventId');
+    
+    // Fechar o drawer
+    Navigator.of(context).pop();
+    
+    // Navegar para o marker no mapa
+    MapNavigationService.instance.navigateToEvent(eventId);
   }
 }
 
@@ -244,10 +258,12 @@ class _ListDrawerState extends State<ListDrawer> {
 class _EventCardWrapper extends StatelessWidget {
   const _EventCardWrapper({
     required this.eventId,
+    required this.onEventTap,
     this.distanceKm,
   });
 
   final String eventId;
+  final VoidCallback onEventTap;
   final double? distanceKm;
 
   @override
@@ -259,13 +275,7 @@ class _EventCardWrapper extends StatelessWidget {
       builder: (context, snapshot) {
         return ListCard(
           controller: controller,
-          onTap: () {
-            if (distanceKm != null) {
-              debugPrint('Evento próximo clicado: $eventId (${distanceKm!.toStringAsFixed(1)} km)');
-            } else {
-              debugPrint('Meu evento clicado: $eventId');
-            }
-          },
+          onTap: onEventTap,
         );
       },
     );

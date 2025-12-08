@@ -16,6 +16,7 @@
 /// - rules/connections.rules    → Coleção Connections/{userId}/Conversations/{withUserId}
 /// - rules/messages.rules       → Coleção Messages/{userId}/{partnerId}/{messageId}
 /// - rules/ranking.rules        → Coleções userRanking/{userId} e locationRanking/{placeId}
+/// - rules/reports.rules        → Coleção reports/{reportId}
 
 rules_version = '2';
 service cloud.firestore {
@@ -241,8 +242,12 @@ match /ReviewStats/{userId} {
   // Qualquer usuário logado pode ler stats de outros
   allow read: if isSignedIn();
   
-  // Criar/atualizar/deletar: apenas Cloud Functions
-  allow create, update, delete: if false;
+  // Criar/atualizar: qualquer usuário autenticado pode atualizar stats
+  // (necessário para quando alguém faz uma review de outro usuário)
+  allow create, update: if isSignedIn();
+  
+  // Deletar: não permitido
+  allow delete: if false;
 }
 
     // ======================================
@@ -361,6 +366,10 @@ match /EventApplications/{applicationId} {
   /// - Usuário autenticado
   /// - userId deve ser o próprio usuário
   /// - Status deve ser "pending" ou "autoApproved" baseado no privacyType
+  /// 
+  /// ⚠️ NOTA: Proteção contra duplicatas é feita no app (event_application_repository.dart)
+  /// pois Firestore Rules não permite queries para verificar aplicações existentes.
+  /// A validação acontece antes de chamar .add() no repositório.
   allow create: if isSignedIn() && 
     request.resource.data.userId == request.auth.uid &&
     request.resource.data.keys().hasAll(['eventId', 'userId', 'status', 'appliedAt']) &&
@@ -678,6 +687,39 @@ match /locationRanking/{placeId} {
   
   // Apenas Cloud Functions podem criar/atualizar rankings
   allow write: if false;
+}
+
+    // ======================================
+    // 🚩 Reports/Denúncias
+    // ======================================
+/// 🚩 Regras de Segurança para Reports
+/// 
+/// Coleção: reports/{reportId}
+/// 
+/// Características:
+/// - Apenas usuários autenticados podem criar reports
+/// - Ninguém pode ler reports (apenas admins via console/backend)
+/// - Mensagem limitada a 2000 caracteres
+/// - Campos obrigatórios validados
+
+match /reports/{reportId} {
+  // ❌ Ninguém pode ler reports (segurança e privacidade)
+  allow read: if false;
+  
+  // ✅ Apenas usuários autenticados podem criar reports
+  allow create: if isSignedIn()
+    && request.resource.data.keys().hasAll([
+      'reporterId', 'message', 'createdAt', 'platform', 'appVersion'
+    ])
+    && request.resource.data.reporterId == request.auth.uid
+    && request.resource.data.message is string
+    && request.resource.data.message.size() >= 10
+    && request.resource.data.message.size() <= 2000
+    && request.resource.data.platform is string
+    && request.resource.data.appVersion is string;
+  
+  // ❌ Ninguém pode atualizar ou deletar reports
+  allow update, delete: if false;
 }
 
     // ======================================

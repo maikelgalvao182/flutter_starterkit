@@ -29,86 +29,49 @@ class ParticipantConfirmationStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Card do Evento
-        Container(
-          margin: const EdgeInsets.only(bottom: 24),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: GlimpseColors.primary.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: GlimpseColors.primary.withOpacity(0.1),
-            ),
-          ),
-          child: Row(
-            children: [
-              // Emoji
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  eventEmoji,
-                  style: const TextStyle(fontSize: 24),
-                ),
-              ),
-              const SizedBox(width: 12),
-              
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      eventTitle,
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: GlimpseColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (eventDate != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        DateFormat("d 'de' MMMM, HH:mm", 'pt_BR').format(eventDate!),
-                        style: GoogleFonts.getFont(
-                          FONT_PLUS_JAKARTA_SANS,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: GlimpseColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    final dateText = eventDate != null
+        ? DateFormat("d 'de' MMMM 'às' HH:mm", 'pt_BR').format(eventDate!)
+        : '';
 
-        // Instrução
-        Text(
-          'Marca aqui quem realmente deu as caras na sua atividade. Só dá pra avaliar quem apareceu de verdade!',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: GlimpseColors.primaryColorLight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Texto integrado com dados do evento
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: GlimpseColors.primaryColorLight,
+            ),
+            children: [
+              const TextSpan(text: 'Selecione apenas quem apareceu na sua atividade '),
+              TextSpan(
+                text: eventTitle,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: GlimpseColors.primary,
+                ),
+              ),
+              TextSpan(
+                text: ' $eventEmoji',
+                style: const TextStyle(fontSize: 20),
+              ),
+              if (dateText.isNotEmpty) ...[
+                const TextSpan(text: ' no dia '),
+                TextSpan(text: dateText),
+              ],
+              const TextSpan(text: ' e deixe sua avaliação!'),
+            ],
           ),
         ),
         const SizedBox(height: 24),
 
-        // Lista de participantes
+        // Lista de participantes em grid 3 colunas
         if (participantIds.isEmpty)
           Center(
             child: Padding(
@@ -124,92 +87,111 @@ class ParticipantConfirmationStep extends StatelessWidget {
             ),
           )
         else
-          ...participantIds.map((participantId) {
-            final profile = participantProfiles[participantId];
-            final isSelected = selectedParticipants.contains(participantId);
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.95,
+            ),
+            itemCount: participantIds.length,
+            itemBuilder: (context, index) {
+              final participantId = participantIds[index];
+              final profile = participantProfiles[participantId];
+              final isSelected = selectedParticipants.contains(participantId);
 
-            return ParticipantCheckboxTile(
-              participantId: participantId,
-              name: profile?.name ?? 'Usuário',
-              photoUrl: profile?.photoUrl,
-              isSelected: isSelected,
-              onToggle: () => onToggleParticipant(participantId),
-            );
-          }),
+              return ParticipantCard(
+                participantId: participantId,
+                name: profile?.name ?? 'Usuário',
+                photoUrl: profile?.photoUrl,
+                isSelected: isSelected,
+                onTap: () => onToggleParticipant(participantId),
+              );
+            },
+          ),
       ],
     );
   }
 }
 
-class ParticipantCheckboxTile extends StatelessWidget {
+class ParticipantCard extends StatelessWidget {
   final String participantId;
   final String name;
   final String? photoUrl;
   final bool isSelected;
-  final VoidCallback onToggle;
+  final VoidCallback onTap;
 
-  const ParticipantCheckboxTile({
+  const ParticipantCard({
     required this.participantId,
     required this.name,
     required this.photoUrl,
     required this.isSelected,
-    required this.onToggle,
+    required this.onTap,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: isSelected
-              ? GlimpseColors.primary
-              : GlimpseColors.borderColorLight,
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        color: isSelected
-            ? GlimpseColors.primary.withOpacity(0.05)
-            : Colors.transparent,
-      ),
-      child: CheckboxListTile(
-        value: isSelected,
-        onChanged: (_) => onToggle(),
-        contentPadding: const EdgeInsets.only(
-          left: 12,
-          right: 4,
-          top: 8,
-          bottom: 8,
-        ),
-        secondary: CircleAvatar(
-          radius: 28,
-          backgroundColor: GlimpseColors.primary.withOpacity(0.2),
-          backgroundImage:
-              photoUrl != null ? CachedNetworkImageProvider(photoUrl!) : null,
-          child: photoUrl == null
-              ? Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                  style: GoogleFonts.getFont(
-                    FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: GlimpseColors.primary,
-                  ),
-                )
-              : null,
-        ),
-        title: Text(
-          name,
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: GlimpseColors.textPrimary,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isSelected
+                ? GlimpseColors.primary
+                : GlimpseColors.borderColorLight,
+            width: isSelected ? 2 : 1,
           ),
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? GlimpseColors.primaryLight
+              : Colors.white,
         ),
-        controlAffinity: ListTileControlAffinity.trailing,
-        activeColor: GlimpseColors.primary,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: GlimpseColors.primary.withOpacity(0.2),
+              backgroundImage:
+                  photoUrl != null ? CachedNetworkImageProvider(photoUrl!) : null,
+              child: photoUrl == null
+                  ? Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+                      style: GoogleFonts.getFont(
+                        FONT_PLUS_JAKARTA_SANS,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: GlimpseColors.primary,
+                      ),
+                    )
+                  : null,
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Nome
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                name,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: GlimpseColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

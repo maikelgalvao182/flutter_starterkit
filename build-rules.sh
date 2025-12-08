@@ -28,6 +28,7 @@ cat > "$OUTPUT_FILE" << 'EOF'
 /// - rules/connections.rules    → Coleção Connections/{userId}/Conversations/{withUserId}
 /// - rules/messages.rules       → Coleção Messages/{userId}/{partnerId}/{messageId}
 /// - rules/ranking.rules        → Coleções userRanking/{userId} e locationRanking/{placeId}
+/// - rules/reports.rules        → Coleção reports/{reportId}
 
 rules_version = '2';
 service cloud.firestore {
@@ -112,6 +113,12 @@ echo "    // ======================================" >> "$OUTPUT_FILE"
 echo "    // 🏆 Rankings" >> "$OUTPUT_FILE"
 echo "    // ======================================" >> "$OUTPUT_FILE"
 cat "$RULES_DIR/ranking.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 🚩 Reports/Denúncias" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/reports.rules" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
 # Fechar o arquivo

@@ -58,6 +58,10 @@ match /ReviewStats/{userId} {
   // Qualquer usuário logado pode ler stats de outros
   allow read: if isSignedIn();
   
-  // Criar/atualizar/deletar: apenas Cloud Functions
-  allow create, update, delete: if false;
+  // Criar/atualizar: qualquer usuário autenticado pode atualizar stats
+  // (necessário para quando alguém faz uma review de outro usuário)
+  allow create, update: if isSignedIn();
+  
+  // Deletar: não permitido
+  allow delete: if false;
 }

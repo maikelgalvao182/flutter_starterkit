@@ -81,4 +81,10 @@ const List<ReviewBadge> availableBadges = [
     title: 'Bom de papo',
     color: Color(0xFF00BCD4), // Cyan
   ),
+  ReviewBadge(
+    key: 'super_pontual',
+    emoji: '⏰',
+    title: 'Super pontual',
+    color: Color(0xFF795548), // Marrom
+  ),
 ];

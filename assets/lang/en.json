@@ -550,5 +550,22 @@
   "notif_filter_activities": "Activities",
   "notif_filter_requests": "Requests",
   "notif_filter_social": "Social",
-  "notif_filter_system": "System"
+  "notif_filter_system": "System",
+  
+  "help_us_keep_community_safe": "Help us keep the community safe",
+  "report_dialog_description": "Choose an action for this user.",
+  "Block": "Block",
+  "report": "Report",
+  "user_blocked_cannot_message": "You cannot send messages to this user",
+  "profile_unavailable": "Profile unavailable",
+  "blocked_user_profile_message": "You cannot view this profile",
+  
+  "blocked_users": "Blocked Users",
+  "no_blocked_users": "You haven't blocked anyone",
+  "unblock_user": "Unblock User",
+  "unblock_user_confirmation": "Do you want to unblock {name}?",
+  "unblock": "Unblock",
+  "user_unblocked_successfully": "User unblocked successfully",
+  "error_unblocking_user": "Error unblocking user",
+  "years_old": "years old"
 }

@@ -8,8 +8,10 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/profile/presentation/controllers/profile_controller.dart';
 import 'package:partiu/features/profile/presentation/components/profile_content_builder_v2.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
+import 'package:partiu/shared/widgets/report_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/services/block_service.dart';
 
 /// Tela de perfil otimizada seguindo arquitetura MVVM
 /// 
@@ -132,13 +134,36 @@ class _ProfileScreenOptimizedState extends State<ProfileScreenOptimized>
               ),
             ),
           ),
-        ] : null,
+        ] : [
+          Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: SizedBox(
+              width: 28,
+              child: ReportWidget(
+                userId: widget.user.userId,
+                iconSize: 22,
+                iconColor: Colors.black87,
+                onBlockSuccess: () {
+                  // Redireciona para discover (home) após bloqueio
+                  if (mounted) {
+                    context.go(AppRoutes.home);
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
         backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: ValueListenableBuilder<bool>(
         valueListenable: _controller.isLoading,
         builder: (context, isLoading, child) {
+          // Verificar se usuário está bloqueado (exceto próprio perfil)
+          if (!myProfile && BlockService().isBlockedCached(widget.currentUserId, widget.user.userId)) {
+            return _buildBlockedState();
+          }
+          
           if (isLoading && _controller.profile.value == null) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -154,6 +179,39 @@ class _ProfileScreenOptimizedState extends State<ProfileScreenOptimized>
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildBlockedState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Iconsax.slash, size: 64, color: Colors.grey),
+          const SizedBox(height: 24),
+          Text(
+            _i18n.translate('profile_unavailable') ?? 'Perfil não disponível',
+            style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              _i18n.translate('blocked_user_profile_message') ?? 
+              'Você não pode visualizar este perfil',
+              style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS,
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
   }

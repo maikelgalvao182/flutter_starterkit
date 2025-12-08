@@ -8,6 +8,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/repositories/chat_repository_interface.dart';
 import 'package:partiu/screens/chat/models/message.dart';
 import 'package:partiu/core/services/image_compress_service.dart';
+import 'package:partiu/core/services/block_service.dart';
 
 /// Implementação do repositório de chat
 class ChatRepository implements IChatRepository {
@@ -391,14 +392,8 @@ class ChatRepository implements IChatRepository {
     required String blockedUserId,
     required String blockedByUserId,
   }) async {
-    final doc = await _firestore
-        .collection(C_BLOCKED_USERS)
-        .where('blocked_user_id', isEqualTo: blockedUserId)
-        .where('blocked_by_user_id', isEqualTo: blockedByUserId)
-        .limit(1)
-        .get();
-    
-    return doc.docs.isNotEmpty;
+    // 🆕 Usar BlockService com cache (instantâneo)
+    return BlockService().isBlockedCached(blockedByUserId, blockedUserId);
   }
 
   @override
@@ -408,11 +403,8 @@ class ChatRepository implements IChatRepository {
     final currentUserId = AppState.currentUserId;
     if (currentUserId == null) return false;
 
-    await _firestore.collection(C_BLOCKED_USERS).add({
-      'blocked_user_id': blockedUserId,
-      'blocked_by_user_id': currentUserId,
-      TIMESTAMP: FieldValue.serverTimestamp(),
-    });
+    // 🆕 Usar novo BlockService
+    await BlockService().blockUser(currentUserId, blockedUserId);
     
     return true;
   }
@@ -424,15 +416,8 @@ class ChatRepository implements IChatRepository {
     final currentUserId = AppState.currentUserId;
     if (currentUserId == null) return;
 
-    final docs = await _firestore
-        .collection(C_BLOCKED_USERS)
-        .where('blocked_user_id', isEqualTo: blockedUserId)
-        .where('blocked_by_user_id', isEqualTo: currentUserId)
-        .get();
-
-    for (final doc in docs.docs) {
-      await doc.reference.delete();
-    }
+    // 🆕 Usar novo BlockService
+    await BlockService().unblockUser(currentUserId, blockedUserId);
   }
 
   @override

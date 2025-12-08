@@ -78,6 +78,8 @@ class EventMapRepository {
             photoReferences: photoReferences,
             scheduleDate: dateTimestamp?.toDate(),
             privacyType: participantsData?['privacyType'] as String?,
+            minAge: participantsData?['minAge'] as int?,
+            maxAge: participantsData?['maxAge'] as int?,
           );
           events.add(event);
         } catch (e) {
@@ -134,6 +136,8 @@ class EventMapRepository {
         photoReferences: photoReferences,
         scheduleDate: dateTimestamp?.toDate(),
         privacyType: participantsData?['privacyType'] as String?,
+        minAge: participantsData?['minAge'] as int?,
+        maxAge: participantsData?['maxAge'] as int?,
       );
     } catch (e) {
       debugPrint('❌ [EventMapRepository] Erro ao buscar evento por ID: $e');

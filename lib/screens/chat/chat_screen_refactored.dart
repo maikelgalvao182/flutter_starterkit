@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/common/mixins/stream_subscription_mixin.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
@@ -220,6 +221,15 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
     // _chatService.getUserUpdates(widget.user.userId).listen((userModel) {
     //   // Update do remote user pode ser implementado posteriormente se necessário
     // });
+    
+    // Listener reativo de bloqueios
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+  }
+  
+  void _onBlockedUsersChanged() {
+    if (!mounted) return;
+    // Força rebuild da tela quando houver mudança nos bloqueios
+    setState(() {});
   }
 
   /// Carrega applicationId do usuário atual para este evento
@@ -250,6 +260,7 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
 
   @override
   void dispose() {
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
     _textController.dispose();
     _messagesController.dispose();
     _feeAutoHealService.dispose(); // A3.1: Cleanup do auto-heal service

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/shared/widgets/AnimatedSlideIn.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 
 /// Widget burro que exibe lista horizontal de avatares dos participantes
@@ -32,19 +33,27 @@ class ParticipantsAvatarsList extends StatelessWidget {
           children: [
             // Avatares com nomes
             for (int i = 0; i < participants.length; i++)
-              Padding(
-                padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
-                child: _ParticipantItem(
-                  participant: participants[i],
-                  isCreator: participants[i]['userId'] == creatorId,
+              AnimatedSlideIn(
+                delay: Duration(milliseconds: i * 100),
+                offsetX: 60.0,
+                child: Padding(
+                  padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
+                  child: _ParticipantItem(
+                    participant: participants[i],
+                    isCreator: participants[i]['userId'] == creatorId,
+                  ),
                 ),
               ),
             
             // Contador de participantes restantes
             if (remainingCount > 0)
-              Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: _RemainingCounter(count: remainingCount),
+              AnimatedSlideIn(
+                delay: Duration(milliseconds: participants.length * 100),
+                offsetX: 60.0,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: _RemainingCounter(count: remainingCount),
+                ),
               ),
           ],
         ),

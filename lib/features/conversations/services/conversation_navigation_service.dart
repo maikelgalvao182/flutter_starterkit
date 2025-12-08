@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/screens/chat/chat_screen_refactored.dart';
 import 'package:partiu/core/models/user.dart' as app_models;
+import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Ultra-simplified conversation navigation service
 class ConversationNavigationService {
@@ -23,6 +26,19 @@ class ConversationNavigationService {
       // Get user ID from data
       final otherUserId = (data['user_id'] ?? doc?.id ?? '').toString();
       if (otherUserId.isEmpty) return;
+
+      // Verificar se usuário está bloqueado
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (currentUserId.isNotEmpty && 
+          BlockService().isBlockedCached(currentUserId, otherUserId)) {
+        final i18n = AppLocalizations.of(context);
+        ToastService.showWarning(
+          context: context,
+          title: i18n?.translate('user_blocked_cannot_message') ?? 
+          'Você não pode enviar mensagens para este usuário',
+        );
+        return;
+      }
 
       // Create user object
       final user = _createUserFromConversationData(data, otherUserId);

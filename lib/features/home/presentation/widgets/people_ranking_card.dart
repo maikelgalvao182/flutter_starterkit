@@ -84,10 +84,13 @@ class PeopleRankingCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
-            StableAvatar(
-              userId: ranking.userId,
-              size: 64,
-              borderRadius: BorderRadius.circular(8),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: StableAvatar(
+                userId: ranking.userId,
+                size: 58,
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             
             const SizedBox(width: 12),
@@ -120,7 +123,7 @@ class PeopleRankingCard extends StatelessWidget {
                     _getLocationText(),
                     style: GoogleFonts.getFont(
                       FONT_PLUS_JAKARTA_SANS,
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: GlimpseColors.textSubTitle,
                     ),
@@ -161,7 +164,7 @@ class PeopleRankingCard extends StatelessWidget {
         position.toString(),
         style: GoogleFonts.getFont(
           FONT_PLUS_JAKARTA_SANS,
-          fontSize: 14,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: GlimpseColors.primaryColorLight,
         ),
@@ -192,7 +195,7 @@ class PeopleRankingCard extends StatelessWidget {
           ranking.overallRating.toStringAsFixed(1),
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
             color: GlimpseColors.textSubTitle,
           ),
@@ -224,7 +227,7 @@ class PeopleRankingCard extends StatelessWidget {
             '${ranking.totalReviews} avaliação${ranking.totalReviews != 1 ? 'ões' : ''}',
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
               color: GlimpseColors.textSubTitle,
             ),
@@ -249,7 +252,7 @@ class PeopleRankingCard extends StatelessWidget {
               '$totalComments comentário${totalComments != 1 ? 's' : ''}',
               style: GoogleFonts.getFont(
                 FONT_PLUS_JAKARTA_SANS,
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: GlimpseColors.textSubTitle,
               ),
@@ -280,7 +283,7 @@ class PeopleRankingCard extends StatelessWidget {
         
         // Badges com scroll horizontal
         SizedBox(
-          height: 40,
+          height: 28,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: sortedBadges.length,

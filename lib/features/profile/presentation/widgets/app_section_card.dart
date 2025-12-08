@@ -5,19 +5,16 @@ import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/app_section_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/dialogs/delete_account_confirm_dialog.dart';
-import 'package:partiu/core/services/distance_unit_service.dart';
 import 'package:partiu/app/services/locale_service.dart';
 import 'package:partiu/shared/widgets/dialogs/language_selector_dialog.dart';
 import 'package:partiu/core/helpers/app_helper.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
 import 'package:partiu/core/router/app_router.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:provider/provider.dart';
 import 'package:partiu/core/constants/constants.dart';
 
 class AppSectionCard extends StatefulWidget {
@@ -50,29 +47,12 @@ class _AppSectionCardState extends State<AppSectionCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Distance Unit Toggle (km/mi)
-          Consumer<DistanceUnitService>(
-            builder: (context, distanceService, _) {
-              return _buildSwitchItem(
-                context,
-                icon: Iconsax.routing,
-                title: i18n.translate('distance_unit') ?? 'Unidade de Distância',
-                subtitle: distanceService.useMiles ? 'Miles (mi)' : 'Kilometers (km)',
-                value: distanceService.useMiles,
-                onChanged: (value) async {
-                  HapticFeedback.lightImpact();
-                  await distanceService.toggleUnit();
-                },
-              );
-            },
-          ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
           _buildListItem(
             context,
             icon: Iconsax.user_remove,
             title: i18n.translate('blocked_users') ?? 'Usuários Bloqueados',
             onTap: () {
-              // TODO: Implementar navegação para usuários bloqueados
+              context.push(AppRoutes.blockedUsers);
             },
           ),
           Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
@@ -220,70 +200,6 @@ class _AppSectionCardState extends State<AppSectionCard> {
       router.go(AppRoutes.signIn);
       debugPrint('🚪 [LOGOUT] ✅ Navegação concluída (após erro)');
     }
-  }
-
-  Widget _buildSwitchItem(BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: GlimpseColors.lightTextField,
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.60),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Transform.scale(
-            scale: 0.85,
-            child: CupertinoSwitch(
-              value: value,
-              activeTrackColor: GlimpseColors.primary,
-              onChanged: onChanged,
-            ),
-          ),
-        ],
-      ),
-    );
   }
   
   Widget _buildListItem(BuildContext context, {

@@ -23,11 +23,12 @@ class BadgeSelectionStep extends StatelessWidget {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.2,
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.95,
           ),
           itemCount: availableBadges.length,
           itemBuilder: (context, index) {
@@ -87,15 +88,15 @@ class _BadgeItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? GlimpseColors.primaryLight : Colors.white,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected 
-                ? GlimpseColors.primary.withOpacity(0.3)
+                ? GlimpseColors.primary
                 : GlimpseColors.borderColorLight,
-            width: isSelected ? 2 : 1,
+            width: 1,
           ),
         ),
         child: Column(
@@ -104,16 +105,16 @@ class _BadgeItem extends StatelessWidget {
             // Emoji
             Text(
               badge.emoji,
-              style: const TextStyle(fontSize: 32),
+              style: const TextStyle(fontSize: 28),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             
             // Título
             Text(
               badge.title,
               style: GoogleFonts.getFont(
                 FONT_PLUS_JAKARTA_SANS,
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: isSelected
                     ? GlimpseColors.primary

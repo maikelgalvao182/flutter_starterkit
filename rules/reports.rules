@@ -1,0 +1,29 @@
+/// 🚩 Regras de Segurança para Reports
+/// 
+/// Coleção: reports/{reportId}
+/// 
+/// Características:
+/// - Apenas usuários autenticados podem criar reports
+/// - Ninguém pode ler reports (apenas admins via console/backend)
+/// - Mensagem limitada a 2000 caracteres
+/// - Campos obrigatórios validados
+
+match /reports/{reportId} {
+  // ❌ Ninguém pode ler reports (segurança e privacidade)
+  allow read: if false;
+  
+  // ✅ Apenas usuários autenticados podem criar reports
+  allow create: if isSignedIn()
+    && request.resource.data.keys().hasAll([
+      'reporterId', 'message', 'createdAt', 'platform', 'appVersion'
+    ])
+    && request.resource.data.reporterId == request.auth.uid
+    && request.resource.data.message is string
+    && request.resource.data.message.size() >= 10
+    && request.resource.data.message.size() <= 2000
+    && request.resource.data.platform is string
+    && request.resource.data.appVersion is string;
+  
+  // ❌ Ninguém pode atualizar ou deletar reports
+  allow update, delete: if false;
+}

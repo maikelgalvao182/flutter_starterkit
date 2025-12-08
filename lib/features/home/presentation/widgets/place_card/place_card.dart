@@ -104,7 +104,7 @@ class _PlaceCardState extends State<PlaceCard> {
                       _controller.locationName ?? '',
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: GlimpseColors.primaryColorLight,
                       ),
@@ -130,7 +130,7 @@ class _PlaceCardState extends State<PlaceCard> {
                   _controller.formattedAddress!,
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: GlimpseColors.textSubTitle,
                   ),

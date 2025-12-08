@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:partiu/core/constants/constants.dart';
@@ -11,6 +12,8 @@ import 'package:partiu/features/home/data/services/user_location_service.dart';
 import 'package:partiu/features/home/presentation/services/google_event_marker_service.dart';
 import 'package:partiu/services/location/location_stream_controller.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/common/state/app_state.dart';
 
 /// ViewModel responsável por gerenciar o estado e lógica do mapa Google Maps
 /// 
@@ -92,6 +95,16 @@ class MapViewModel extends ChangeNotifier {
       // Recarregar eventos com novos filtros
       loadNearbyEvents();
     });
+    
+    // ⬅️ LISTENER REATIVO PARA BLOQUEIOS
+    BlockService.instance.addListener(_onBlockedUsersChanged);
+  }
+  
+  /// Callback quando BlockService muda (via ChangeNotifier)
+  void _onBlockedUsersChanged() {
+    debugPrint('🔄 MapViewModel: Bloqueios mudaram - recarregando eventos do mapa...');
+    // Recarrega tudo porque eventos desbloqueados não estão no cache local
+    loadNearbyEvents();
   }
 
   /// Inicializa o ViewModel
@@ -125,9 +138,25 @@ class MapViewModel extends ChangeNotifier {
 
       // 2. Buscar eventos (EventMapRepository - raio fixo ou dinâmico)
       final events = await _eventRepository.getEventsWithinRadius(_lastLocation!);
-      _events = events;
+      
+      // 3. Filtrar eventos de usuários bloqueados
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        _events = BlockService().filterBlocked<EventModel>(
+          currentUserId,
+          events,
+          (event) => event.createdBy,
+        );
+        
+        final filteredCount = events.length - _events.length;
+        if (filteredCount > 0) {
+          debugPrint('🚫 MapViewModel: $filteredCount eventos filtrados (bloqueados)');
+        }
+      } else {
+        _events = events;
+      }
 
-      // 3. Enriquecer com distância e disponibilidade (lógica centralizada)
+      // 4. Enriquecer com distância e disponibilidade (lógica centralizada)
       await _enrichEvents();
 
       // 4. Gerar markers do Google Maps
@@ -179,9 +208,10 @@ class MapViewModel extends ChangeNotifier {
     final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) return;
 
-    // Buscar dados do usuário atual para verificar premium
+    // Buscar dados do usuário atual para verificar premium E idade
     final currentUserDoc = await _userRepository.getUserById(currentUserId);
     final isPremium = currentUserDoc?['hasPremium'] as bool? ?? false;
+    final userAge = currentUserDoc?['age'] as int?;
 
     // Enriquecer cada evento (agora assíncrono para buscar nomes faltantes)
     final enrichedEvents = await Future.wait(_events.map((event) async {
@@ -230,13 +260,27 @@ class MapViewModel extends ChangeNotifier {
         debugPrint('⚠️ Erro ao buscar aplicação do usuário para evento ${event.id}: $e');
       }
 
-      // 6. Retornar evento enriquecido
+      // 6. Validar restrições de idade usando dados que já vieram do EventModel
+      bool isAgeRestricted = false;
+      
+      // Validar idade apenas se não for o criador e houver restrições definidas
+      final isCreator = event.createdBy == currentUserId;
+      if (!isCreator && event.minAge != null && event.maxAge != null && userAge != null) {
+        isAgeRestricted = userAge < event.minAge! || userAge > event.maxAge!;
+        
+        if (isAgeRestricted) {
+          debugPrint('🔒 [MapViewModel] Evento ${event.id} restrito: userAge=$userAge, range=${event.minAge}-${event.maxAge}');
+        }
+      }
+
+      // 7. Retornar evento enriquecido
       return event.copyWith(
         distanceKm: distance,
         isAvailable: isAvailable,
         creatorFullName: creatorFullName,
         participants: participants,
         userApplication: userApplication,
+        isAgeRestricted: isAgeRestricted,
       );
     }));
     
@@ -370,6 +414,7 @@ class MapViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    BlockService.instance.removeListener(_onBlockedUsersChanged);
     _radiusSubscription?.cancel();
     _reloadSubscription?.cancel();
     _googleMarkerService.clearCache();

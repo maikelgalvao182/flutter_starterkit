@@ -400,5 +400,22 @@
   "notif_filter_activities": "Actividades",
   "notif_filter_requests": "Solicitudes",
   "notif_filter_social": "Social",
-  "notif_filter_system": "Sistema"
+  "notif_filter_system": "Sistema",
+  
+  "help_us_keep_community_safe": "Ayúdanos a mantener la comunidad segura",
+  "report_dialog_description": "Elige una acción para este usuario.",
+  "Block": "Bloquear",
+  "report": "Denunciar",
+  "user_blocked_cannot_message": "No puedes enviar mensajes a este usuario",
+  "profile_unavailable": "Perfil no disponible",
+  "blocked_user_profile_message": "No puedes ver este perfil",
+  
+  "blocked_users": "Usuarios Bloqueados",
+  "no_blocked_users": "No has bloqueado a nadie",
+  "unblock_user": "Desbloquear Usuario",
+  "unblock_user_confirmation": "¿Deseas desbloquear a {name}?",
+  "unblock": "Desbloquear",
+  "user_unblocked_successfully": "Usuario desbloqueado exitosamente",
+  "error_unblocking_user": "Error al desbloquear usuario",
+  "years_old": "años"
 }

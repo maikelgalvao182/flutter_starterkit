@@ -10,6 +10,8 @@ import 'package:partiu/features/notifications/services/user_affinity_service.dar
 import 'package:partiu/features/notifications/services/notification_targeting_service.dart';
 import 'package:partiu/features/notifications/services/notification_orchestrator.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/common/state/app_state.dart';
 
 /// Repositório para gerenciar aplicações de usuários em eventos
 class EventApplicationRepository {
@@ -284,9 +286,23 @@ class EventApplicationRepository {
           .orderBy('appliedAt', descending: true)
           .get();
 
-      return querySnapshot.docs
+      final applications = querySnapshot.docs
           .map((doc) => EventApplicationModel.fromFirestore(doc))
           .toList();
+      
+      // 🚫 Filtrar usuários bloqueados
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId != null) {
+        final filtered = BlockService().filterBlocked<EventApplicationModel>(
+          currentUserId,
+          applications,
+          (app) => app.userId,
+        );
+        debugPrint('🚫 [EventApplicationRepo] Filtrados ${applications.length - filtered.length} participantes bloqueados');
+        return filtered;
+      }
+      
+      return applications;
     } catch (e) {
       debugPrint('❌ Erro ao listar aplicações: $e');
       return [];
@@ -303,9 +319,21 @@ class EventApplicationRepository {
           .orderBy('appliedAt', descending: true)
           .get();
 
-      return querySnapshot.docs
+      final applications = querySnapshot.docs
           .map((doc) => EventApplicationModel.fromFirestore(doc))
           .toList();
+      
+      // 🚫 Filtrar usuários bloqueados
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId != null) {
+        return BlockService().filterBlocked<EventApplicationModel>(
+          currentUserId,
+          applications,
+          (app) => app.userId,
+        );
+      }
+      
+      return applications;
     } catch (e) {
       debugPrint('❌ Erro ao listar aplicações pendentes: $e');
       return [];

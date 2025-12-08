@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
@@ -26,109 +27,55 @@ class EventFormattedText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        // Parte 1: Nome + Atividade
-        Text(
-          fullName,
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.primary,
-          ),
-        ),
-        Text(
-          ' quer ',
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.textSubTitle,
-          ),
-        ),
-        Text(
-          activityText,
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.primaryColorLight,
-          ),
-        ),
-        
-        // Parte 2: Local (clicável)
-        if (locationName.isNotEmpty) ...[
-          Text(
-            ' em ',
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.textSubTitle,
-            ),
-          ),
-          GestureDetector(
-            onTap: onLocationTap,
-            child: Text(
-              locationName,
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: GlimpseColors.primary,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
+    final baseStyle = GoogleFonts.getFont(
+      FONT_PLUS_JAKARTA_SANS,
+      fontSize: 18,
+      fontWeight: FontWeight.w700,
+    );
 
-        // Parte 3: Data
-        if (dateText.isNotEmpty) ...[
-          Text(
-            dateText.startsWith('dia ') ? ' no ' : ' ',
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.textSubTitle,
-            ),
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: baseStyle.copyWith(color: GlimpseColors.textSubTitle),
+        children: [
+          // Nome do criador
+          TextSpan(
+            text: fullName,
+            style: baseStyle.copyWith(color: GlimpseColors.primary),
           ),
-          Text(
-            dateText,
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.textSubTitle,
-            ),
+          
+          // Conectivo
+          const TextSpan(text: ' quer '),
+          
+          // Atividade
+          TextSpan(
+            text: activityText,
+            style: baseStyle.copyWith(color: GlimpseColors.primaryColorLight),
           ),
+          
+          // Local (clicável, sem sublinhado)
+          if (locationName.isNotEmpty) ...[
+            const TextSpan(text: ' em '),
+            TextSpan(
+              text: locationName,
+              style: baseStyle.copyWith(color: GlimpseColors.primary),
+              recognizer: TapGestureRecognizer()..onTap = onLocationTap,
+            ),
+          ],
+          
+          // Data
+          if (dateText.isNotEmpty) ...[
+            TextSpan(text: dateText.startsWith('dia ') ? ' no ' : ' '),
+            TextSpan(text: dateText),
+          ],
+          
+          // Horário
+          if (timeText.isNotEmpty) ...[
+            const TextSpan(text: ' às '),
+            TextSpan(text: timeText),
+          ],
         ],
-
-        // Parte 4: Horário
-        if (timeText.isNotEmpty) ...[
-          Text(
-            ' às ',
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.textSubTitle,
-            ),
-          ),
-          Text(
-            timeText,
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.textSubTitle,
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }

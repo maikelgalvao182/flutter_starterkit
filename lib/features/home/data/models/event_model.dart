@@ -21,6 +21,9 @@ class EventModel {
   final String? privacyType;
   final List<Map<String, dynamic>>? participants;
   final EventApplicationModel? userApplication; // Aplicação do usuário atual (pré-carregada)
+  final bool isAgeRestricted; // Pré-calculado: se o usuário não atende às restrições de idade
+  final int? minAge; // Idade mínima do evento
+  final int? maxAge; // Idade máxima do evento
 
   EventModel({
     required this.id,
@@ -40,6 +43,9 @@ class EventModel {
     this.privacyType,
     this.participants,
     this.userApplication,
+    this.isAgeRestricted = false,
+    this.minAge,
+    this.maxAge,
   });
 
   /// Factory para criar EventModel a partir de um Map
@@ -122,6 +128,7 @@ class EventModel {
       // Se privacyType não existe, usar "open" como padrão (todos eventos são abertos por padrão)
       privacyType: map['privacyType'] as String? ?? 'open',
       participants: null, // Não vem do map inicial
+      isAgeRestricted: map['isAgeRestricted'] as bool? ?? false,
     );
   }
 
@@ -144,6 +151,9 @@ class EventModel {
     String? privacyType,
     List<Map<String, dynamic>>? participants,
     EventApplicationModel? userApplication,
+    bool? isAgeRestricted,
+    int? minAge,
+    int? maxAge,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -163,6 +173,9 @@ class EventModel {
       privacyType: privacyType ?? this.privacyType,
       participants: participants ?? this.participants,
       userApplication: userApplication ?? this.userApplication,
+      isAgeRestricted: isAgeRestricted ?? this.isAgeRestricted,
+      minAge: minAge ?? this.minAge,
+      maxAge: maxAge ?? this.maxAge,
     );
   }
 }

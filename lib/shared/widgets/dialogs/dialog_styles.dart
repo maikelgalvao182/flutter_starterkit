@@ -73,15 +73,15 @@ class DialogStyles {
   /// Estilo do título do diálogo
   static TextStyle get titleStyle => GoogleFonts.getFont(
     FONT_PLUS_JAKARTA_SANS, 
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: FontWeight.w900,
-    color: GlimpseColors.textSubTitle,
+    color: GlimpseColors.primaryColorLight,
     letterSpacing: .3,
   );
   /// Estilo da mensagem/descrição do diálogo
   static TextStyle get messageStyle => GoogleFonts.getFont(
     FONT_PLUS_JAKARTA_SANS, 
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.w600,
     height: 1.5,
     color: GlimpseColors.textSubTitle,

@@ -83,6 +83,11 @@ class EventCardController extends ChangeNotifier {
       _creatorId = _preloadedEvent!.createdBy;
 
       _userApplication = _preloadedEvent!.userApplication;
+      
+      // ✅ INICIALIZAR isAgeRestricted E minAge/maxAge a partir do evento pré-carregado
+      _isAgeRestricted = _preloadedEvent!.isAgeRestricted;
+      _minAge = _preloadedEvent!.minAge;
+      _maxAge = _preloadedEvent!.maxAge;
 
       if (_preloadedEvent!.participants != null) {
         _approvedParticipants = _preloadedEvent!.participants!;
@@ -244,9 +249,13 @@ class EventCardController extends ChangeNotifier {
         if (newMinAge != _minAge || newMaxAge != _maxAge) {
           _minAge = newMinAge;
           _maxAge = newMaxAge;
-          // Resetar validação para forçar nova verificação
-          _userAge = null;
-          _isAgeRestricted = false;
+          // ✅ APENAS revalidar se as restrições mudaram E não temos valor pré-carregado
+          // Se já temos _isAgeRestricted do preload, manter até que realmente mude
+          if (_userAge != null) {
+            // Resetar para forçar nova verificação apenas se já havia validado antes
+            _userAge = null;
+            _isAgeRestricted = false;
+          }
           // Revalidar idade assincronamente
           if (uid != null && !isCreator) {
             _validateUserAge(uid);
@@ -385,7 +394,15 @@ class EventCardController extends ChangeNotifier {
   
   /// Valida se o usuário tem idade permitida para o evento
   Future<void> _validateUserAge(String userId) async {
-    // Se já validou ou é criador, não precisa validar novamente
+    // ✅ Se já foi inicializado do preload COM valores de minAge/maxAge, usar o valor pré-calculado
+    // (o valor já foi calculado no MapViewModel._enrichEvents)
+    if (_preloadedEvent != null && _minAge != null && _maxAge != null) {
+      // Já temos o valor pré-calculado, não precisa validar novamente
+      // _isAgeRestricted já foi inicializado com o valor correto
+      return;
+    }
+    
+    // Se já validou manualmente ou é criador, não precisa validar novamente
     if (_userAge != null || isCreator) return;
     
     // Se não há restrições de idade definidas, permitir
