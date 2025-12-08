@@ -10,8 +10,20 @@ class VisitsService {
   /// Cache do número de visitas
   int get cachedVisitsCount => 0;
 
-  /// Stream para observar o número de visitas de um usuário
-  Stream<int> watchUserVisitsCount(String userId) {
-    return ProfileVisitsService.instance.watchVisitsCount(userId);
+  /// Busca o número de visitas de um usuário
+  Future<int> getUserVisitsCount(String userId) {
+    return ProfileVisitsService.instance.getVisitsCount(userId);
+  }
+
+  /// Stream simplificado para observar o número de visitas
+  /// Retorna stream que emite o count sempre que a lista de visitors muda
+  Stream<int> watchUserVisitsCount(String userId) async* {
+    // Emitir count inicial
+    yield await getUserVisitsCount(userId);
+    
+    // Escutar mudanças no stream de visitors e emitir novo count
+    await for (final visitors in ProfileVisitsService.instance.visitsStream) {
+      yield visitors.length;
+    }
   }
 }

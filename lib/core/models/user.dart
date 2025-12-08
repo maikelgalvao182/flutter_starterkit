@@ -103,6 +103,8 @@ class User {
     this.from,
     this.distance,
     this.commonInterests,
+    this.overallRating,
+    this.visitedAt,
   });
 
   /// Safe empty user to avoid LateInitializationError before auth finishes
@@ -133,6 +135,8 @@ class User {
       isUserOnline: false,
       distance: null,
       commonInterests: null,
+      overallRating: null,
+      visitedAt: null,
     );
   }
 
@@ -215,6 +219,8 @@ class User {
       from: doc['from'],
       distance: (doc['distance'] as num?)?.toDouble(),
       commonInterests: (doc['commonInterests'] as List?)?.cast<String>(),
+      overallRating: (doc['overallRating'] as num?)?.toDouble(),
+      visitedAt: _parseDateTime(doc['visitedAt'], fallback: null),
     );
   }
   
@@ -250,9 +256,83 @@ class User {
   final String? from; // País de origem
   final double? distance; // Distância em km do usuário atual
   final List<String>? commonInterests; // Interesses em comum com o usuário logado
+  final double? overallRating; // Rating geral do usuário
+  final DateTime? visitedAt; // Data da visita (para ordenação)
 
   /// Badge de verificação
   bool get isVerified => userIsVerified;
+
+  User copyWith({
+    String? userId,
+    String? userProfilePhoto,
+    String? userFullname,
+    String? userGender,
+    int? userBirthDay,
+    int? userBirthMonth,
+    int? userBirthYear,
+    String? userJobTitle,
+    String? userBio,
+    Map<String, dynamic>? userGallery,
+    String? userCountry,
+    String? userLocality,
+    GeoPoint? userGeoPoint,
+    Map<String, dynamic>? userSettings,
+    String? userStatus,
+    String? userLevel,
+    bool? userIsVerified,
+    DateTime? userRegDate,
+    DateTime? userLastLogin,
+    String? userDeviceToken,
+    int? userTotalLikes,
+    int? userTotalVisits,
+    bool? isUserOnline,
+    String? userState,
+    String? userInstagram,
+    List<String>? interests,
+    String? languages,
+    String? photoUrl,
+    String? from,
+    double? distance,
+    List<String>? commonInterests,
+    double? overallRating,
+    DateTime? visitedAt,
+  }) {
+    return User(
+      userId: userId ?? this.userId,
+      userProfilePhoto: userProfilePhoto ?? this.userProfilePhoto,
+      userFullname: userFullname ?? this.userFullname,
+      userGender: userGender ?? this.userGender,
+      userBirthDay: userBirthDay ?? this.userBirthDay,
+      userBirthMonth: userBirthMonth ?? this.userBirthMonth,
+      userBirthYear: userBirthYear ?? this.userBirthYear,
+      userJobTitle: userJobTitle ?? this.userJobTitle,
+      userBio: userBio ?? this.userBio,
+      userGallery: userGallery ?? this.userGallery,
+      userCountry: userCountry ?? this.userCountry,
+      userLocality: userLocality ?? this.userLocality,
+      userGeoPoint: userGeoPoint ?? this.userGeoPoint,
+      userSettings: userSettings ?? this.userSettings,
+      userStatus: userStatus ?? this.userStatus,
+      userLevel: userLevel ?? this.userLevel,
+      userIsVerified: userIsVerified ?? this.userIsVerified,
+      userRegDate: userRegDate ?? this.userRegDate,
+      userLastLogin: userLastLogin ?? this.userLastLogin,
+      userDeviceToken: userDeviceToken ?? this.userDeviceToken,
+      userTotalLikes: userTotalLikes ?? this.userTotalLikes,
+      userTotalVisits: userTotalVisits ?? this.userTotalVisits,
+      isUserOnline: isUserOnline ?? this.isUserOnline,
+      userState: userState ?? this.userState,
+      userInstagram: userInstagram ?? this.userInstagram,
+      interests: interests ?? this.interests,
+      languages: languages ?? this.languages,
+      photoUrl: photoUrl ?? this.photoUrl,
+      from: from ?? this.from,
+      distance: distance ?? this.distance,
+      commonInterests: commonInterests ?? this.commonInterests,
+      overallRating: overallRating ?? this.overallRating,
+      visitedAt: visitedAt ?? this.visitedAt,
+    );
+  }
 
   // ==================== GETTERS MODERNOS ====================
   
@@ -291,5 +371,44 @@ class User {
       }
     }
     return urls;
+  }
+  
+  /// Converte User para Map (para serialização ou modificações temporárias)
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'profilePhotoUrl': userProfilePhoto,
+      'fullName': userFullname,
+      'gender': userGender,
+      'birthDay': userBirthDay,
+      'birthMonth': userBirthMonth,
+      'birthYear': userBirthYear,
+      'jobTitle': userJobTitle,
+      'bio': userBio,
+      'user_gallery': userGallery,
+      'country': userCountry,
+      'locality': userLocality,
+      'state': userState,
+      'latitude': userGeoPoint.latitude,
+      'longitude': userGeoPoint.longitude,
+      'settings': userSettings,
+      'status': userStatus,
+      'level': userLevel,
+      'isVerified': userIsVerified,
+      'registrationDate': userRegDate,
+      'lastLoginDate': userLastLogin,
+      'totalLikes': userTotalLikes,
+      'totalVisits': userTotalVisits,
+      'isOnline': isUserOnline,
+      'instagram': userInstagram,
+      'interests': interests,
+      'languages': languages,
+      'photoUrl': photoUrl,
+      'from': from,
+      'distance': distance,
+      'commonInterests': commonInterests,
+      'overallRating': overallRating,
+      'visitedAt': visitedAt,
+    };
   }
 }

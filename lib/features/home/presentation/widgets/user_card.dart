@@ -9,6 +9,7 @@ import 'package:partiu/features/home/domain/models/user_with_meta.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card/user_card_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
+import 'package:partiu/shared/widgets/star_badge.dart';
 
 /// Card horizontal de usuário
 /// 
@@ -22,6 +23,7 @@ class UserCard extends StatefulWidget {
     required this.userId,
     this.userWithMeta,
     this.user,
+    this.overallRating,
     this.onTap,
     this.onLongPress,
     this.trailingWidget,
@@ -31,6 +33,7 @@ class UserCard extends StatefulWidget {
   final String userId;
   final UserWithMeta? userWithMeta;
   final User? user;
+  final double? overallRating;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final Widget? trailingWidget;
@@ -40,27 +43,36 @@ class UserCard extends StatefulWidget {
 }
 
 class _UserCardState extends State<UserCard> {
-  late UserCardController _controller;
+  UserCardController? _controller;
+  bool _needsRatingFromController = false;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('🎴 UserCard iniciado para userId: ${widget.userId}');
     
-    // Se userWithMeta ou user for fornecido, o controller pode não ser necessário para fetch,
-    // mas mantemos para compatibilidade ou usamos dados diretos.
-    _controller = UserCardController(userId: widget.userId);
-    if (widget.userWithMeta == null && widget.user == null) {
-      _controller.addListener(_onControllerChanged);
+    // Debug: verificar valores recebidos
+    debugPrint('🔍 UserCard.initState: userId=${widget.userId.substring(0, 8)}');
+    debugPrint('   - widget.overallRating: ${widget.overallRating}');
+    debugPrint('   - widget.user?.overallRating: ${widget.user?.overallRating}');
+    
+    // Só buscar rating via controller se não foi fornecido
+    _needsRatingFromController = widget.overallRating == null && widget.user?.overallRating == null;
+    
+    if (_needsRatingFromController) {
+      debugPrint('🎴 UserCard iniciado para userId: ${widget.userId} (buscar rating via controller)');
+      _controller = UserCardController(userId: widget.userId);
+      _controller!.addListener(_onControllerChanged);
+    } else {
+      debugPrint('🎴 UserCard iniciado para userId: ${widget.userId} (rating já fornecido: ${widget.overallRating ?? widget.user?.overallRating})');
     }
   }
 
   @override
   void dispose() {
-    if (widget.userWithMeta == null) {
-      _controller.removeListener(_onControllerChanged);
+    if (_needsRatingFromController && _controller != null) {
+      _controller!.removeListener(_onControllerChanged);
+      _controller!.dispose();
     }
-    _controller.dispose();
     super.dispose();
   }
 
@@ -72,6 +84,13 @@ class _UserCardState extends State<UserCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Determinar rating: fornecido ou do controller
+    final rating = widget.overallRating ?? widget.user?.overallRating ?? _controller?.overallRating;
+    
+    if (widget.user != null && rating != null) {
+      debugPrint('🎴 UserCard.build: ${widget.userId.substring(0, 8)} → rating=$rating');
+    }
+    
     // 1. Prioridade: UserWithMeta (se fornecido)
     if (widget.userWithMeta != null) {
       final u = widget.userWithMeta!;
@@ -81,6 +100,7 @@ class _UserCardState extends State<UserCard> {
         distanceKm: u.distanceKm,
         commonInterests: u.commonInterests,
         photoUrl: u.user.photoUrl,
+        overallRating: rating,
       );
     }
 
@@ -93,19 +113,24 @@ class _UserCardState extends State<UserCard> {
         distanceKm: u.distance,
         commonInterests: u.commonInterests ?? [],
         photoUrl: u.profilePhotoUrl,
+        overallRating: rating,
       );
     }
 
-    // 3. Fallback: Controller fetch
-    if (_controller.isLoading) {
+    // 3. Fallback: Controller fetch (apenas se controller existir)
+    if (_controller == null) {
+      return const SizedBox.shrink();
+    }
+
+    if (_controller!.isLoading) {
       return const UserCardShimmer();
     }
 
-    if (_controller.error != null) {
+    if (_controller!.error != null) {
       return _buildErrorCard();
     }
 
-    final user = _controller.user;
+    final user = _controller!.user;
     if (user == null) {
       return const SizedBox.shrink();
     }
@@ -116,6 +141,7 @@ class _UserCardState extends State<UserCard> {
       distanceKm: user.distance,
       commonInterests: user.commonInterests ?? [],
       photoUrl: user.profilePhotoUrl,
+      overallRating: rating,
     );
   }
 
@@ -133,7 +159,7 @@ class _UserCardState extends State<UserCard> {
       ),
       child: Center(
         child: Text(
-          _controller.error ?? 'Erro',
+          _controller?.error ?? 'Erro',
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
             fontSize: 13,
@@ -150,6 +176,7 @@ class _UserCardState extends State<UserCard> {
     double? distanceKm,
     List<String> commonInterests = const [],
     String? photoUrl,
+    double? overallRating,
   }) {
     final distanceText = distanceKm != null 
         ? '${distanceKm.toStringAsFixed(1)} km' 
@@ -174,7 +201,7 @@ class _UserCardState extends State<UserCard> {
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -184,13 +211,13 @@ class _UserCardState extends State<UserCard> {
           ),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Avatar
             StableAvatar(
               userId: widget.userId,
-              photoUrl: photoUrl ?? _controller.photoUrl,
-              size: 58,
+              photoUrl: photoUrl ?? _controller?.photoUrl,
+              size: 56,
               borderRadius: BorderRadius.circular(8),
               enableNavigation: true,
             ),
@@ -203,28 +230,39 @@ class _UserCardState extends State<UserCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Nome completo
-                  Text(
-                    fullName,
-                    style: GoogleFonts.getFont(
-                      FONT_PLUS_JAKARTA_SANS,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: GlimpseColors.primaryColorLight,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // Nome completo + Rating badge
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          fullName,
+                          style: GoogleFonts.getFont(
+                            FONT_PLUS_JAKARTA_SANS,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: GlimpseColors.primaryColorLight,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (overallRating != null && overallRating > 0) ...[
+                        const SizedBox(width: 8),
+                        StarBadge(rating: overallRating),
+                      ],
+                    ],
                   ),
-                  
-                  // Localização e Distância
-                  if (from.isNotEmpty || distanceText != null) ...[
+
+                  // Interesses em comum + Distância (mesma linha)
+                  if (commonInterestsText.isNotEmpty || distanceText != null) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        if (from.isNotEmpty) ...[
-                          Flexible(
+                        // Interesses em comum
+                        if (commonInterestsText.isNotEmpty)
+                          Expanded(
                             child: Text(
-                              from,
+                              commonInterestsText,
                               style: GoogleFonts.getFont(
                                 FONT_PLUS_JAKARTA_SANS,
                                 fontSize: 13,
@@ -235,21 +273,8 @@ class _UserCardState extends State<UserCard> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ],
                         
-                        if (from.isNotEmpty && distanceText != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 4,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              color: GlimpseColors.textSubTitle,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-
+                        // Distância alinhada à direita
                         if (distanceText != null)
                           Text(
                             distanceText,
@@ -263,46 +288,15 @@ class _UserCardState extends State<UserCard> {
                       ],
                     ),
                   ],
-
-                  // Interesses em comum
-                  if (commonInterestsText.isNotEmpty) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            commonInterestsText,
-                            style: GoogleFonts.getFont(
-                              FONT_PLUS_JAKARTA_SANS,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: GlimpseColors.textSubTitle,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),
             
-            const SizedBox(width: 8),
-            
-            // Trailing widget ou chevron padrão
-            widget.trailingWidget ??
-            SizedBox(
-              height: 58, // Mesma altura do avatar para garantir centralização
-              child: Align(
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.chevron_right,
-                  color: GlimpseColors.textSubTitle,
-                  size: 24,
-                ),
-              ),
-            ),
+            // Trailing widget customizado (se fornecido)
+            if (widget.trailingWidget != null) ...[
+              const SizedBox(width: 8),
+              widget.trailingWidget!,
+            ],
           ],
         ),
       ),

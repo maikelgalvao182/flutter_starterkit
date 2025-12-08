@@ -9,7 +9,7 @@ class UserCardShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -26,8 +26,8 @@ class UserCardShimmer extends StatelessWidget {
           children: [
             // Avatar shimmer
             Container(
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
                 color: GlimpseColors.lightTextField,
                 borderRadius: BorderRadius.circular(8),

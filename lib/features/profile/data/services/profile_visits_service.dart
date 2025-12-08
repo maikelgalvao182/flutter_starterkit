@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/models/user.dart';
-import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/shared/services/user_data_service.dart';
 
 /// Modelo de visita ao perfil
 class ProfileVisit {
@@ -40,31 +40,249 @@ class ProfileVisit {
   }
 }
 
-/// Serviço para gerenciar visitas ao perfil
+/// Cache de visitas com TTL
+class VisitsCache {
+  final List<User> visitors;
+  final DateTime timestamp;
+  final String userId;
+
+  VisitsCache({
+    required this.visitors,
+    required this.timestamp,
+    required this.userId,
+  });
+
+  bool get isExpired => DateTime.now().difference(timestamp) > ProfileVisitsService.cacheTTL;
+}
+
+/// Serviço para gerenciar visitas ao perfil (padrão LocationQueryService)
+/// 
+/// Arquitetura:
+/// - ✅ Cache com TTL gerenciado pelo service
+/// - ✅ Stream broadcast próprio (não expõe Firestore)
+/// - ✅ Interface clara: getVisitsOnce() + visitsStream
+/// - ✅ Auto-reload com debounce
+/// - ✅ Separação de responsabilidades
 /// 
 /// Features:
 /// - Registro de visitas com anti-spam
-/// - Stream em tempo real
 /// - Contador de visitas
-/// - TTL automático (7 dias)
+/// - TTL automático (7 dias para dados, 5min para cache)
 /// - Sem duplicatas
 class ProfileVisitsService {
-  ProfileVisitsService._();
+  ProfileVisitsService._() {
+    _initializeAutoReload();
+  }
   
   static final ProfileVisitsService _instance = ProfileVisitsService._();
   static ProfileVisitsService get instance => _instance;
 
   final _firestore = FirebaseFirestore.instance;
   final _userRepository = UserRepository();
+  final _userDataService = UserDataService.instance;
   
-  // Cache local para anti-spam
+  // Cache de visitas por userId
+  final Map<String, VisitsCache> _visitsCache = {};
+  
+  // Cache local para anti-spam de recordVisit
   final Map<String, DateTime> _lastVisitCache = {};
+  
+  // Stream controller broadcast para emitir visitas
+  final _visitsStreamController = StreamController<List<User>>.broadcast();
+  
+  // Subscription do Firestore (para auto-reload)
+  StreamSubscription<QuerySnapshot>? _firestoreSubscription;
+  
+  // UserId sendo monitorado atualmente
+  String? _currentUserId;
+  
+  // Timer para debounce
+  Timer? _reloadDebounceTimer;
   
   // Intervalo mínimo entre visitas (anti-spam)
   static const _minVisitInterval = Duration(minutes: 15);
   
-  // TTL para limpeza automática
+  // TTL para limpeza automática no Firestore
   static const _visitTTL = Duration(days: 7);
+  
+  // TTL do cache local (5 minutos)
+  static const cacheTTL = Duration(minutes: 5);
+
+  /// Stream público de visitas (broadcast)
+  Stream<List<User>> get visitsStream => _visitsStreamController.stream;
+
+  /// Inicializa auto-reload via Firestore snapshots
+  void _initializeAutoReload() {
+    debugPrint('🔄 [ProfileVisitsService] Auto-reload inicializado');
+  }
+
+  /// Monitora visitas de um userId específico
+  void watchUser(String userId) {
+    if (_currentUserId == userId) {
+      debugPrint('👀 [ProfileVisitsService] Já monitorando usuário $userId');
+      return;
+    }
+
+    debugPrint('👀 [ProfileVisitsService] Iniciando monitoramento de $userId');
+    
+    // Cancelar subscription anterior
+    _firestoreSubscription?.cancel();
+    _currentUserId = userId;
+
+    if (userId.isEmpty) {
+      _visitsStreamController.add([]);
+      return;
+    }
+
+    // Carregar dados inicialmente
+    _scheduleReload(userId);
+
+    // Escutar mudanças do Firestore
+    _firestoreSubscription = _firestore
+        .collection('ProfileVisits')
+        .where('visitedUserId', isEqualTo: userId)
+        .orderBy('visitedAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            debugPrint('🔄 [ProfileVisitsService] Firestore snapshot recebido (${snapshot.docChanges.length} mudanças)');
+            _scheduleReload(userId);
+          },
+          onError: (error) {
+            debugPrint('❌ [ProfileVisitsService] Erro no stream: $error');
+          },
+        );
+  }
+
+  /// Agenda reload com debounce (evita múltiplas queries simultâneas)
+  void _scheduleReload(String userId) {
+    _reloadDebounceTimer?.cancel();
+    
+    _reloadDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _loadAndEmitVisits(userId);
+    });
+  }
+
+  /// Carrega visitas e emite no stream
+  Future<void> _loadAndEmitVisits(String userId) async {
+    final visitors = await getVisitsOnce(userId);
+    if (!_visitsStreamController.isClosed) {
+      _visitsStreamController.add(visitors);
+    }
+  }
+
+  /// 🔥 MÉTODO PRINCIPAL: Busca visitas com cache inteligente
+  /// 
+  /// Uso: Carregamento inicial ou refresh manual
+  /// Cache: 5 minutos por userId
+  Future<List<User>> getVisitsOnce(String userId) async {
+    if (userId.isEmpty) return [];
+
+    // Verificar cache
+    final cached = _visitsCache[userId];
+    if (cached != null && !cached.isExpired) {
+      debugPrint('✅ [ProfileVisitsService] Usando cache para $userId');
+      return cached.visitors;
+    }
+
+    try {
+      debugPrint('📥 [ProfileVisitsService] Buscando visitas de $userId...');
+
+      // 1. Buscar visitas do Firestore
+      final visitsSnapshot = await _firestore
+          .collection('ProfileVisits')
+          .where('visitedUserId', isEqualTo: userId)
+          .orderBy('visitedAt', descending: true)
+          .limit(50)
+          .get();
+
+      if (visitsSnapshot.docs.isEmpty) {
+        _updateCache(userId, []);
+        return [];
+      }
+
+      final visits = visitsSnapshot.docs
+          .map((doc) => ProfileVisit.fromDoc(doc))
+          .toList();
+
+      // 2. Buscar dados do usuário atual
+      final myUserData = await _userRepository.getCurrentUserData();
+      if (myUserData == null) {
+        debugPrint('⚠️ [ProfileVisitsService] Usuário atual não encontrado');
+        return [];
+      }
+
+      final myInterests = List<String>.from(myUserData['interests'] ?? []);
+
+      // 3. Carregar dados dos visitantes usando UserDataService (com cache!)
+      final visitorIds = visits.map((v) => v.visitorId).toList();
+      final visitors = await _userDataService.getUsersByIds(visitorIds);
+      
+      if (visitors.isEmpty) {
+        _updateCache(userId, []);
+        return [];
+      }
+
+      // 4. Enriquecer dados (interesses, distância)
+      await _userDataService.enrichUsersData(visitors, myUserData: myUserData);
+      
+      // 5. Adicionar timestamps de visita
+      for (var i = 0; i < visitors.length; i++) {
+        final visit = visits.firstWhere((v) => v.visitorId == visitors[i].userId);
+        visitors[i] = visitors[i].copyWith(visitedAt: visit.visitedAt);
+      }
+
+      // 6. Buscar ratings usando UserDataService (com cache!)
+      final ratingsMap = await _userDataService.getRatingsByUserIds(visitorIds);
+      
+      // Atualizar visitors com ratings
+      for (var i = 0; i < visitors.length; i++) {
+        final rating = ratingsMap[visitors[i].userId];
+        if (rating != null) {
+          visitors[i] = visitors[i].copyWith(overallRating: rating.averageRating);
+        }
+      }
+      
+      // 7. Ordenar por data de visita
+      // 7. Ordenar por data de visita
+      visitors.sort((a, b) {
+        final dateA = a.visitedAt ?? DateTime(0);
+        final dateB = b.visitedAt ?? DateTime(0);
+        return dateB.compareTo(dateA);
+      });
+
+      // 8. Atualizar cache
+      _updateCache(userId, visitors);
+
+      debugPrint('✅ [ProfileVisitsService] ${visitors.length} visitas carregadas');
+      return visitors;
+    } catch (e) {
+      debugPrint('❌ [ProfileVisitsService] Erro ao buscar visitas: $e');
+      return [];
+    }
+  }
+
+  /// Atualiza cache com timestamp
+  void _updateCache(String userId, List<User> visitors) {
+    _visitsCache[userId] = VisitsCache(
+      visitors: visitors,
+      timestamp: DateTime.now(),
+      userId: userId,
+    );
+  }
+
+  /// Invalida cache de um usuário específico
+  void invalidateCache(String userId) {
+    _visitsCache.remove(userId);
+    debugPrint('🗑️ [ProfileVisitsService] Cache invalidado para $userId');
+  }
+
+  /// Força reload (invalida cache e recarrega)
+  Future<void> forceReload(String userId) async {
+    invalidateCache(userId);
+    await _loadAndEmitVisits(userId);
+  }
 
   /// Registra uma visita ao perfil
   /// 
@@ -141,82 +359,14 @@ class ProfileVisitsService {
     }
   }
 
-  /// Stream de visitas ao perfil do usuário atual
-  /// 
-  /// Retorna lista ordenada por data (mais recentes primeiro)
-  Stream<List<ProfileVisit>> watchVisits(String userId) {
-    if (userId.isEmpty) {
-      return Stream.value([]);
-    }
-
-    return _firestore
-        .collection('ProfileVisits')
-        .where('visitedUserId', isEqualTo: userId)
-        .orderBy('visitedAt', descending: true)
-        .limit(50) // Limite de 50 visitas mais recentes
-        .snapshots()
-        .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => ProfileVisit.fromDoc(doc))
-              .toList();
-        })
-        .handleError((error) {
-          debugPrint('❌ [ProfileVisitsService] Erro no stream: $error');
-          return <ProfileVisit>[];
-        });
-  }
-
-  /// Stream do contador de visitas
-  Stream<int> watchVisitsCount(String userId) {
-    if (userId.isEmpty) {
-      return Stream.value(0);
-    }
-
-    return _firestore
-        .collection('ProfileVisits')
-        .where('visitedUserId', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.length)
-        .handleError((error) {
-          debugPrint('❌ [ProfileVisitsService] Erro no contador: $error');
-          return 0;
-        });
-  }
-
-  /// Busca lista de visitas (one-time fetch)
-  Future<List<ProfileVisit>> fetchVisits(String userId, {int limit = 50}) async {
-    if (userId.isEmpty) {
-      return [];
-    }
+  /// Busca contador de visitas (one-time fetch)
+  Future<int> getVisitsCount(String userId) async {
+    if (userId.isEmpty) return 0;
 
     try {
       final snapshot = await _firestore
           .collection('ProfileVisits')
           .where('visitedUserId', isEqualTo: userId)
-          .orderBy('visitedAt', descending: true)
-          .limit(limit)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => ProfileVisit.fromDoc(doc))
-          .toList();
-    } catch (e) {
-      debugPrint('❌ [ProfileVisitsService] Erro ao buscar visitas: $e');
-      return [];
-    }
-  }
-
-  /// Busca contador de visitas (one-time fetch)
-  Future<int> fetchVisitsCount(String userId) async {
-    if (userId.isEmpty) {
-      return 0;
-    }
-
-    try {
-      final snapshot = await _firestore
-          .collection('Users')
-          .doc(userId)
-          .collection('ProfileVisits')
           .count()
           .get();
 
@@ -227,121 +377,19 @@ class ProfileVisitsService {
     }
   }
 
-  /// Deleta uma visita específica
-  Future<void> deleteVisit({
-    required String userId,
-    required String visitorId,
-  }) async {
-    try {
-      final docId = '${userId}_$visitorId';
-      await _firestore
-          .collection('ProfileVisits')
-          .doc(docId)
-          .delete();
-      
-      debugPrint('✅ [ProfileVisitsService] Visita removida: $visitorId');
-    } catch (e) {
-      debugPrint('❌ [ProfileVisitsService] Erro ao remover visita: $e');
-    }
-  }
-
-  /// Remove todas as visitas do usuário (limpa histórico)
-  Future<void> clearAllVisits(String userId) async {
-    if (userId.isEmpty) return;
-
-    try {
-      final batch = _firestore.batch();
-      final snapshot = await _firestore
-          .collection('Users')
-          .doc(userId)
-          .collection('ProfileVisits')
-          .get();
-
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      await batch.commit();
-      debugPrint('✅ [ProfileVisitsService] Todas as visitas removidas');
-    } catch (e) {
-      debugPrint('❌ [ProfileVisitsService] Erro ao limpar visitas: $e');
-    }
-  }
-
-  /// Limpa cache local (útil após logout)
-  void clearCache() {
+  /// Limpa todos os caches (útil após logout)
+  void clearAllCaches() {
     _lastVisitCache.clear();
-    debugPrint('🗑️ [ProfileVisitsService] Cache limpo');
+    _visitsCache.clear();
+    _firestoreSubscription?.cancel();
+    _currentUserId = null;
+    debugPrint('🗑️ [ProfileVisitsService] Todos os caches limpos');
   }
 
-  /// Stream de visitas com dados completos dos visitantes (otimizado)
-  /// 
-  /// Carrega dados dos visitantes com:
-  /// - Interesses em comum
-  /// - Distância calculada
-  /// - Informações do perfil
-  /// 
-  /// Usa Repository para queries e Helper para cálculos
-  Stream<List<User>> watchVisitsWithUserData(String userId) async* {
-    if (userId.isEmpty) {
-      yield [];
-      return;
-    }
-
-    // Stream das visitas
-    await for (final visitsSnapshot in _firestore
-        .collection('ProfileVisits')
-        .where('visitedUserId', isEqualTo: userId)
-        .orderBy('visitedAt', descending: true)
-        .limit(50)
-        .snapshots()) {
-      
-      try {
-        final visits = visitsSnapshot.docs
-            .map((doc) => ProfileVisit.fromDoc(doc))
-            .toList();
-
-        if (visits.isEmpty) {
-          yield [];
-          continue;
-        }
-
-        // 1. Buscar dados do usuário atual via Repository (cache)
-        final myUserData = await _userRepository.getCurrentUserData();
-        if (myUserData == null) {
-          debugPrint('⚠️ [ProfileVisitsService] Usuário atual não encontrado');
-          yield [];
-          continue;
-        }
-
-        final myInterests = List<String>.from(myUserData['interests'] ?? []);
-
-        // 2. Carregar dados de todos os visitantes em paralelo via Repository
-        final usersFutures = visits.map((visit) async {
-          final userData = await _userRepository.getUserById(visit.visitorId);
-          
-          if (userData != null) {
-            // 3. Calcular interesses e distância via Helper
-            InterestsHelper.enrichUserData(
-              userData: userData,
-              myInterests: myInterests,
-              myUserData: myUserData,
-            );
-            
-            return User.fromDocument(userData);
-          }
-          return null;
-        }).toList();
-
-        // Aguardar todas as requisições
-        final users = await Future.wait(usersFutures);
-        
-        // Filtrar nulos e retornar
-        yield users.whereType<User>().toList();
-      } catch (e) {
-        debugPrint('❌ [ProfileVisitsService] Erro ao carregar dados dos visitantes: $e');
-        yield [];
-      }
-    }
+  /// Dispose (limpa recursos)
+  void dispose() {
+    _firestoreSubscription?.cancel();
+    _reloadDebounceTimer?.cancel();
+    _visitsStreamController.close();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
@@ -24,12 +25,14 @@ class UserCardController extends ChangeNotifier {
   bool _isLoading = true;
   String? _error;
   User? _user;
+  double? _overallRating;
   bool _isDisposed = false;
 
   // Getters
   bool get isLoading => _isLoading;
   String? get error => _error;
   User? get user => _user;
+  double? get overallRating => _overallRating;
 
   // Getters de compatibilidade
   String? get fullName => _user?.fullName;
@@ -84,7 +87,43 @@ class UserCardController extends ChangeNotifier {
       // 4. Converter para modelo User
       _user = User.fromDocument(userData);
 
-      debugPrint('✅ UserCard carregado: ${_user?.fullName} - ${_user?.commonInterests?.length ?? 0} interesses, ${_user?.distance?.toStringAsFixed(1) ?? '?'} km');
+      // 5. Buscar rating das Reviews (agregando)
+      try {
+        final reviewsSnapshot = await FirebaseFirestore.instance
+            .collection('Reviews')
+            .where('reviewee_id', isEqualTo: userId)
+            .get();
+
+        if (reviewsSnapshot.docs.isNotEmpty) {
+          // Calcular média de overall_rating
+          double sumRatings = 0.0;
+          int count = 0;
+
+          for (var doc in reviewsSnapshot.docs) {
+            final data = doc.data();
+            final rating = (data['overall_rating'] as num?)?.toDouble();
+            if (rating != null && rating > 0) {
+              sumRatings += rating;
+              count++;
+            }
+          }
+
+          if (count > 0) {
+            _overallRating = sumRatings / count;
+            debugPrint('📊 Rating calculado para $userId: $_overallRating de $count reviews');
+          } else {
+            debugPrint('⚠️ Nenhuma review com rating válido para $userId');
+          }
+        } else {
+          debugPrint('⚠️ Nenhuma review encontrada para reviewee_id: $userId');
+        }
+      } catch (e) {
+        debugPrint('❌ Erro ao buscar rating: $e');
+        // Se falhar ao buscar rating, apenas ignora
+        _overallRating = null;
+      }
+
+      debugPrint('✅ UserCard carregado: ${_user?.fullName} - ${_user?.commonInterests?.length ?? 0} interesses, ${_user?.distance?.toStringAsFixed(1) ?? '?'} km - Rating: ${_overallRating?.toStringAsFixed(1) ?? 'N/A'}');
 
       _isLoading = false;
       if (!_isDisposed) notifyListeners();

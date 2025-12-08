@@ -7,54 +7,57 @@ import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/services/location/location_query_service.dart';
 import 'package:partiu/services/location/distance_isolate.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/shared/services/user_data_service.dart';
 
 /// Controller para gerenciar a lista de pessoas próximas
 /// 
 /// Usa LocationQueryService para buscar usuários dentro do raio configurado
 /// com filtros sociais (gênero, idade, verificado, interesses)
-class FindPeopleController extends ChangeNotifier {
+/// 
+/// ✅ Usa ValueNotifiers para rebuild granular (evita rebuilds desnecessários)
+class FindPeopleController {
   FindPeopleController() {
     _initializeStream();
   }
 
   // Serviço de localização
   final LocationQueryService _locationService = LocationQueryService();
+  final UserDataService _userDataService = UserDataService.instance;
   
   // Subscription do stream
   StreamSubscription<List<UserWithDistance>>? _usersSubscription;
+  
+  // Flag para evitar conversão simultânea
+  bool _isConverting = false;
 
-  // Estado
-  bool _isLoading = true;
-  String? _error;
-  List<User> _users = [];
+  // Estado usando ValueNotifiers para rebuild granular
+  final ValueNotifier<bool> isLoading = ValueNotifier(true);
+  final ValueNotifier<String?> error = ValueNotifier(null);
+  final ValueNotifier<List<User>> users = ValueNotifier([]);
 
   // Getters
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  List<User> get users => _users;
-  List<String> get userIds => _users.map((u) => u.userId).toList();
-  bool get isEmpty => _users.isEmpty && !_isLoading;
+  List<String> get userIds => users.value.map((u) => u.userId).toList();
+  bool get isEmpty => users.value.isEmpty && !isLoading.value;
 
   /// Inicializa stream de usuários próximos
   void _initializeStream() {
     debugPrint('🔍 FindPeopleController: Inicializando stream de usuários');
-    
-    // Carregar usuários inicialmente (sem aguardar)
-    _loadInitialUsers();
     
     // Escutar stream de atualizações automáticas
     _usersSubscription = _locationService.usersStream.listen(
       _onUsersChanged,
       onError: _onUsersError,
     );
+    
+    // Carregar usuários inicialmente (após setup do stream)
+    _loadInitialUsers();
   }
 
   /// Carrega usuários inicialmente
   Future<void> _loadInitialUsers() async {
     try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
+      isLoading.value = true;
+      error.value = null;
 
       debugPrint('🔍 FindPeopleController: Carregando usuários próximos...');
       
@@ -62,74 +65,107 @@ class FindPeopleController extends ChangeNotifier {
       
       await _convertToUsers(usersWithDistance);
       
-      _isLoading = false;
-      notifyListeners();
+      isLoading.value = false;
     } catch (e) {
       debugPrint('❌ FindPeopleController: Erro ao carregar usuários: $e');
-      _error = 'Erro ao carregar pessoas próximas';
-      _isLoading = false;
-      notifyListeners();
+      error.value = 'Erro ao carregar pessoas próximas';
+      isLoading.value = false;
     }
   }
 
   /// Callback quando usuários mudam no stream
   void _onUsersChanged(List<UserWithDistance> usersWithDistance) async {
+    if (_isConverting) {
+      debugPrint('⚠️ FindPeopleController: Conversão já em andamento, ignorando stream update');
+      return;
+    }
+    
     debugPrint('🔄 FindPeopleController: Stream recebeu ${usersWithDistance.length} usuários');
     
     await _convertToUsers(usersWithDistance);
     
-    _isLoading = false;
-    _error = null;
-    notifyListeners();
+    isLoading.value = false;
+    error.value = null;
   }
 
   /// Callback quando ocorre erro no stream
-  void _onUsersError(Object error) {
-    debugPrint('❌ FindPeopleController: Erro no stream: $error');
+  void _onUsersError(Object err) {
+    debugPrint('❌ FindPeopleController: Erro no stream: $err');
     
-    _error = 'Erro ao carregar pessoas próximas';
-    _isLoading = false;
-    notifyListeners();
+    error.value = 'Erro ao carregar pessoas próximas';
+    isLoading.value = false;
   }
 
   /// Converte UserWithDistance para User
   Future<void> _convertToUsers(List<UserWithDistance> usersWithDistance) async {
-    final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
-    
-    // Carregar interesses do usuário atual via Repository
-    final repository = UserRepository();
-    final myUserData = await repository.getCurrentUserData();
-    final myInterests = myUserData != null 
-        ? List<String>.from(myUserData['interests'] ?? [])
-        : <String>[];
-
-    final List<User> loadedUsers = [];
-    
-    for (final userWithDist in usersWithDistance) {
-      final data = Map<String, dynamic>.from(userWithDist.userData);
-      
-      // Adicionar campos computados
-      data['userId'] = userWithDist.userId;
-      data['distance'] = userWithDist.distanceKm;
-      
-      // Calcular interesses em comum usando Helper
-      final userInterests = List<String>.from(data['interests'] ?? []);
-      final common = InterestsHelper.calculateCommonInterests(userInterests, myInterests);
-      data['commonInterests'] = common;
-      
-      loadedUsers.add(User.fromDocument(data));
+    if (_isConverting) {
+      debugPrint('⚠️ FindPeopleController: _convertToUsers já está executando');
+      return;
     }
     
-    // Ordenar por distância (mais próximos primeiro)
-    loadedUsers.sort((a, b) {
-      final distA = a.distance ?? double.infinity;
-      final distB = b.distance ?? double.infinity;
-      return distA.compareTo(distB);
-    });
-
-    _users = loadedUsers;
+    _isConverting = true;
     
-    debugPrint('📋 FindPeopleController: ${_users.length} usuários carregados');
+    try {
+      final currentUserId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+      
+      // Carregar interesses do usuário atual via Repository
+      final repository = UserRepository();
+      final myUserData = await repository.getCurrentUserData();
+      final myInterests = myUserData != null 
+          ? List<String>.from(myUserData['interests'] ?? [])
+          : <String>[];
+
+      final List<User> loadedUsers = [];
+      
+      // Extrair userIds para buscar ratings
+      final userIds = usersWithDistance.map((u) => u.userId).toList();
+      
+      debugPrint('📊 FindPeopleController: Buscando ratings para ${userIds.length} usuários...');
+      
+      // Buscar ratings em batch usando UserDataService
+      final ratingsMap = await _userDataService.getRatingsByUserIds(userIds);
+      
+      debugPrint('✅ FindPeopleController: ${ratingsMap.length} ratings obtidos do cache/firestore');
+      
+      for (final userWithDist in usersWithDistance) {
+        final data = Map<String, dynamic>.from(userWithDist.userData);
+        
+        // Adicionar campos computados
+        data['userId'] = userWithDist.userId;
+        data['distance'] = userWithDist.distanceKm;
+        
+        // Calcular interesses em comum usando Helper
+        final userInterests = List<String>.from(data['interests'] ?? []);
+        final common = InterestsHelper.calculateCommonInterests(userInterests, myInterests);
+        data['commonInterests'] = common;
+        
+        // Adicionar rating do cache
+        final rating = ratingsMap[userWithDist.userId];
+        if (rating != null) {
+          data['overallRating'] = rating.averageRating;  // ✅ Corrigido: overallRating em vez de averageRating
+          data['totalReviews'] = rating.totalReviews;
+          debugPrint('⭐ User ${userWithDist.userId.substring(0, 8)}: rating ${rating.averageRating}');
+        } else {
+          debugPrint('⚪ User ${userWithDist.userId.substring(0, 8)}: sem rating');
+        }
+        
+        loadedUsers.add(User.fromDocument(data));
+      }
+      
+      // Ordenar por distância (mais próximos primeiro)
+      loadedUsers.sort((a, b) {
+        final distA = a.distance ?? double.infinity;
+        final distB = b.distance ?? double.infinity;
+        return distA.compareTo(distB);
+      });
+
+      debugPrint('📋 FindPeopleController: Atualizando users.value com ${loadedUsers.length} usuários (TODOS com ratings)');
+      users.value = loadedUsers;
+      
+      debugPrint('✅ FindPeopleController: users.value atualizado - ${users.value.length} usuários');
+    } finally {
+      _isConverting = false;
+    }
   }
 
   /// Recarrega a lista forçando invalidação do cache
@@ -138,10 +174,11 @@ class FindPeopleController extends ChangeNotifier {
     _locationService.forceReload();
   }
 
-  @override
   void dispose() {
     _usersSubscription?.cancel();
-    super.dispose();
+    isLoading.dispose();
+    error.dispose();
+    users.dispose();
   }
 }
 

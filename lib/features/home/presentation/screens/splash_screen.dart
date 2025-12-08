@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:partiu/core/services/app_initializer_service.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
+import 'package:provider/provider.dart';
 
 /// Tela de Splash que carrega todos os dados do mapa antes de entrar no app
 class SplashScreen extends StatefulWidget {
