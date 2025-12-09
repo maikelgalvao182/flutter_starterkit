@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:partiu/features/reviews/presentation/components/badge_selection_step.dart';
 import 'package:partiu/features/reviews/presentation/components/comment_step.dart';
 import 'package:partiu/features/reviews/presentation/components/participant_confirmation_step.dart';
@@ -18,14 +19,18 @@ class ReviewDialogStepContent extends StatelessWidget {
   Widget build(BuildContext context) {
     // STEP 0 (Owner): Confirmar presença
     if (controller.needsPresenceConfirmation && controller.currentStep == 0) {
-      return ParticipantConfirmationStep(
-        participantIds: controller.participantIds,
-        participantProfiles: controller.participantProfiles,
-        selectedParticipants: controller.selectedParticipants,
-        onToggleParticipant: controller.toggleParticipant,
-        eventTitle: controller.eventTitle,
-        eventEmoji: controller.eventEmoji,
-        eventDate: controller.eventScheduleDate,
+      return Consumer<ReviewDialogController>(
+        builder: (_, c, __) {
+          return ParticipantConfirmationStep(
+            participantIds: c.participantIds,
+            participantProfiles: c.participantProfiles,
+            selectedParticipants: c.selectedParticipants,
+            onToggleParticipant: c.toggleParticipant,
+            eventTitle: c.eventTitle,
+            eventEmoji: c.eventEmoji,
+            eventDate: c.eventScheduleDate,
+          );
+        },
       );
     }
 
@@ -36,23 +41,32 @@ class ReviewDialogStepContent extends StatelessWidget {
 
     // STEP 1 (ou 0 para participant): Ratings
     if (isRatingStep) {
-      return RatingCriteriaStep(
-        ratings: controller.getCurrentRatings(),
-        onRatingChanged: controller.setRating,
+      return Consumer<ReviewDialogController>(
+        builder: (_, c, __) {
+          return RatingCriteriaStep(
+            ratings: c.getCurrentRatings(),
+            onRatingChanged: c.setRating,
+          );
+        },
       );
     }
 
     // STEP 2 (ou 1 para participant): Badges
     if (isBadgeStep) {
-      return BadgeSelectionStep(
-        selectedBadges: controller.getCurrentBadges(),
-        onBadgeToggle: controller.toggleBadge,
+      return Consumer<ReviewDialogController>(
+        builder: (_, c, __) {
+          return BadgeSelectionStep(
+            selectedBadges: c.getCurrentBadges(),
+            onBadgeToggle: c.toggleBadge,
+          );
+        },
       );
     }
 
     // STEP 3 (ou 2 para participant): Comentário
     return CommentStep(
       controller: controller.commentController,
+      remainingParticipants: controller.remainingParticipants,
     );
   }
 }

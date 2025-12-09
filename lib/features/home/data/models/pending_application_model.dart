@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 /// Modelo para aplicação pendente com dados do usuário e evento
 class PendingApplicationModel {
@@ -29,13 +30,27 @@ class PendingApplicationModel {
     required Map<String, dynamic> userData,
     required Map<String, dynamic> eventData,
   }) {
-    // Tenta buscar campos com nomes normalizados ou nomes do Firestore
-    final fullName = userData['fullName'] as String? ?? 
-                     userData['fullname'] as String? ?? 
+    debugPrint('🏗️ PendingApplicationModel.fromCombined');
+    debugPrint('   applicationId: $applicationId');
+    debugPrint('   applicationData keys: ${applicationData.keys.toList()}');
+    debugPrint('   userData keys: ${userData.keys.toList()}');
+    debugPrint('   eventData keys: ${eventData.keys.toList()}');
+    
+    final extractedUserId = applicationData['userId'] as String;
+    debugPrint('   extractedUserId: $extractedUserId');
+    
+    // Busca campos com nomes do Firestore (user_photo_link, fullname)
+    // e também fallbacks para nomes normalizados (photoUrl, fullName)
+    final fullName = userData['fullname'] as String? ?? 
+                     userData['fullName'] as String? ?? 
                      'Usuário';
+    debugPrint('   fullName: $fullName');
                      
-    final photoUrl = userData['photoUrl'] as String? ?? 
-                     userData['user_profile_photo'] as String?;
+    final photoUrl = userData['user_photo_link'] as String? ?? 
+                     userData['photoUrl'] as String? ?? 
+                     userData['user_profile_photo'] as String? ??
+                     userData['image'] as String?;
+    debugPrint('   photoUrl: $photoUrl');
 
     final activityName = eventData['activityText'] as String? ?? 
                          eventData['name'] as String? ?? 
@@ -44,7 +59,7 @@ class PendingApplicationModel {
     return PendingApplicationModel(
       applicationId: applicationId,
       eventId: applicationData['eventId'] as String,
-      userId: applicationData['userId'] as String,
+      userId: extractedUserId,
       userFullName: fullName,
       userPhotoUrl: photoUrl,
       activityText: activityName,

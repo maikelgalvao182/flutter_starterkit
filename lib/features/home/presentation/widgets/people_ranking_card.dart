@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/home/data/models/user_ranking_model.dart';
+import 'package:partiu/shared/widgets/animated_expandable.dart';
 import 'package:partiu/shared/widgets/badge_chip.dart';
 import 'package:partiu/shared/widgets/criteria_bars.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
@@ -15,10 +16,10 @@ import 'package:partiu/shared/widgets/stable_avatar.dart';
 /// - Posição no ranking
 /// - Avatar, nome e localização
 /// - Rating geral com total de reviews
-/// - Badges com scroll horizontal
-/// - Breakdown visual dos critérios
+/// - Badges com scroll horizontal (expansível)
+/// - Breakdown visual dos critérios (expansível)
 /// - Número de comentários
-class PeopleRankingCard extends StatelessWidget {
+class PeopleRankingCard extends StatefulWidget {
   const PeopleRankingCard({
     required this.ranking,
     required this.position,
@@ -35,6 +36,13 @@ class PeopleRankingCard extends StatelessWidget {
   final int totalComments;
 
   @override
+  State<PeopleRankingCard> createState() => _PeopleRankingCardState();
+}
+
+class _PeopleRankingCardState extends State<PeopleRankingCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -46,33 +54,39 @@ class PeopleRankingCard extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: InkWell(
-        onTap: () {
-          context.push('/profile/${ranking.userId}');
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Posição + Avatar + Nome/Localização + Rating
-              _buildHeader(),
-              
-              // Badges (se existirem)
-              if (badgesCount.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _buildBadges(context),
-              ],
-              
-              // Breakdown de critérios (se existirem)
-              if (criteriaRatings.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _buildCriteriaBreakdown(),
-              ],
-            ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildHeader(),
           ),
-        ),
+          
+          // Conteúdo expansível
+          AnimatedExpandable(
+            isExpanded: _isExpanded,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Badges (se existirem)
+                  if (widget.badgesCount.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _buildBadges(context),
+                  ],
+                  
+                  // Breakdown de critérios (se existirem)
+                  if (widget.criteriaRatings.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildCriteriaBreakdown(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -85,11 +99,17 @@ class PeopleRankingCard extends StatelessWidget {
           children: [
             // Avatar
             Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: StableAvatar(
-                userId: ranking.userId,
-                size: 58,
+              padding: const EdgeInsets.only(top: 8),
+              child: InkWell(
+                onTap: () {
+                  context.push('/profile/${widget.ranking.userId}');
+                },
                 borderRadius: BorderRadius.circular(8),
+                child: StableAvatar(
+                  userId: widget.ranking.userId,
+                  size: 58,
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
             
@@ -104,7 +124,7 @@ class PeopleRankingCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 48),
                     child: Text(
-                      ranking.fullName,
+                      widget.ranking.fullName,
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 15,
@@ -130,9 +150,7 @@ class PeopleRankingCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  
-                  const SizedBox(height: 4),
-                  
+                                    
                   // Rating + Reviews + Comentários
                   _buildRatingSummary(),
                 ],
@@ -161,7 +179,7 @@ class PeopleRankingCard extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        position.toString(),
+        widget.position.toString(),
         style: GoogleFonts.getFont(
           FONT_PLUS_JAKARTA_SANS,
           fontSize: 12,
@@ -173,7 +191,7 @@ class PeopleRankingCard extends StatelessWidget {
   }
 
   Color _getPositionBackgroundColor() {
-    switch (position) {
+    switch (widget.position) {
       case 1:
         return const Color(0xFFFFD700).withValues(alpha: 0.15); // Ouro claro
       case 2:
@@ -189,74 +207,110 @@ class PeopleRankingCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Estrela + Rating
-        // Nota + Estrela
-        Text(
-          ranking.overallRating.toStringAsFixed(1),
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: GlimpseColors.textSubTitle,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Icon(
-          Iconsax.star1,
-          size: 18,
-          color: const Color(0xFFFFB800),
-        ),
-        
-        const SizedBox(width: 4),
-        
-        // Separador
-        Container(
-          width: 3,
-          height: 3,
-          decoration: BoxDecoration(
-            color: GlimpseColors.textSubTitle.withValues(alpha: 0.4),
-            shape: BoxShape.circle,
-          ),
-        ),
-        
-        const SizedBox(width: 4),
-        
-        // Total de reviews
-        Flexible(
-          child: Text(
-            '${ranking.totalReviews} avaliação${ranking.totalReviews != 1 ? 'ões' : ''}',
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: GlimpseColors.textSubTitle,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        
-        // Comentários (se houver)
-        if (totalComments > 0) ...[
-          const SizedBox(width: 4),
-          Container(
-            width: 3,
-            height: 3,
-            decoration: BoxDecoration(
-              color: GlimpseColors.textSubTitle.withValues(alpha: 0.4),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              '$totalComments comentário${totalComments != 1 ? 's' : ''}',
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: GlimpseColors.textSubTitle,
+        // Container com os textos (sem chevron)
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Nota + Estrela
+              Text(
+                widget.ranking.overallRating.toStringAsFixed(1),
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: GlimpseColors.textSubTitle,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
+              const SizedBox(width: 4),
+              Icon(
+                Iconsax.star1,
+                size: 18,
+                color: const Color(0xFFFFB800),
+              ),
+              
+              const SizedBox(width: 4),
+              
+              // Separador
+              Container(
+                width: 3,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: GlimpseColors.textSubTitle.withValues(alpha: 0.4),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              
+              const SizedBox(width: 4),
+              
+              // Total de reviews
+              Flexible(
+                child: Text(
+                  '${widget.ranking.totalReviews} avalia${widget.ranking.totalReviews != 1 ? 'ções' : 'ção'}',
+                  style: GoogleFonts.getFont(
+                    FONT_PLUS_JAKARTA_SANS,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: GlimpseColors.textSubTitle,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              
+              // Comentários (se houver)
+              if (widget.totalComments > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  width: 3,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: GlimpseColors.textSubTitle.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    '${widget.totalComments} comentário${widget.totalComments != 1 ? 's' : ''}',
+                    style: GoogleFonts.getFont(
+                      FONT_PLUS_JAKARTA_SANS,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: GlimpseColors.textSubTitle,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        
+        // Chevron expansível (se houver conteúdo expansivel)
+        if (widget.badgesCount.isNotEmpty || widget.criteriaRatings.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: AnimatedRotation(
+                  turns: _isExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    Iconsax.arrow_down_1,
+                    size: 16,
+                    color: GlimpseColors.textSubTitle,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -266,7 +320,7 @@ class PeopleRankingCard extends StatelessWidget {
 
   Widget _buildBadges(BuildContext context) {
     // Ordenar badges por frequência
-    final sortedBadges = badgesCount.entries.toList()
+    final sortedBadges = widget.badgesCount.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     
     if (sortedBadges.isEmpty) return const SizedBox.shrink();
@@ -304,20 +358,20 @@ class PeopleRankingCard extends StatelessWidget {
 
   Widget _buildCriteriaBreakdown() {
     return CriteriaBars(
-      criteriaRatings: criteriaRatings,
+      criteriaRatings: widget.criteriaRatings,
       showDivider: true,
     );
   }
 
   String _getLocationText() {
-    if (ranking.locality.isEmpty && (ranking.state ?? '').isEmpty) {
+    if (widget.ranking.locality.isEmpty && (widget.ranking.state ?? '').isEmpty) {
       return 'Localização não informada';
     }
     
-    if (ranking.state != null && ranking.state!.isNotEmpty) {
-      return '${ranking.locality}, ${ranking.state}';
+    if (widget.ranking.state != null && widget.ranking.state!.isNotEmpty) {
+      return '${widget.ranking.locality}, ${widget.ranking.state}';
     }
     
-    return ranking.locality;
+    return widget.ranking.locality;
   }
 }

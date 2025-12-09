@@ -21,6 +21,10 @@ class ApproveCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = EventApplicationRepository();
 
+    debugPrint('🔍 ApproveCard - userId: ${application.userId}');
+    debugPrint('🔍 ApproveCard - userPhotoUrl: ${application.userPhotoUrl}');
+    debugPrint('🔍 ApproveCard - userName: ${application.userFullName}');
+
     return ActionCard(
       userId: application.userId,
       userPhotoUrl: application.userPhotoUrl,

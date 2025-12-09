@@ -18,38 +18,17 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Nome e foto dinâmicos
-    String displayName;
-    String? displayPhotoUrl;
+    // PRÉ-CARREGAMENTO: Usar getters do controller
+    // Dados já estão em memória via PendingReviewModel enriquecido
+    final displayName = controller.currentRevieweeName;
+    final displayPhotoUrl = controller.currentRevieweePhotoUrl;
 
-    debugPrint('🔍 [RevieweeInfo] build');
+    debugPrint('🔍 [RevieweeInfo] build (PRÉ-CARREGADO)');
     debugPrint('   - isOwnerReview: ${controller.isOwnerReview}');
     debugPrint('   - presenceConfirmed: ${controller.presenceConfirmed}');
     debugPrint('   - currentStep: ${controller.currentStep}');
-
-    if (controller.isOwnerReview && controller.presenceConfirmed) {
-      // Owner avaliando participante atual
-      final participantId = controller.currentParticipantId;
-      debugPrint('   - currentParticipantId: $participantId');
-      debugPrint('   - participantProfiles keys: ${controller.participantProfiles.keys.toList()}');
-      
-      if (participantId != null) {
-        final profile = controller.participantProfiles[participantId];
-        debugPrint('   - profile: ${profile?.name}, ${profile?.photoUrl}');
-        displayName = profile?.name ?? 'Participante';
-        displayPhotoUrl = profile?.photoUrl;
-      } else {
-        displayName = 'Participante';
-        displayPhotoUrl = null;
-      }
-    } else {
-      // Participant avaliando owner
-      debugPrint('   - Using pendingReview data');
-      displayName = pendingReview.revieweeName;
-      displayPhotoUrl = pendingReview.revieweePhotoUrl;
-    }
-
-    debugPrint('   ✅ Final: displayName=$displayName, displayPhotoUrl=$displayPhotoUrl');
+    debugPrint('   ✅ displayName: $displayName');
+    debugPrint('   ✅ displayPhotoUrl: $displayPhotoUrl');
 
     return Column(
       children: [

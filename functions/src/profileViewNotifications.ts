@@ -117,8 +117,11 @@ export const processProfileViewNotifications = functions
       const batch = db.batch();
 
       for (const [userId, data] of Object.entries(aggregated)) {
-        // Mínimo de 1 visualização para notificar
-        if (data.count < 1) continue;
+        // Mínimo de 3 visualizações para notificar (empilhamento)
+        if (data.count < 3) {
+          console.log(`⏭️ Pulando ${userId}: apenas ${data.count} visualizações (mínimo: 3)`);
+          continue;
+        }
 
         // Cria notificação agregada
         const notificationRef = db
@@ -243,7 +246,11 @@ export const processProfileViewNotificationsHttp = functions.https.onRequest(
       const batch = db.batch();
 
       for (const [userId, data] of Object.entries(aggregated)) {
-        if (data.count < 1) continue;
+        // Mínimo de 3 visualizações para notificar (empilhamento)
+        if (data.count < 3) {
+          console.log(`⏭️ Pulando ${userId}: apenas ${data.count} visualizações (mínimo: 3)`);
+          continue;
+        }
 
         const notificationRef = db
           .collection("Notifications")

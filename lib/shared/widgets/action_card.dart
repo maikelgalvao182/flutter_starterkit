@@ -122,12 +122,21 @@ class _ActionCardState extends State<ActionCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
-            StableAvatar(
-              userId: widget.userId,
-              photoUrl: widget.userPhotoUrl,
-              size: 48,
-              borderRadius: BorderRadius.circular(8),
-              enableNavigation: true,
+            Builder(
+              builder: (context) {
+                debugPrint('📸 ActionCard StableAvatar - userId: ${widget.userId}');
+                debugPrint('📸 ActionCard StableAvatar - photoUrl: ${widget.userPhotoUrl}');
+                debugPrint('📸 ActionCard StableAvatar - photoUrl is null? ${widget.userPhotoUrl == null}');
+                debugPrint('📸 ActionCard StableAvatar - photoUrl is empty? ${widget.userPhotoUrl?.isEmpty ?? true}');
+                
+                return StableAvatar(
+                  userId: widget.userId,
+                  photoUrl: widget.userPhotoUrl,
+                  size: 48,
+                  borderRadius: BorderRadius.circular(8),
+                  enableNavigation: true,
+                );
+              },
             ),
 
             const SizedBox(width: 12),

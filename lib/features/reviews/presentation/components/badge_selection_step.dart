@@ -28,7 +28,7 @@ class BadgeSelectionStep extends StatelessWidget {
             crossAxisCount: 3,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            childAspectRatio: 0.95,
+            childAspectRatio: 1,
           ),
           itemCount: availableBadges.length,
           itemBuilder: (context, index) {

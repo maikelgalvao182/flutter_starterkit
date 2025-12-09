@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 /// Modelo de perfil de participante (usado no PendingReview do owner)
 class ParticipantProfile {
@@ -79,6 +80,13 @@ class PendingReviewModel {
   factory PendingReviewModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
+    debugPrint('🏗️ PendingReviewModel.fromFirestore');
+    debugPrint('   doc.id: ${doc.id}');
+    debugPrint('   data keys: ${data.keys.toList()}');
+    debugPrint('   reviewee_id no data? ${data.containsKey('reviewee_id')}');
+    debugPrint('   reviewee_id value: ${data['reviewee_id']}');
+    debugPrint('   reviewer_id value: ${data['reviewer_id']}');
+
     // Parse participant profiles
     Map<String, ParticipantProfile>? profiles;
     if (data['participant_profiles'] != null) {
@@ -91,12 +99,15 @@ class PendingReviewModel {
       );
     }
 
+    final revieweeId = data['reviewee_id'] as String? ?? '';
+    debugPrint('   ⚠️ revieweeId final: "$revieweeId" (isEmpty: ${revieweeId.isEmpty})');
+
     return PendingReviewModel(
       pendingReviewId: doc.id,
       eventId: data['event_id'] as String,
       applicationId: data['application_id'] as String? ?? '',
       reviewerId: data['reviewer_id'] as String,
-      revieweeId: data['reviewee_id'] as String? ?? '',
+      revieweeId: revieweeId,
       reviewerRole: data['reviewer_role'] as String,
       eventTitle: data['event_title'] as String,
       eventEmoji: data['event_emoji'] as String? ?? '🎉',

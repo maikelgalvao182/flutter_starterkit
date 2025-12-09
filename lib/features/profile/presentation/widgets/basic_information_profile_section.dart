@@ -63,6 +63,14 @@ class BasicInformationProfileSection extends StatelessWidget {
       ));
     }
 
+    // País de origem (from)
+    if (user.from != null && user.from!.trim().isNotEmpty) {
+      entries.add(BasicInfoEntry(
+        label: i18n.translate('from_label'),
+        value: user.from!,
+      ));
+    }
+
     return entries;
   }
 }

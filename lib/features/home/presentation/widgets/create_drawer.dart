@@ -67,15 +67,23 @@ class _CreateDrawerState extends State<CreateDrawer> {
   }
 
   void _onControllerChanged() {
-    if (!_controller.isUpdatingFromSuggestion) {
-      final text = _controller.textController.text;
-      final emoji = EmojiHelper.getEmojiForText(text);
+    // Ignorar se estiver atualizando de sugestão
+    if (_controller.isUpdatingFromSuggestion) {
+      return;
+    }
+    
+    // Se o emoji está bloqueado para o texto atual, não alterar
+    if (_controller.isEmojiLockedForCurrentText()) {
+      return;
+    }
+    
+    final text = _controller.textController.text;
+    final emoji = EmojiHelper.getEmojiForText(text);
 
-      if (emoji != null) {
-        _controller.setEmoji(emoji);
-      } else if (text.isEmpty && _controller.currentEmoji != '🎉') {
-        _controller.setEmoji('🎉');
-      }
+    if (emoji != null) {
+      _controller.setEmoji(emoji);
+    } else if (text.isEmpty && _controller.currentEmoji != '🎉') {
+      _controller.setEmoji('🎉');
     }
   }
 
@@ -259,6 +267,13 @@ class _CreateDrawerState extends State<CreateDrawer> {
                     autofocus: !_controller.isSuggestionMode,
                     maxLines: 1,
                     textCapitalization: TextCapitalization.sentences,
+                    onChanged: (text) {
+                      // Desbloquear emoji quando usuário editar manualmente
+                      // (só desbloqueia se o texto mudou em relação à sugestão)
+                      if (!_controller.isUpdatingFromSuggestion) {
+                        _controller.unlockEmoji();
+                      }
+                    },
                     onTap: () {
                       if (_controller.isSuggestionMode) {
                         _controller.toggleSuggestionMode();

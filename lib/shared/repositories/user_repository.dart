@@ -51,6 +51,7 @@ class UserRepository {
   /// 
   /// Retorna Map<userId, userData> para acesso rápido
   /// Firestore whereIn aceita até 10 IDs por query
+  /// Normaliza campos para nomes padronizados (photoUrl, fullName)
   Future<Map<String, Map<String, dynamic>>> getUsersByIds(List<String> userIds) async {
     if (userIds.isEmpty) return {};
 
@@ -66,9 +67,23 @@ class UserRepository {
             .get();
 
         for (final doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          
+          // Normalizar campos para padrão consistente
+          final photoUrl = data['user_photo_link'] as String? ?? 
+                           data['photoUrl'] as String? ??
+                           data['user_profile_photo'] as String?;
+          
+          final fullName = data['fullname'] as String? ?? 
+                           data['fullName'] as String? ??
+                           'Usuário';
+          
           results[doc.id] = {
             'id': doc.id,
-            ...doc.data() as Map<String, dynamic>,
+            'userId': doc.id,
+            'photoUrl': photoUrl,
+            'fullName': fullName,
+            ...data, // Manter dados originais também
           };
         }
       }
@@ -92,10 +107,26 @@ class UserRepository {
       }
 
       final data = doc.data() as Map<String, dynamic>;
+      
+      // Busca campos com nomes corretos do Firestore
+      // Os campos no Firestore são: 'user_photo_link' e 'fullname'
+      final photoUrl = data['user_photo_link'] as String? ?? 
+                       data['photoUrl'] as String? ??
+                       data['user_profile_photo'] as String?;
+      
+      final fullName = data['fullname'] as String? ?? 
+                       data['fullName'] as String? ??
+                       'Usuário';
+      
+      debugPrint('🔍 UserRepository.getUserBasicInfo($userId):');
+      debugPrint('   - fullname: ${data['fullname']}');
+      debugPrint('   - user_photo_link: ${data['user_photo_link']}');
+      debugPrint('   - Resultado: fullName=$fullName, photoUrl=$photoUrl');
+      
       return {
         'userId': userId,
-        'photoUrl': data['photoUrl'] as String?,
-        'fullName': data['fullName'] as String?,
+        'photoUrl': photoUrl,
+        'fullName': fullName,
       };
     } catch (e) {
       debugPrint('❌ Erro ao buscar info básica do usuário $userId: $e');

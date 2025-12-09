@@ -241,8 +241,8 @@ class _UserCardState extends State<UserCard> {
                     ],
                   ),
 
-                  // Interesses em comum + Distância (mesma linha)
-                  if (commonInterestsText.isNotEmpty || distanceText != null) ...[
+                  // Interesses em comum + Distância + Trailing na mesma linha
+                  if (commonInterestsText.isNotEmpty || distanceText != null || widget.trailingWidget != null) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -273,18 +273,18 @@ class _UserCardState extends State<UserCard> {
                               color: GlimpseColors.textSubTitle,
                             ),
                           ),
+                        
+                        // Trailing widget na mesma linha (direita)
+                        if (widget.trailingWidget != null) ...[
+                          const SizedBox(width: 8),
+                          widget.trailingWidget!,
+                        ],
                       ],
                     ),
                   ],
                 ],
               ),
             ),
-            
-            // Trailing widget customizado (se fornecido)
-            if (widget.trailingWidget != null) ...[
-              const SizedBox(width: 8),
-              widget.trailingWidget!,
-            ],
           ],
         ),
       ),

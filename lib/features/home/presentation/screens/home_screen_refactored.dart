@@ -8,6 +8,7 @@ import 'package:partiu/features/home/presentation/widgets/home_app_bar.dart';
 import 'package:partiu/features/home/presentation/widgets/home_bottom_navigation_bar.dart';
 import 'package:partiu/shared/widgets/auth_protected_wrapper.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 
 
 /// Tela principal do app com navegação por tabs
@@ -16,10 +17,12 @@ class HomeScreenRefactored extends StatefulWidget {
     super.key, 
     this.initialIndex = 0,
     required this.mapViewModel,
+    required this.peopleRankingViewModel,
   });
 
   final int initialIndex;
   final MapViewModel mapViewModel;
+  final PeopleRankingViewModel peopleRankingViewModel;
 
   @override
   State<HomeScreenRefactored> createState() => _HomeScreenRefactoredState();
@@ -61,7 +64,7 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
       case 1:
         return const ActionsTab();
       case 2:
-        return const RankingTab();
+        return RankingTab(peopleRankingViewModel: widget.peopleRankingViewModel);
       case 3:
         return const ConversationsTab();
       case 4:

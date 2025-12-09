@@ -18,10 +18,25 @@ class AnimatedExpandable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSize(
-      duration: duration,
-      curve: curve,
-      child: isExpanded ? child : const SizedBox.shrink(),
+    return ClipRect(
+      child: AnimatedSize(
+        duration: duration,
+        curve: curve,
+        alignment: Alignment.topCenter,
+        child: isExpanded
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: constraints.maxWidth,
+                      maxWidth: constraints.maxWidth,
+                    ),
+                    child: child,
+                  );
+                },
+              )
+            : const SizedBox.shrink(),
+      ),
     );
   }
 }

@@ -56,27 +56,27 @@ class _ActionsTabState extends State<ActionsTab> {
                       debugPrint('   - Applications: ${applicationsSnapshot.hasData ? applicationsSnapshot.data!.length : 0}');
                       debugPrint('   - Reviews: ${reviewsSnapshot.hasData ? reviewsSnapshot.data!.length : 0}');
                       
-                      // Loading inicial
-                      final isLoading = 
-                          (applicationsSnapshot.connectionState == ConnectionState.waiting && !applicationsSnapshot.hasData) ||
-                          (reviewsSnapshot.connectionState == ConnectionState.waiting && !reviewsSnapshot.hasData);
-                      
-                      if (isLoading) {
-                        debugPrint('   ⏳ Aguardando dados iniciais...');
-                        return ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: 3,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (_, __) => const ActionCardShimmer(),
-                        );
-                      }
-
                       // Error
                       if (applicationsSnapshot.hasError || reviewsSnapshot.hasError) {
                         return Center(
                           child: GlimpseEmptyState.standard(
                             text: 'Erro ao carregar ações',
                           ),
+                        );
+                      }
+
+                      // Loading REAL: só mostra skeleton se NUNCA recebeu dados
+                      final isReallyLoading = 
+                          (applicationsSnapshot.connectionState == ConnectionState.waiting && applicationsSnapshot.data == null) ||
+                          (reviewsSnapshot.connectionState == ConnectionState.waiting && reviewsSnapshot.data == null);
+                      
+                      if (isReallyLoading) {
+                        debugPrint('   ⏳ Aguardando primeira emissão dos streams...');
+                        return ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: 3,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (_, __) => const ActionCardShimmer(),
                         );
                       }
 

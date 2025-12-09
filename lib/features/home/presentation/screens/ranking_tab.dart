@@ -11,6 +11,7 @@ import 'package:partiu/features/home/presentation/widgets/people_ranking_card_sh
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card.dart';
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card_controller.dart';
 import 'package:partiu/features/notifications/widgets/notification_horizontal_filters.dart';
+import 'package:partiu/features/notifications/widgets/notification_filter_shimmer.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
@@ -19,7 +20,12 @@ import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
 /// 
 /// Exibe ranking de locais por eventos hospedados
 class RankingTab extends StatefulWidget {
-  const RankingTab({super.key});
+  const RankingTab({
+    super.key,
+    required this.peopleRankingViewModel,
+  });
+  
+  final PeopleRankingViewModel peopleRankingViewModel;
 
   @override
   State<RankingTab> createState() => _RankingTabState();
@@ -36,16 +42,16 @@ class _RankingTabState extends State<RankingTab> {
     debugPrint('🎴 [RankingTab] initState');
     
     _locationsViewModel = RankingViewModel();
-    _peopleViewModel = PeopleRankingViewModel();
+    // Usar o ViewModel pré-carregado do AppInitializer
+    _peopleViewModel = widget.peopleRankingViewModel;
     
     _locationsViewModel.addListener(_onViewModelChanged);
     _peopleViewModel.addListener(_onViewModelChanged);
     
-    // Inicializar rankings
+    // Inicializar apenas locations (people já foi inicializado no splash)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('🎴 [RankingTab] Inicializando ViewModels...');
+      debugPrint('🎴 [RankingTab] Inicializando LocationsViewModel...');
       _locationsViewModel.initialize();
-      _peopleViewModel.initialize();
     });
   }
 
@@ -54,7 +60,7 @@ class _RankingTabState extends State<RankingTab> {
     _locationsViewModel.removeListener(_onViewModelChanged);
     _peopleViewModel.removeListener(_onViewModelChanged);
     _locationsViewModel.dispose();
-    _peopleViewModel.dispose();
+    // Não fazer dispose do peopleViewModel pois ele é compartilhado
     super.dispose();
   }
 
@@ -115,8 +121,13 @@ class _RankingTabState extends State<RankingTab> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Espaço para o filtro (vazio durante loading)
-          const SizedBox(height: 64),
+          // Container fixo para o shimmer do filtro
+          const SizedBox(
+            height: 56, // Altura fixa para manter espaço consistente
+            child: NotificationFilterShimmer(),
+          ),
+          
+          const SizedBox(height: 12),
           
           // Lista de shimmer cards
           Expanded(
@@ -178,12 +189,15 @@ class _RankingTabState extends State<RankingTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Filtro de cidade
-        if (cities.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          _buildCityFilter(cities),
-          const SizedBox(height: 12),
-        ],
+        // Container fixo para filtro de cidade (altura consistente)
+        SizedBox(
+          height: 56,
+          child: cities.isNotEmpty 
+              ? _buildCityFilter(cities)
+              : const SizedBox.shrink(),
+        ),
+        
+        const SizedBox(height: 12),
         
         // Lista de pessoas
         Expanded(
@@ -240,70 +254,93 @@ class _RankingTabState extends State<RankingTab> {
     final rankings = _locationsViewModel.locationRankings;
     
     if (rankings.isEmpty) {
-      return Center(
-        child: GlimpseEmptyState.standard(
-          text: 'Nenhum local no ranking ainda',
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Container fixo para manter layout consistente (sem filtro para lugares)
+          const SizedBox(height: 56),
+          const SizedBox(height: 12),
+          
+          Expanded(
+            child: Center(
+              child: GlimpseEmptyState.standard(
+                text: 'Nenhum local no ranking ainda',
+              ),
+            ),
+          ),
+        ],
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _locationsViewModel.refresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: rankings.length,
-        itemBuilder: (context, index) {
-          final ranking = rankings[index];
-          final position = index + 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Container fixo vazio para alinhamento com tab de pessoas
+        const SizedBox(height: 56),
+        const SizedBox(height: 12),
+        
+        // Lista de locais
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _locationsViewModel.refresh,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: rankings.length,
+              itemBuilder: (context, index) {
+                final ranking = rankings[index];
+                final position = index + 1;
 
-          // Criar controller com dados do ranking
-          final controller = PlaceCardController(
-            eventId: 'ranking_${ranking.placeId}',
-            preloadedData: {
-              'locationName': ranking.locationName,
-              'formattedAddress': ranking.formattedAddress,
-              'placeId': ranking.placeId,
-              'photoReferences': ranking.photoReferences,
-              'visitors': ranking.visitors,
-              'totalVisitorsCount': ranking.totalVisitors,
-            },
-          );
+                // Criar controller com dados do ranking
+                final controller = PlaceCardController(
+                  eventId: 'ranking_${ranking.placeId}',
+                  preloadedData: {
+                    'locationName': ranking.locationName,
+                    'formattedAddress': ranking.formattedAddress,
+                    'placeId': ranking.placeId,
+                    'photoReferences': ranking.photoReferences,
+                    'visitors': ranking.visitors,
+                    'totalVisitorsCount': ranking.totalVisitors,
+                  },
+                );
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: GlimpseColors.borderColorLight,
-                width: 1,
-              ),
-            ),
-            child: PlaceCard(
-              controller: controller,
-              customTagWidget: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: GlimpseColors.primaryLight,
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: Text(
-                  '${ranking.totalEventsHosted} eventos',
-                  style: GoogleFonts.getFont(
-                    FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: GlimpseColors.primaryDarker,
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: GlimpseColors.borderColorLight,
+                      width: 1,
+                    ),
                   ),
-                ),
-              ),
-              onTap: () {
-                debugPrint('🏆 Local clicado: ${ranking.placeId}');
+                  child: PlaceCard(
+                    controller: controller,
+                    customTagWidget: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: GlimpseColors.primaryLight,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        '${ranking.totalEventsHosted} eventos',
+                        style: GoogleFonts.getFont(
+                          FONT_PLUS_JAKARTA_SANS,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: GlimpseColors.primaryDarker,
+                        ),
+                      ),
+                    ),
+                    onTap: () {
+                      debugPrint('🏆 Local clicado: ${ranking.placeId}');
+                    },
+                  ),
+                );
               },
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }

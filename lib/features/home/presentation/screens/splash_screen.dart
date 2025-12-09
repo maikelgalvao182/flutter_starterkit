@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:partiu/core/services/app_initializer_service.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
 import 'package:provider/provider.dart';
 
@@ -15,8 +16,9 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  // ViewModel instanciado aqui e passado para frente
+  // ViewModels instanciados aqui e passados para frente
   final MapViewModel mapViewModel = MapViewModel();
+  final PeopleRankingViewModel peopleRankingViewModel = PeopleRankingViewModel();
   bool _isReady = false;
 
   @override
@@ -27,9 +29,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _bootstrap() async {
     // Serviço de inicialização
-    final initializer = AppInitializerService(mapViewModel);
+    final initializer = AppInitializerService(
+      mapViewModel,
+      peopleRankingViewModel,
+    );
+    
+    // Definir instância global para acesso compartilhado
+    PeopleRankingViewModel.instance = peopleRankingViewModel;
 
-    // Aguarda tudo ficar pronto (localização, eventos, markers)
+    // Aguarda tudo ficar pronto (localização, eventos, markers, rankings)
     await initializer.initialize();
 
     if (!mounted) return;
@@ -46,6 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (_isReady) {
       return HomeScreenRefactored(
         mapViewModel: mapViewModel,
+        peopleRankingViewModel: peopleRankingViewModel,
       );
     }
 

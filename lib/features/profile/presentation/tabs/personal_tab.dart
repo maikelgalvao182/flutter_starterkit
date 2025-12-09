@@ -117,7 +117,7 @@ class PersonalTab extends StatelessWidget {
           onTap: () => _openFieldEditor(context, PersonalFieldType.gender),
         ),
 
-        // Birth Date
+        // Birth Date (Read-only - não pode ser alterado)
         ValueListenableBuilder(
           valueListenable: birthDayController,
           builder: (context, dayValue, _) {
@@ -130,7 +130,8 @@ class PersonalTab extends StatelessWidget {
                     return FieldPreviewCard(
                       fieldType: PersonalFieldType.birthDate,
                       preview: _formatBirthDatePreview(context),
-                      onTap: () => _openFieldEditor(context, PersonalFieldType.birthDate),
+                      onTap: () {}, // Bloqueado - sem ação
+                      isDisabled: true, // Campo desabilitado
                     );
                   },
                 );

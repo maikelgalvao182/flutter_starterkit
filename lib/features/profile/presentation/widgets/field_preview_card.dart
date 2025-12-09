@@ -18,12 +18,14 @@ class FieldPreviewCard extends StatelessWidget {
     required this.onTap,
     super.key,
     this.isComplete = false,
+    this.isDisabled = false,
   });
 
   final dynamic fieldType; // PersonalFieldType, SocialFieldType ou MidiaFieldType
   final String preview;
   final VoidCallback onTap;
   final bool isComplete;
+  final bool isDisabled;
 
   /// Helper para obter title de forma polimórfica
   String _getTitle(BuildContext context) {
@@ -67,7 +69,7 @@ class FieldPreviewCard extends StatelessWidget {
     final label = _getTitle(context);
 
     return InkWell(
-      onTap: () {
+      onTap: isDisabled ? null : () {
         HapticFeedback.lightImpact();
         onTap();
       },
@@ -129,9 +131,11 @@ class FieldPreviewCard extends StatelessWidget {
                       preview.isEmpty ? i18n.translate('add') : preview,
                       style: TextStyle(
                         fontSize: 14,
-                        color: preview.isEmpty 
+                        color: isDisabled
                           ? const Color(0xFF999999)
-                          : const Color(0xFF333333),
+                          : (preview.isEmpty 
+                            ? const Color(0xFF999999)
+                            : const Color(0xFF333333)),
                         fontWeight: FontWeight.w400,
                       ),
                       maxLines: 2,
@@ -139,14 +143,15 @@ class FieldPreviewCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Icon(
-                      Iconsax.arrow_right_3,
-                      color: const Color(0xFFCCCCCC),
-                      size: 18,
+                  if (!isDisabled)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(
+                        Iconsax.arrow_right_3,
+                        color: const Color(0xFFCCCCCC),
+                        size: 18,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

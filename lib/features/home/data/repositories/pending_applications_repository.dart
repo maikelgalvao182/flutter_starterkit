@@ -99,11 +99,21 @@ class PendingApplicationsRepository {
 
           for (final doc in appsSnapshot.docs) {
             final data = doc.data();
+            debugPrint('🔍 Application doc.id: ${doc.id}');
+            debugPrint('🔍 Application data: $data');
+            
             final eventId = data['eventId'] as String;
             final applicantId = data['userId'] as String;
+            
+            debugPrint('🔍 eventId: $eventId');
+            debugPrint('🔍 applicantId (userId): $applicantId');
 
             final eventData = eventsMap[eventId];
             final userData = usersMap[applicantId];
+            
+            debugPrint('🔍 eventData found: ${eventData != null}');
+            debugPrint('🔍 userData found: ${userData != null}');
+            debugPrint('🔍 userData: $userData');
 
             if (eventData != null && userData != null) {
               try {
@@ -113,10 +123,13 @@ class PendingApplicationsRepository {
                   userData: userData,
                   eventData: eventData,
                 );
+                debugPrint('✅ Model criado - userId: ${model.userId}, userName: ${model.userFullName}, photoUrl: ${model.userPhotoUrl}');
                 applications.add(model);
               } catch (e) {
                 debugPrint('❌ Erro ao converter aplicação ${doc.id}: $e');
               }
+            } else {
+              debugPrint('⚠️ Dados faltando para doc ${doc.id} - eventData: ${eventData != null}, userData: ${userData != null}');
             }
           }
 

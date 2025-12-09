@@ -75,6 +75,8 @@ class AvatarStore {
             // Tentar ambos os campos para compatibilidade
             final photoUrl = data['profilePhotoUrl'] as String? ?? 
                            data['photoUrl'] as String? ?? 
+                           data['photoURL'] as String? ??
+                           data['image'] as String? ??
                            '';
             
             if (photoUrl.isEmpty) {

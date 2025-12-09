@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/widgets/list_drawer/list_drawer_controller.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/common/state/app_state.dart';
@@ -7,19 +8,24 @@ import 'package:partiu/common/state/app_state.dart';
 /// Serviço responsável por inicializar dados globais antes do app abrir
 class AppInitializerService {
   final MapViewModel mapViewModel;
+  final PeopleRankingViewModel peopleRankingViewModel;
 
-  AppInitializerService(this.mapViewModel);
+  AppInitializerService(
+    this.mapViewModel,
+    this.peopleRankingViewModel,
+  );
 
   /// Executa toda a inicialização necessária
   /// 
   /// Fluxo de inicialização:
   /// 1. Inicializa cache de bloqueios (BlockService)
   /// 2. Inicializa ListDrawerController (eventos do usuário)
-  /// 3. Pré-carrega pins (imagens dos markers)
-  /// 4. Obtém localização do usuário
-  /// 5. Carrega eventos próximos
-  /// 6. Enriquece eventos com distância/disponibilidade/restrições de idade
-  /// 7. PRÉ-CARREGA imagens dos markers (cache)
+  /// 3. Pré-carrega PeopleRankingViewModel (ranking e cidades)
+  /// 4. Pré-carrega pins (imagens dos markers)
+  /// 5. Obtém localização do usuário
+  /// 6. Carrega eventos próximos
+  /// 7. Enriquece eventos com distância/disponibilidade/restrições de idade
+  /// 8. PRÉ-CARREGA imagens dos markers (cache)
   /// 
   /// NOTA: Os markers pré-carregados servem apenas para popular o cache de imagens.
   /// O GoogleMapView regenerará os markers com os callbacks corretos.
@@ -47,7 +53,14 @@ class AppInitializerService {
       final drawerController = ListDrawerController();
       debugPrint('✅ [AppInitializer] ListDrawerController inicializado (stream ativo)');
       
-      // 3. Inicializa o ViewModel (preload de pins + carrega eventos)
+      // 3. Pré-carrega PeopleRankingViewModel (ranking e cidades para filtro)
+      debugPrint('👥 [AppInitializer] Pré-carregando PeopleRankingViewModel...');
+      await peopleRankingViewModel.initialize();
+      debugPrint('✅ [AppInitializer] PeopleRankingViewModel inicializado');
+      debugPrint('   - Rankings: ${peopleRankingViewModel.peopleRankings.length}');
+      debugPrint('   - Cidades: ${peopleRankingViewModel.availableCities.length}');
+      
+      // 4. Inicializa o ViewModel (preload de pins + carrega eventos)
       // O initialize() do ViewModel já chama loadNearbyEvents() internamente
       // que também gera os markers (populando o cache de imagens)
       await mapViewModel.initialize();

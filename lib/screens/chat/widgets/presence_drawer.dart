@@ -322,7 +322,7 @@ class _PresenceBadge extends StatelessWidget {
         '${_getEmoji()} $presence',
         style: GoogleFonts.getFont(
           FONT_PLUS_JAKARTA_SANS,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           color: _getTextColor(),
         ),

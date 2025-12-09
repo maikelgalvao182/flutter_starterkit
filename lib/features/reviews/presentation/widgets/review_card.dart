@@ -20,6 +20,54 @@ class ReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = ReviewRepository();
 
+    debugPrint('🎴 ReviewCard build');
+    debugPrint('   pendingReviewId: ${pendingReview.pendingReviewId}');
+    debugPrint('   reviewerId: "${pendingReview.reviewerId}"');
+    debugPrint('   revieweeId: "${pendingReview.revieweeId}"');
+    debugPrint('   revieweeName: ${pendingReview.revieweeName}');
+    debugPrint('   revieweePhotoUrl: ${pendingReview.revieweePhotoUrl}');
+    
+    // VALIDAÇÃO CRÍTICA: Detectar autoavaliação
+    if (pendingReview.reviewerId == pendingReview.revieweeId) {
+      debugPrint('❌ [ReviewCard] ERRO: Autoavaliação detectada!');
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: GlimpseColors.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: GlimpseColors.error,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: GlimpseColors.error,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Erro: Review inválido detectado (autoavaliação). Entre em contato com o suporte.',
+                style: TextStyle(
+                  color: GlimpseColors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.close, color: GlimpseColors.error),
+              onPressed: () async {
+                await repo.dismissPendingReview(pendingReview.pendingReviewId);
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
     return ActionCard(
       userId: pendingReview.revieweeId,
       userPhotoUrl: pendingReview.revieweePhotoUrl,

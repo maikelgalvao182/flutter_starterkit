@@ -10,7 +10,7 @@ import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 class ParticipantConfirmationStep extends StatelessWidget {
   final List<String> participantIds;
   final Map<String, ParticipantProfile> participantProfiles;
-  final Set<String> selectedParticipants;
+  final List<String> selectedParticipants; // CRÍTICO: List para ordem estável
   final Function(String) onToggleParticipant;
   final String eventTitle;
   final String eventEmoji;
@@ -135,15 +135,24 @@ class ParticipantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🎴 ParticipantCard: $name');
+    debugPrint('   - participantId: $participantId');
+    debugPrint('   - isSelected: $isSelected');
+    debugPrint('   - border color: ${isSelected ? "primary" : "borderColorLight"}');
+    debugPrint('   - bg color: ${isSelected ? "primaryLight" : "white"}');
+    
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        debugPrint('👆 Card tapped: $name ($participantId)');
+        onTap();
+      },
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(
             color: isSelected
                 ? GlimpseColors.primary
                 : GlimpseColors.borderColorLight,
-            width: isSelected ? 2 : 1,
+            width: 1,
           ),
           borderRadius: BorderRadius.circular(12),
           color: isSelected
@@ -156,7 +165,7 @@ class ParticipantCard extends StatelessWidget {
             // Avatar
             CircleAvatar(
               radius: 32,
-              backgroundColor: GlimpseColors.primary.withOpacity(0.2),
+              backgroundColor: GlimpseColors.lightTextField,
               backgroundImage:
                   photoUrl != null ? CachedNetworkImageProvider(photoUrl!) : null,
               child: photoUrl == null
@@ -186,7 +195,7 @@ class ParticipantCard extends StatelessWidget {
                   color: GlimpseColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

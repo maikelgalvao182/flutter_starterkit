@@ -3,13 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/shared/widgets/glimpse_text_field.dart';
+import 'package:partiu/shared/widgets/pending_participants_stack.dart';
 
 /// Step de comentário opcional (Step 2)
 class CommentStep extends StatelessWidget {
   final TextEditingController controller;
+  final List<Map<String, String>> remainingParticipants;
 
   const CommentStep({
     required this.controller,
+    this.remainingParticipants = const [],
     super.key,
   });
 
@@ -27,37 +30,12 @@ class CommentStep extends StatelessWidget {
           textCapitalization: TextCapitalization.sentences,
         ),
         
-        const SizedBox(height: 16),
-        
-        // Dica
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: GlimpseColors.info.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+        if (remainingParticipants.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          PendingParticipantsStack(
+            participants: remainingParticipants,
           ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                color: GlimpseColors.info,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Seu comentário será público e ajudará outros usuários',
-                  style: GoogleFonts.getFont(
-                    FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: GlimpseColors.info,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ],
     );
   }

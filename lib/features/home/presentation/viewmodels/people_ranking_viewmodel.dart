@@ -13,6 +13,11 @@ import 'package:partiu/common/state/app_state.dart';
 /// - Fornecer dados limpos para a UI
 class PeopleRankingViewModel extends ChangeNotifier {
   final PeopleRankingService _peopleRankingService;
+  
+  // Instância compartilhada (opcional - para acesso global)
+  static PeopleRankingViewModel? _instance;
+  static PeopleRankingViewModel? get instance => _instance;
+  static set instance(PeopleRankingViewModel? value) => _instance = value;
 
   // Estado
   bool _isLoading = true; // Começa como true para mostrar shimmer imediatamente

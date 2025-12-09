@@ -37,8 +37,13 @@ class StableAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🎯 StableAvatar build - userId: $userId');
+    debugPrint('🎯 StableAvatar build - photoUrl: $photoUrl');
+    debugPrint('🎯 StableAvatar build - size: $size');
+    
     // UserID vazio → avatar padrão
     if (userId.trim().isEmpty) {
+      debugPrint('⚠️ StableAvatar - userId vazio, mostrando avatar padrão');
       return _AvatarShell(
         size: size,
         borderRadius: borderRadius,
@@ -49,16 +54,20 @@ class StableAvatar extends StatelessWidget {
 
     // Verificar cache primeiro para otimização
     final cachedUrl = photoUrl ?? AvatarCacheService.instance.getAvatarUrl(userId);
+    debugPrint('💾 StableAvatar - cachedUrl: $cachedUrl');
     
     final store = AvatarStore.instance;
     final notifier = store.getAvatarEntryNotifier(userId);
     
     // Se já temos URL no cache, fornecer ao store após o build
     if (cachedUrl != null && cachedUrl.isNotEmpty) {
+      debugPrint('✅ StableAvatar - preloadAvatar com cachedUrl: $cachedUrl');
       // Usar addPostFrameCallback para evitar setState durante build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         store.preloadAvatar(userId, cachedUrl);
       });
+    } else {
+      debugPrint('⚠️ StableAvatar - Nenhuma URL em cache para userId: $userId');
     }
 
     return _AvatarShell(
@@ -73,6 +82,9 @@ class StableAvatar extends StatelessWidget {
           builder: (context, entry, _) {
             final AvatarState state = entry.state;
             final ImageProvider provider = entry.provider;
+
+            debugPrint('🔄 StableAvatar ValueListenableBuilder - userId: $userId, state: $state');
+            debugPrint('🔄 StableAvatar ValueListenableBuilder - provider: $provider');
 
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),

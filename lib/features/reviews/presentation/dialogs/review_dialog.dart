@@ -9,7 +9,7 @@ import 'package:partiu/features/reviews/presentation/components/review_dialog_pr
 import 'package:partiu/features/reviews/presentation/components/review_dialog_reviewee_info.dart';
 import 'package:partiu/features/reviews/presentation/components/review_dialog_error_message.dart';
 import 'package:partiu/features/reviews/presentation/components/review_dialog_step_content.dart';
-import 'package:partiu/shared/widgets/glimpse_back_button.dart';
+import 'package:partiu/features/reviews/presentation/components/review_dialog_header.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 
@@ -41,7 +41,7 @@ class ReviewDialog extends StatelessWidget {
   }
 }
 
-class _ReviewDialogContent extends StatelessWidget {
+class _ReviewDialogContent extends StatefulWidget {
   final PendingReviewModel pendingReview;
 
   const _ReviewDialogContent({
@@ -49,10 +49,26 @@ class _ReviewDialogContent extends StatelessWidget {
   });
 
   @override
+  State<_ReviewDialogContent> createState() => _ReviewDialogContentState();
+}
+
+class _ReviewDialogContentState extends State<_ReviewDialogContent> {
+  final ScrollController _scrollController = ScrollController();
+  
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = context.watch<ReviewDialogController>();
+    // Usar read() aqui para evitar rebuilds desnecessários do container principal
+    // Os widgets filhos usarão Selector ou Consumer conforme necessário
+    final controller = context.read<ReviewDialogController>();
     final screenHeight = MediaQuery.of(context).size.height;
     final maxHeight = screenHeight * 0.85; // 85% da altura da tela
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Container(
       constraints: BoxConstraints(
@@ -75,99 +91,149 @@ class _ReviewDialogContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle e header
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: 12,
-                  left: 20,
-                  right: 20,
-                ),
-                child: Column(
-                  children: [
-                    // Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: GlimpseColors.borderColorLight,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Header: Back + Título + Close
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Botão voltar
-                        if (controller.canGoBack)
-                          GlimpseBackButton(
-                            onTap: controller.previousStep,
-                          )
-                        else
-                          const SizedBox(width: 32),
-
-                        // Título centralizado
-                        Expanded(
-                          child: Text(
-                            controller.currentStepLabel,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.getFont(
-                              FONT_PLUS_JAKARTA_SANS,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: GlimpseColors.primaryColorLight,
-                            ),
-                          ),
-                        ),
-
-                        // Botão fechar
-                        GlimpseCloseButton(
-                          size: 32,
-                          onPressed: () => _handleDismiss(context, controller),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              // Header componente reutilizável
+              ReviewDialogHeader(
+                onClose: () => _handleDismiss(context, controller),
               ),
 
-              const SizedBox(height: 16),
+              if (!isKeyboardOpen) ...[
+                const SizedBox(height: 16),
 
-              // Progress bar
-              ReviewDialogProgressBar(controller: controller),
+                // Progress bar
+                ReviewDialogProgressBar(controller: controller),
+              ],
 
               const SizedBox(height: 24),
 
               // Content (steps)
               Flexible(
                 child: SingleChildScrollView(
+                  controller: _scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     children: [
-                      // Avatar e info do reviewee (apenas se não for STEP 0)
-                      if (!controller.needsPresenceConfirmation ||
-                          controller.currentStep > 0) ...[
-                        ReviewDialogRevieweeInfo(
-                          controller: controller,
-                          pendingReview: pendingReview,
+                      // Aviso de permissão negada (apenas para participant)
+                      Selector<ReviewDialogController, (bool, bool)>(
+                        selector: (_, c) => (c.isParticipantReview, c.allowedToReviewOwner),
+                        builder: (_, data, __) {
+                          final isParticipant = data.$1;
+                          final allowed = data.$2;
+                          
+                          if (isParticipant && !allowed) {
+                            return Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: GlimpseColors.error.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: GlimpseColors.error.withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: GlimpseColors.error,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Você não tem permissão para avaliar este evento. Sua presença pode não ter sido confirmada pelo organizador.',
+                                          style: GoogleFonts.getFont(
+                                            FONT_PLUS_JAKARTA_SANS,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: GlimpseColors.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                              ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                      
+                      if (!isKeyboardOpen)
+                        // Avatar e info do reviewee (apenas se não for STEP 0)
+                        Selector<ReviewDialogController, bool>(
+                          selector: (_, c) => !c.needsPresenceConfirmation || c.currentStep > 0,
+                          builder: (_, showInfo, __) {
+                            if (showInfo) {
+                              return Column(
+                                children: [
+                                  ReviewDialogRevieweeInfo(
+                                    controller: controller,
+                                    pendingReview: widget.pendingReview,
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
-                        const SizedBox(height: 24),
-                      ],
 
-                      // Step content
-                      ReviewDialogStepContent(controller: controller),
+                      // Step content com transição animada
+                      Selector<ReviewDialogController, ReviewStep>(
+                        selector: (_, c) => c.currentReviewStep,
+                        builder: (_, currentStep, __) {
+                          // Resetar scroll para o topo quando mudar de step
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (_scrollController.hasClients) {
+                              _scrollController.jumpTo(0);
+                            }
+                          });
+                          
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            switchInCurve: Curves.easeInOut,
+                            switchOutCurve: Curves.easeInOut,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.1, 0),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: ReviewDialogStepContent(
+                              key: ValueKey<ReviewStep>(currentStep),
+                              controller: controller,
+                            ),
+                          );
+                        },
+                      ),
 
                       // Error message
-                      if (controller.errorMessage != null) ...[
-                        const SizedBox(height: 16),
-                        ReviewDialogErrorMessage(
-                          errorMessage: controller.errorMessage!,
-                        ),
-                      ],
+                      Selector<ReviewDialogController, String?>(
+                        selector: (_, c) => c.errorMessage,
+                        builder: (_, errorMessage, __) {
+                          if (errorMessage != null) {
+                            return Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                ReviewDialogErrorMessage(
+                                  errorMessage: errorMessage,
+                                ),
+                              ],
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -178,12 +244,30 @@ class _ReviewDialogContent extends StatelessWidget {
               // Botão principal
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: GlimpseButton(
-                  text: _getButtonText(controller),
-                  isProcessing: controller.isSubmitting || controller.isTransitioning,
-                  onPressed: _canProceed(controller)
-                      ? () => _handleButtonPress(context, controller)
-                      : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Selector<ReviewDialogController, (String, bool, bool)>(
+                      selector: (_, c) => (
+                        c.buttonText,  // Usando getter centralizado
+                        c.isSubmitting || c.isTransitioning,
+                        c.canProceed   // Usando getter centralizado
+                      ),
+                      builder: (_, data, __) {
+                        final buttonText = data.$1;
+                        final isProcessing = data.$2;
+                        final canProceed = data.$3;
+                        
+                        return GlimpseButton(
+                          text: buttonText,
+                          isProcessing: isProcessing,
+                          onPressed: canProceed
+                              ? () => _handleButtonPress(context, controller)
+                              : null,
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
 
@@ -196,133 +280,77 @@ class _ReviewDialogContent extends StatelessWidget {
     );
   }
 
-  String _getButtonText(ReviewDialogController controller) {
-    // STEP 0 (Owner): Confirmar presença
-    if (controller.needsPresenceConfirmation && controller.currentStep == 0) {
-      final count = controller.selectedParticipants.length;
-      return count > 0 ? 'Confirmar ($count)' : 'Confirmar';
-    }
-
-    final isCommentStep = controller.currentStep == 3 ||
-        (controller.currentStep == 2 && !controller.needsPresenceConfirmation);
-
-    if (isCommentStep) {
-      if (controller.isOwnerReview && !controller.isLastParticipant) {
-        return 'Próximo Participante';
-      }
-      return 'Enviar Avaliação';
-    }
-
-    return 'Continuar';
-  }
-
-  bool _shouldShowSkipButton(ReviewDialogController controller) {
-    final isCommentStep = controller.currentStep == 3 ||
-        (controller.currentStep == 2 && !controller.needsPresenceConfirmation);
-    return isCommentStep && controller.commentController.text.isEmpty;
-  }
-
-  bool _canProceed(ReviewDialogController controller) {
-    // STEP 0 (Owner): Precisa selecionar pelo menos 1 participante
-    if (controller.needsPresenceConfirmation && controller.currentStep == 0) {
-      return controller.selectedParticipants.isNotEmpty;
-    }
-
-    // STEP 1 (Ratings): Precisa ter avaliado todos os critérios
-    if ((controller.needsPresenceConfirmation && controller.currentStep == 1) ||
-        (!controller.needsPresenceConfirmation && controller.currentStep == 0)) {
-      if (controller.isOwnerReview) {
-        final participantId = controller.currentParticipantId;
-        if (participantId == null) return false;
-        final ratings = controller.ratingsPerParticipant[participantId] ?? {};
-        return ratings.length >= 5; // Todos os 5 critérios avaliados
-      } else {
-        return controller.ratings.length >= 5;
-      }
-    }
-
-    // STEP 2 (Badges): Opcional, sempre pode prosseguir
-    if ((controller.needsPresenceConfirmation && controller.currentStep == 2) ||
-        (!controller.needsPresenceConfirmation && controller.currentStep == 1)) {
-      return true;
-    }
-
-    // STEP 3 (Comentário): Opcional, sempre pode prosseguir
-    return true;
-  }
-
   // ==================== HANDLERS ====================
+
+  /// Handler unificado para botão principal - usa currentReviewStep do controller
   Future<void> _handleButtonPress(
     BuildContext context,
     ReviewDialogController controller,
   ) async {
-    // STEP 0 (Owner): Confirmar presença
-    if (controller.needsPresenceConfirmation && controller.currentStep == 0) {
-      final success = await controller.confirmPresenceAndProceed(
-        pendingReview.pendingReviewId,
-      );
-      if (!success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              controller.errorMessage ?? 'Erro ao confirmar presença',
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            backgroundColor: GlimpseColors.error,
-          ),
-        );
-      }
+    // PROTEÇÃO: Bloquear cliques durante processamento
+    if (controller.isSubmitting || controller.isTransitioning) {
+      debugPrint('⚠️ [_handleButtonPress] Processamento em andamento, ignorando clique');
       return;
     }
-
-    final isRatingStep = controller.currentStep == 1 ||
-        (controller.currentStep == 0 && !controller.needsPresenceConfirmation);
-    final isBadgeStep = controller.currentStep == 2 ||
-        (controller.currentStep == 1 && !controller.needsPresenceConfirmation);
-    final isCommentStep = controller.currentStep == 3 ||
-        (controller.currentStep == 2 && !controller.needsPresenceConfirmation);
-
-    if (isRatingStep) {
-      controller.goToBadgesStep();
-    } else if (isBadgeStep) {
-      controller.goToCommentStep();
-    } else if (isCommentStep) {
-      // Verificar se owner tem mais participantes para avaliar
-      if (controller.isOwnerReview && !controller.isLastParticipant) {
-        await controller.nextParticipant();
-      } else {
-        // Submit final
-        final success = await controller.submitReview(
-          pendingReviewId: pendingReview.pendingReviewId,
+    
+    // Usar o getter centralizado do controller para determinar ação
+    switch (controller.currentReviewStep) {
+      case ReviewStep.presence:
+        final success = await controller.confirmPresenceAndProceed(
+          widget.pendingReview.pendingReviewId,
         );
-        if (success && context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop(true);
-          await Future.delayed(const Duration(milliseconds: 100));
-          if (context.mounted) {
-            _showSuccessMessage(context, controller);
+        if (!success && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                controller.errorMessage ?? 'Erro ao confirmar presença',
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              backgroundColor: GlimpseColors.error,
+            ),
+          );
+        }
+        break;
+
+      case ReviewStep.ratings:
+        controller.goToBadgesStep();
+        break;
+
+      case ReviewStep.badges:
+        controller.goToCommentStep();
+        break;
+
+      case ReviewStep.comment:
+        // Verificar se owner tem mais participantes para avaliar
+        if (controller.isOwnerReview && !controller.isLastParticipant) {
+          // UI gerencia transição visual (não o controller)
+          controller.nextParticipant();
+          // Opcional: adicionar animação aqui se necessário
+          // await Future.delayed(const Duration(milliseconds: 300));
+        } else {
+          // Submit final
+          final success = controller.isOwnerReview
+              ? await controller.submitAllReviews(
+                  pendingReviewId: widget.pendingReview.pendingReviewId,
+                )
+              : await controller.submitReview(
+                  pendingReviewId: widget.pendingReview.pendingReviewId,
+                );
+
+          if (success && context.mounted) {
+            Navigator.of(context, rootNavigator: true).pop(true);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                _showSuccessMessage(context, controller);
+              }
+            });
           }
         }
-      }
-    }
-  }
-
-  Future<void> _handleSkipComment(
-    BuildContext context,
-    ReviewDialogController controller,
-  ) async {
-    final success = await controller.skipCommentAndSubmit(
-      pendingReviewId: pendingReview.pendingReviewId,
-    );
-    if (success && context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop(true);
-      await Future.delayed(const Duration(milliseconds: 100));
-      if (context.mounted) {
-        _showSuccessMessage(context, controller);
-      }
+        break;
     }
   }
 
@@ -330,7 +358,7 @@ class _ReviewDialogContent extends StatelessWidget {
     BuildContext context,
     ReviewDialogController controller,
   ) async {
-    final success = await controller.dismissReview(pendingReview.pendingReviewId);
+    await controller.dismissReview(widget.pendingReview.pendingReviewId);
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop(false);
     }

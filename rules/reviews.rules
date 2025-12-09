@@ -29,8 +29,19 @@ match /PendingReviews/{pendingId} {
   allow read: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id;
   
-  // Criar: apenas Cloud Functions (nenhum cliente pode criar)
-  allow create: if false;
+  // Criar: Cloud Functions OU Owner do evento criando review reverso para participante
+  allow create: if isSignedIn() && (
+    // Caso 1: Owner criando review REVERSO para participante avaliar o owner
+    // O criador (request.auth.uid) deve ser o reviewee (quem será avaliado = owner)
+    // E o reviewer_role deve ser 'participant' (quem VAI fazer a review)
+    (request.auth.uid == request.resource.data.reviewee_id &&
+     request.resource.data.reviewer_role == 'participant') ||
+    
+    // Caso 2: Participante criando review para outro participante
+    // (futuro - permitir avaliação entre participantes)
+    (request.auth.uid == request.resource.data.reviewer_id &&
+     request.resource.data.reviewer_role == 'participant')
+  );
   
   // Atualizar: apenas o reviewer pode:
   // 1. Marcar como dismissed
@@ -47,8 +58,9 @@ match /PendingReviews/{pendingId} {
          .hasOnly(['presence_confirmed', 'confirmed_participant_ids']))
     );
   
-  // Deletar: não permitido (Cloud Functions gerencia)
-  allow delete: if false;
+  // Deletar: Permitido se o usuário for o reviewer (ao completar a review)
+  allow delete: if isSignedIn() && 
+    request.auth.uid == resource.data.reviewer_id;
 }
 
 // ============================================

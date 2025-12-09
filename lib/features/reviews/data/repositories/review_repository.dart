@@ -5,11 +5,13 @@ import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/data/models/review_stats_model.dart';
 import 'package:partiu/features/reviews/presentation/services/pending_reviews_listener_service.dart';
+import 'package:partiu/features/reviews/data/repositories/actions_repository.dart';
 
 /// Repository para gerenciar reviews no Firestore
 class ReviewRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ActionsRepository _actionsRepo = ActionsRepository();
 
   // ==================== PENDING REVIEWS ====================
 
@@ -46,14 +48,15 @@ class ReviewRepository {
   }
 
   /// Stream de reviews pendentes (para ActionsTab)
-  Stream<List<PendingReviewModel>> getPendingReviewsStream() {
+  Stream<List<PendingReviewModel>> getPendingReviewsStream() async* {
     final userId = _auth.currentUser?.uid;
     debugPrint('🔍 [ReviewRepository] getPendingReviewsStream');
     debugPrint('   - userId: $userId');
     
     if (userId == null) {
       debugPrint('   ❌ userId é null, retornando stream vazio');
-      return Stream.value([]);
+      yield [];
+      return;
     }
 
     final now = Timestamp.now();
@@ -79,7 +82,7 @@ class ReviewRepository {
           }
         });
 
-    return _firestore
+    await for (final snapshot in _firestore
         .collection('PendingReviews')
         .where('reviewer_id', isEqualTo: userId)
         .where('dismissed', isEqualTo: false)
@@ -87,24 +90,72 @@ class ReviewRepository {
         .orderBy('expires_at')
         .orderBy('created_at', descending: true)
         .limit(20)
-        .snapshots()
-        .map((snapshot) {
-          debugPrint('📦 [ReviewRepository] Stream snapshot recebido: ${snapshot.docs.length} docs');
-          for (var doc in snapshot.docs) {
-            final data = doc.data();
-            debugPrint('   📄 Doc ${doc.id}:');
-            debugPrint('      - reviewer_id: ${data['reviewer_id']}');
-            debugPrint('      - dismissed: ${data['dismissed']}');
-            debugPrint('      - expires_at: ${data['expires_at']}');
-            debugPrint('      - event_title: ${data['event_title']}');
-          }
+        .snapshots()) {
+      
+      debugPrint('📦 [ReviewRepository] Stream snapshot recebido: ${snapshot.docs.length} docs');
+      
+      if (snapshot.docs.isEmpty) {
+        debugPrint('   ✅ Nenhum review, retornando lista vazia');
+        yield [];
+        continue;
+      }
+      
+      // Criar modelos base dos reviews
+      final reviews = snapshot.docs
+          .map((doc) => PendingReviewModel.fromFirestore(doc))
+          .toList();
+      
+      // Coletar event IDs únicos
+      final eventIds = reviews
+          .map((r) => r.eventId)
+          .toSet()
+          .toList();
+      
+      debugPrint('🔍 [ReviewRepository] Buscando dados de ${eventIds.length} eventos');
+      
+      // Buscar dados dos owners em batch
+      final ownersData = await _actionsRepo.getMultipleEventOwnersData(eventIds);
+      
+      // Enriquecer APENAS reviews de PARTICIPANTS (que avaliam owner)
+      // Owner reviews já vêm com revieweeId correto do Firestore
+      final enrichedReviews = reviews.map((review) {
+        // Se é PARTICIPANT avaliando, enriquecer com dados do owner
+        if (review.reviewerRole == 'participant') {
+          final ownerData = ownersData[review.eventId];
           
-          final reviews = snapshot.docs
-              .map((doc) => PendingReviewModel.fromFirestore(doc))
-              .toList();
-          debugPrint('   ✅ Retornando ${reviews.length} reviews');
-          return reviews;
-        });
+          if (ownerData != null) {
+            debugPrint('✅ [ReviewRepository] Enriquecendo review PARTICIPANT ${review.pendingReviewId} com owner: ${ownerData['fullName']}');
+            return review.copyWith(
+              revieweeId: ownerData['userId'] as String,
+              revieweeName: ownerData['fullName'] as String,
+              revieweePhotoUrl: ownerData['photoUrl'] as String?,
+            );
+          } else {
+            debugPrint('⚠️ [ReviewRepository] Owner não encontrado para evento ${review.eventId}');
+            return review;
+          }
+        }
+        
+        // Owner reviews mantêm revieweeId original (participantId)
+        debugPrint('✅ [ReviewRepository] Mantendo review OWNER ${review.pendingReviewId} com revieweeId original: ${review.revieweeId}');
+        return review;
+      }).toList();
+      
+      // VALIDAÇÃO CRÍTICA: Filtrar reviews de autoavaliação (defesa em profundidade)
+      final validReviews = enrichedReviews.where((review) {
+        if (review.reviewerId == review.revieweeId) {
+          debugPrint('❌ [ReviewRepository] BLOQUEADO: Autoavaliação detectada!');
+          debugPrint('   - pendingReviewId: ${review.pendingReviewId}');
+          debugPrint('   - reviewerId: ${review.reviewerId}');
+          debugPrint('   - revieweeId: ${review.revieweeId}');
+          return false;
+        }
+        return true;
+      }).toList();
+      
+      debugPrint('   ✅ Retornando ${validReviews.length} reviews válidos (${enrichedReviews.length - validReviews.length} autoavaliações bloqueadas)');
+      yield validReviews;
+    }
   }
 
   /// Busca count de reviews pendentes (para badge)
