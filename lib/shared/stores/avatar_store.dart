@@ -73,7 +73,7 @@ class AvatarStore {
             
             final data = snapshot.data()!;
             // Tentar ambos os campos para compatibilidade
-            final photoUrl = data['profilePhotoUrl'] as String? ?? 
+            final photoUrl = data['photoUrl'] as String? ?? 
                            data['photoUrl'] as String? ?? 
                            data['photoURL'] as String? ??
                            data['image'] as String? ??

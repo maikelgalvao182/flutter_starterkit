@@ -52,7 +52,7 @@ class UserRankingModel {
     return UserRankingModel(
       userId: userId,
       fullName: userData['fullName'] as String? ?? 'Usuário',
-      photoUrl: userData['profilePhotoUrl'] as String? ?? '',
+      photoUrl: userData['photoUrl'] as String? ?? '',
       locality: userData['locality'] as String? ?? '',
       state: userData['state'] as String?,
       jobTitle: userData['jobTitle'] as String?,

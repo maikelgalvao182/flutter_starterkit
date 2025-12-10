@@ -57,7 +57,7 @@ export const onEventCreated = functions.firestore
         status: "autoApproved",
         appliedAt: admin.firestore.FieldValue.serverTimestamp(),
         decisionAt: admin.firestore.FieldValue.serverTimestamp(),
-        presence: "Talvez", // Status de presença padrão
+        presence: "Vou", // Criador sempre confirma presença
       });
 
       console.log(
@@ -247,7 +247,7 @@ export const onApplicationApproved = functions.firestore
           return {
             uid: doc.id,
             name: data.fullName || data.userFullname || "Usuário",
-            avatar: data.profilePhoto || data.userProfilePhoto || "",
+            avatar: data.profilePhoto || data.photoUrl || "",
             role: doc.id === eventData.userId ? "organizador" : "participante",
           };
         });
@@ -409,6 +409,12 @@ export * from "./chatPushNotifications";
 // ===== REVIEW FUNCTIONS =====
 // Importa e exporta as Cloud Functions de reviews
 export * from "./reviews/createPendingReviews";
+export * from "./reviews/onPresenceConfirmed";
+export * from "./updateUserRating";
 
 // ===== DEBUG FUNCTIONS =====
 export * from "./debug";
+
+// ===== USER MANAGEMENT =====
+// Importa e exporta as Cloud Functions de gerenciamento de usuários
+export * from "./users/deleteUserAccount";

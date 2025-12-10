@@ -3,7 +3,8 @@
 /// Collections:
 /// - Reviews/{reviewId}           → Reviews finalizadas
 /// - PendingReviews/{pendingId}   → Reviews pendentes (aguardando resposta)
-/// - ReviewStats/{userId}         → Estatísticas agregadas por usuário
+/// 
+/// Nota: ReviewStats foi removido - estatísticas são calculadas dinamicamente dos Reviews
 
 // ============================================
 // Reviews finalizadas
@@ -61,19 +62,4 @@ match /PendingReviews/{pendingId} {
   // Deletar: Permitido se o usuário for o reviewer (ao completar a review)
   allow delete: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id;
-}
-
-// ============================================
-// Estatísticas agregadas
-// ============================================
-match /ReviewStats/{userId} {
-  // Qualquer usuário logado pode ler stats de outros
-  allow read: if isSignedIn();
-  
-  // Criar/atualizar: qualquer usuário autenticado pode atualizar stats
-  // (necessário para quando alguém faz uma review de outro usuário)
-  allow create, update: if isSignedIn();
-  
-  // Deletar: não permitido
-  allow delete: if false;
 }

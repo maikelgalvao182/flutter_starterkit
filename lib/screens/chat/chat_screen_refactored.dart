@@ -140,7 +140,7 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
     debugPrint('🔍 ChatScreen initState - Debug User Object:');
     debugPrint('   - userId: "${widget.user.userId}"');
     debugPrint('   - fullName: "${widget.user.fullName}"');
-    debugPrint('   - profilePhoto: "${widget.user.profilePhotoUrl}"');
+    debugPrint('   - profilePhoto: "${widget.user.photoUrl}"');
     debugPrint('   - isEvent: ${widget.isEvent}');
     debugPrint('   - eventId: ${widget.eventId}');
     debugPrint('   - userId.isEmpty: ${widget.user.userId.isEmpty}');

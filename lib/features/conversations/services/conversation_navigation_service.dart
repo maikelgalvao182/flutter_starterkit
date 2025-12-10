@@ -90,7 +90,7 @@ class ConversationNavigationService {
     return app_models.User.fromDocument({
       'userId': userId,              // ✅ userId (não user_id)
       'fullName': userName,          // ✅ fullName (não fullname)
-      'profilePhotoUrl': userPhoto,  // ✅ profilePhotoUrl (não user_profile_photo)
+      'photoUrl': userPhoto,  // ✅ photoUrl (não user_profile_photo)
       'gender': '',
       'birthDay': 1,
       'birthMonth': 1,

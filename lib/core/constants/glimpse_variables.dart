@@ -42,7 +42,7 @@ const List<InterestTag> interestListDisplay = [
   InterestTag(id: 'sweets_cafes', icon: '🧁', nameKey: 'interest_sweets_cafes', category: InterestCategory.food),
   InterestTag(id: 'mexican', icon: '🌮', nameKey: 'interest_mexican', category: InterestCategory.food),
   InterestTag(id: 'healthy_food', icon: '🥗', nameKey: 'interest_healthy_food', category: InterestCategory.food),
-  InterestTag(id: 'bbq', icon: '🔥', nameKey: 'interest_bbq', category: InterestCategory.food),
+  InterestTag(id: 'bbq', icon: '🥩', nameKey: 'interest_bbq', category: InterestCategory.food),
   InterestTag(id: 'vegetarian', icon: '🥗', nameKey: 'interest_vegetarian', category: InterestCategory.food),
   InterestTag(id: 'vegan', icon: '🌱', nameKey: 'interest_vegan', category: InterestCategory.food),
   InterestTag(id: 'food_markets', icon: '🛒', nameKey: 'interest_food_markets', category: InterestCategory.food),

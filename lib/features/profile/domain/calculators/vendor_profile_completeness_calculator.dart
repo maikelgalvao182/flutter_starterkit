@@ -36,7 +36,7 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
     
     // === PERSONAL TAB ===
     // 1. Avatar (15)
-    if (user.userProfilePhoto.isNotEmpty) {
+    if (user.photoUrl.isNotEmpty) {
       score += _avatarW;
     } else {
       AppLogger.debug('Missing Avatar', tag: _tag);
@@ -169,7 +169,7 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
     
     final details = {
       // Personal Tab
-      'avatar': user.userProfilePhoto.isNotEmpty ? _avatarW : 0,
+      'avatar': user.photoUrl.isNotEmpty ? _avatarW : 0,
       'name': user.userFullname.isNotEmpty ? _nameW : 0,
       'bio': user.userBio.isNotEmpty ? _bioW : 0,
       'gender': user.userGender.isNotEmpty ? _genderW : 0,

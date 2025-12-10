@@ -180,10 +180,13 @@ class _ProfileTabState extends State<ProfileTab> {
                         onPressed: () => _handleViewProfileTap(context),
                       ),
                       const SizedBox(width: 16),
-                      GlimpseTabActionButton(
-                        icon: Iconsax.edit_2,
-                        tooltip: LocalizationService.of(context).translate('edit_profile') ?? 'Editar Perfil',
-                        onPressed: () => _handleEditProfileTap(context),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: GlimpseTabActionButton(
+                          icon: Iconsax.edit,
+                          tooltip: LocalizationService.of(context).translate('edit_profile') ?? 'Editar Perfil',
+                          onPressed: () => _handleEditProfileTap(context),
+                        ),
                       ),
                     ],
                   ),
@@ -262,7 +265,7 @@ class _ProfileHeaderContent extends StatelessWidget {
                     userId: currentUser.userId,
                     size: 88,
                     borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    photoUrl: currentUser.photoUrl ?? currentUser.userProfilePhoto,
+                    photoUrl: currentUser.photoUrl,
                     enableNavigation: true,
                   ),
                 );

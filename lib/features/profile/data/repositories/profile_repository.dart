@@ -89,7 +89,7 @@ class ProfileRepository implements IProfileRepository {
           .collection(_usersCollection)
           .doc(userId)
           .update({
-            'userProfilePhoto': photoUrl,
+            'photoUrl': photoUrl,
             'updatedAt': FieldValue.serverTimestamp(),
           });
       

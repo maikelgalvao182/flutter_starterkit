@@ -56,6 +56,18 @@ class ReviewModel {
     final badgesData = data['badges'] as List<dynamic>?;
     final badges = badgesData?.map((e) => e.toString()).toList() ?? [];
 
+    // Parse overallRating (opcional, calcula se não existir)
+    double overallRating;
+    if (data['overall_rating'] != null) {
+      overallRating = (data['overall_rating'] as num).toDouble();
+    } else if (criteriaRatings.isNotEmpty) {
+      // Calcular média dos critérios se overall_rating não existir
+      final sum = criteriaRatings.values.reduce((a, b) => a + b);
+      overallRating = sum / criteriaRatings.length;
+    } else {
+      overallRating = 0.0;
+    }
+
     return ReviewModel(
       reviewId: doc.id,
       eventId: data['event_id'] as String,
@@ -63,7 +75,7 @@ class ReviewModel {
       revieweeId: data['reviewee_id'] as String,
       reviewerRole: data['reviewer_role'] as String,
       criteriaRatings: criteriaRatings,
-      overallRating: (data['overall_rating'] as num).toDouble(),
+      overallRating: overallRating,
       badges: badges,
       comment: data['comment'] as String?,
       createdAt: (data['created_at'] as Timestamp).toDate(),

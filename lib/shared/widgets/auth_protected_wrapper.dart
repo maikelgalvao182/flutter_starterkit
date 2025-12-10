@@ -58,17 +58,18 @@ class _AuthProtectedWrapperState extends State<AuthProtectedWrapper> {
         }
 
         // Usuário autenticado - verifica pending reviews uma vez
-        if (widget.checkPendingReviews && !_hasCheckedPendingReviews) {
-          _hasCheckedPendingReviews = true;
-          
-          // Agenda verificação após o frame atual
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              PendingReviewsCheckerService()
-                  .checkAndShowPendingReviews(context);
-            }
-          });
-        }
+        // DESABILITADO: ReviewDialog deve ser aberto apenas via ReviewCard
+        // if (widget.checkPendingReviews && !_hasCheckedPendingReviews) {
+        //   _hasCheckedPendingReviews = true;
+        //   
+        //   // Agenda verificação após o frame atual
+        //   WidgetsBinding.instance.addPostFrameCallback((_) {
+        //     if (mounted) {
+        //       PendingReviewsCheckerService()
+        //           .checkAndShowPendingReviews(context);
+        //     }
+        //   });
+        // }
 
         // Usuário autenticado - mostra tela protegida
         return widget.child;

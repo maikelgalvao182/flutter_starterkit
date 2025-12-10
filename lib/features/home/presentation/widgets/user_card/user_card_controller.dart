@@ -37,7 +37,7 @@ class UserCardController extends ChangeNotifier {
   // Getters de compatibilidade
   String? get fullName => _user?.fullName;
   String? get from => _user?.from;
-  String? get photoUrl => _user?.profilePhotoUrl;
+  String? get photoUrl => _user?.photoUrl;
   double? get distanceKm => _user?.distance;
 
   /// Carrega dados do usuário com interesses em comum e distância
@@ -87,43 +87,10 @@ class UserCardController extends ChangeNotifier {
       // 4. Converter para modelo User
       _user = User.fromDocument(userData);
 
-      // 5. Buscar rating das Reviews (agregando)
-      try {
-        final reviewsSnapshot = await FirebaseFirestore.instance
-            .collection('Reviews')
-            .where('reviewee_id', isEqualTo: userId)
-            .get();
+      debugPrint('✅ UserCard carregado: ${_user?.fullName} - ${_user?.commonInterests?.length ?? 0} interesses, ${_user?.distance?.toStringAsFixed(1) ?? '?'} km - Rating: ${_user?.overallRating?.toStringAsFixed(1) ?? 'N/A'}');
 
-        if (reviewsSnapshot.docs.isNotEmpty) {
-          // Calcular média de overall_rating
-          double sumRatings = 0.0;
-          int count = 0;
-
-          for (var doc in reviewsSnapshot.docs) {
-            final data = doc.data();
-            final rating = (data['overall_rating'] as num?)?.toDouble();
-            if (rating != null && rating > 0) {
-              sumRatings += rating;
-              count++;
-            }
-          }
-
-          if (count > 0) {
-            _overallRating = sumRatings / count;
-            debugPrint('📊 Rating calculado para $userId: $_overallRating de $count reviews');
-          } else {
-            debugPrint('⚠️ Nenhuma review com rating válido para $userId');
-          }
-        } else {
-          debugPrint('⚠️ Nenhuma review encontrada para reviewee_id: $userId');
-        }
-      } catch (e) {
-        debugPrint('❌ Erro ao buscar rating: $e');
-        // Se falhar ao buscar rating, apenas ignora
-        _overallRating = null;
-      }
-
-      debugPrint('✅ UserCard carregado: ${_user?.fullName} - ${_user?.commonInterests?.length ?? 0} interesses, ${_user?.distance?.toStringAsFixed(1) ?? '?'} km - Rating: ${_overallRating?.toStringAsFixed(1) ?? 'N/A'}');
+      // 5. Rating vem diretamente do documento Users (sincronizado via Cloud Function)
+      _overallRating = _user?.overallRating;
 
       _isLoading = false;
       if (!_isDisposed) notifyListeners();

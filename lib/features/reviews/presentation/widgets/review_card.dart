@@ -24,6 +24,7 @@ class ReviewCard extends StatelessWidget {
     debugPrint('   pendingReviewId: ${pendingReview.pendingReviewId}');
     debugPrint('   reviewerId: "${pendingReview.reviewerId}"');
     debugPrint('   revieweeId: "${pendingReview.revieweeId}"');
+    debugPrint('   reviewerRole: ${pendingReview.reviewerRole}');
     debugPrint('   revieweeName: ${pendingReview.revieweeName}');
     debugPrint('   revieweePhotoUrl: ${pendingReview.revieweePhotoUrl}');
     
@@ -68,12 +69,76 @@ class ReviewCard extends StatelessWidget {
       );
     }
 
-    return ActionCard(
-      userId: pendingReview.revieweeId,
-      userPhotoUrl: pendingReview.revieweePhotoUrl,
-      textSpans: [
+    // Determinar dados do usuário a ser mostrado no card
+    String displayUserId;
+    String? displayPhotoUrl;
+    String displayName;
+    List<TextSpan> textSpans;
+
+    if (pendingReview.isOwnerReview) {
+      // Owner avaliando participantes
+      // Mostrar dados do primeiro participante ou mensagem genérica
+      final participantCount = pendingReview.participantIds?.length ?? 0;
+      
+      if (participantCount == 0) {
+        // Nenhum participante (não deveria acontecer, mas defesa)
+        displayUserId = pendingReview.reviewerId; // Fallback
+        displayPhotoUrl = null;
+        displayName = 'Participantes';
+        textSpans = [
+          const TextSpan(text: 'Avalie os participantes do evento '),
+          TextSpan(
+            text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ];
+      } else {
+        // Pegar primeiro participante
+        final firstParticipantId = pendingReview.participantIds!.first;
+        final firstParticipant = pendingReview.participantProfiles?[firstParticipantId];
+        
+        displayUserId = firstParticipantId;
+        displayPhotoUrl = firstParticipant?.photoUrl;
+        displayName = firstParticipant?.name ?? 'Participante';
+        
+        if (participantCount == 1) {
+          textSpans = [
+            TextSpan(
+              text: displayName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const TextSpan(text: ' precisa ser avaliado no evento '),
+            TextSpan(
+              text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ];
+        } else {
+          textSpans = [
+            TextSpan(
+              text: displayName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            TextSpan(text: ' e mais ${participantCount - 1} '),
+            TextSpan(
+              text: participantCount - 1 == 1 ? 'pessoa precisa' : 'pessoas precisam',
+            ),
+            const TextSpan(text: ' ser avaliados no evento '),
+            TextSpan(
+              text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ];
+        }
+      }
+    } else {
+      // Participant avaliando owner
+      displayUserId = pendingReview.revieweeId;
+      displayPhotoUrl = pendingReview.revieweePhotoUrl;
+      displayName = pendingReview.revieweeName ?? 'Organizador';
+      textSpans = [
         TextSpan(
-          text: pendingReview.revieweeName,
+          text: displayName,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         const TextSpan(text: ' precisa ser avaliado no evento '),
@@ -81,7 +146,13 @@ class ReviewCard extends StatelessWidget {
           text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-      ],
+      ];
+    }
+
+    return ActionCard(
+      userId: displayUserId,
+      userPhotoUrl: displayPhotoUrl,
+      textSpans: textSpans,
       timeAgo: _getTimeAgo(pendingReview.createdAt),
       primaryButtonText: 'Avaliar',
       primaryButtonColor: GlimpseColors.approveButtonColor,

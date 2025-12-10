@@ -236,7 +236,7 @@ class ChatRepository implements IChatRepository {
     final currentUser = AppState.currentUser.value;
     batch.set(receiverConvRef, {
       USER_ID: senderId,
-      USER_PROFILE_PHOTO: currentUser?.userProfilePhoto ?? '',
+      USER_PROFILE_PHOTO: currentUser?.photoUrl ?? '',
       fullname: currentUser?.userFullname ?? '',
       MESSAGE_TYPE: type,
       LAST_MESSAGE: displayText, // ✅ Usa displayText para mostrar "📷 Imagem" se for imagem
@@ -279,7 +279,7 @@ class ChatRepository implements IChatRepository {
 
       final currentUser = AppState.currentUser.value;
       print('🔍 [CHAT DEBUG] Current User Full Name: ${currentUser?.userFullname}');
-      print('🔍 [CHAT DEBUG] Current User Photo: ${currentUser?.userProfilePhoto}');
+      print('🔍 [CHAT DEBUG] Current User Photo: ${currentUser?.photoUrl}');
       
       if (currentUser == null) {
         print('❌ [CHAT DEBUG] ERRO: Dados do usuário não disponíveis!');
@@ -294,7 +294,7 @@ class ChatRepository implements IChatRepository {
         senderId: currentUserId,
         receiverId: receiver.userId,
         fromUserId: currentUserId,
-        userPhotoLink: currentUser.userProfilePhoto ?? '',
+        userPhotoLink: currentUser.photoUrl ?? '',
         userFullName: currentUser.userFullname ?? '',
         textMsg: text,
         imgLink: '',
@@ -372,7 +372,7 @@ class ChatRepository implements IChatRepository {
         senderId: currentUserId,
         receiverId: receiver.userId,
         fromUserId: currentUserId,
-        userPhotoLink: currentUser.userProfilePhoto ?? '',
+        userPhotoLink: currentUser.photoUrl ?? '',
         userFullName: currentUser.userFullname ?? '',
         textMsg: '',
         imgLink: imageUrl,

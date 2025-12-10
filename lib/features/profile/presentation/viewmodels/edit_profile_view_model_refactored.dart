@@ -58,7 +58,7 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
   bool get hasError => _state is EditProfileStateError;
   
   /// URL da foto de perfil atual
-  String get currentPhotoUrl => _authRepository.currentUser?.profilePhotoUrl ?? '';
+  String get currentPhotoUrl => _authRepository.currentUser?.photoUrl ?? '';
   
   /// ID do usuário atual
   String get userId => _authRepository.currentUser?.userId ?? '';

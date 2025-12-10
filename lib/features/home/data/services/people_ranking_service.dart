@@ -17,14 +17,17 @@ class PeopleRankingService {
 
   /// Busca ranking de pessoas baseado em reviews
   /// 
+  /// [selectedState] - Estado para filtrar (opcional)
   /// [selectedLocality] - Cidade para filtrar (opcional)
   /// [limit] - Limite de resultados (padrão: 50)
   Future<List<UserRankingModel>> getPeopleRanking({
+    String? selectedState,
     String? selectedLocality,
     int limit = 50,
   }) async {
     try {
       debugPrint('🔍 [PeopleRankingService] ========== INICIANDO getPeopleRanking ==========');
+      debugPrint('   🗺️ selectedState: $selectedState');
       debugPrint('   📍 selectedLocality: $selectedLocality');
       debugPrint('   🔢 limit: $limit');
 
@@ -123,13 +126,13 @@ class PeopleRankingService {
         }
       }
 
-      // Calcular médias
+      // Calcular médias dos critérios (não do overallRating, que vem de Users)
       for (var entry in aggregatedStats.entries) {
         final stats = entry.value;
         final totalReviews = stats['totalReviews'] as int;
         
-        // Média geral
-        stats['overallRating'] = (stats['sumRatings'] as double) / totalReviews;
+        // overallRating virá do documento Users (não calculado aqui)
+        // Esse campo será preenchido no PASSO 3 quando buscarmos os dados dos usuários
         
         // Médias dos critérios
         final breakdown = stats['ratings_breakdown'] as Map;
@@ -174,7 +177,15 @@ class PeopleRankingService {
 
         for (var doc in usersSnapshot.docs) {
           if (doc.exists && doc.data().isNotEmpty) {
-            usersData[doc.id] = doc.data();
+            final userData = doc.data();
+            usersData[doc.id] = userData;
+            
+            // ✅ Pega o overallRating do documento Users (sincronizado pela Cloud Function)
+            // e injeta no aggregatedStats para ser usado pelo ranking
+            if (aggregatedStats.containsKey(doc.id)) {
+              aggregatedStats[doc.id]!['overallRating'] = 
+                  (userData['overallRating'] as num?)?.toDouble() ?? 0.0;
+            }
           }
         }
       }
@@ -199,7 +210,16 @@ class PeopleRankingService {
           continue;
         }
 
+        final userState = userData['state'] as String? ?? '';
         final userLocality = userData['locality'] as String? ?? '';
+        
+        // Filtrar por estado se especificado
+        if (selectedState != null && 
+            selectedState.isNotEmpty && 
+            userState != selectedState) {
+          skippedByCity++; // Reutilizar contador para simplicidade
+          continue;
+        }
         
         // Filtrar por cidade se especificado
         if (selectedLocality != null && 
@@ -334,6 +354,81 @@ class PeopleRankingService {
       return result;
     } catch (error, stackTrace) {
       debugPrint('❌ ERRO em getAvailableCities:');
+      debugPrint('   Error: $error');
+      debugPrint('   StackTrace: $stackTrace');
+      return [];
+    }
+  }
+
+  /// Busca lista de estados disponíveis (com reviews)
+  /// 
+  /// Retorna lista ordenada de estados onde existem usuários avaliados
+  Future<List<String>> getAvailableStates() async {
+    try {
+      debugPrint('🗺️ [PeopleRankingService] ========== INICIANDO getAvailableStates ==========');
+
+      // Buscar reviews para extrair reviewee_ids
+      debugPrint('   📊 Buscando Reviews...');
+      
+      final reviewsSnapshot = await _firestore
+          .collection('Reviews')
+          .limit(500) // Limite razoável
+          .get();
+
+      debugPrint('   ✅ Reviews encontradas: ${reviewsSnapshot.docs.length}');
+
+      if (reviewsSnapshot.docs.isEmpty) {
+        debugPrint('   ⚠️ Nenhuma Review encontrada');
+        return [];
+      }
+
+      // Extrair IDs únicos dos reviewees
+      final userIds = reviewsSnapshot.docs
+          .map((doc) => doc.data()['reviewee_id'] as String?)
+          .where((id) => id != null && id.isNotEmpty)
+          .toSet()
+          .toList();
+
+      debugPrint('   👥 Total de userIds com reviews: ${userIds.length}');
+
+      // Buscar dados dos usuários em lotes
+      final Set<String> states = {};
+      
+      int chunkIndex = 0;
+      for (var i = 0; i < userIds.length; i += 10) {
+        final chunk = userIds.skip(i).take(10).toList();
+        chunkIndex++;
+        
+        debugPrint('   🔄 Chunk $chunkIndex: Buscando ${chunk.length} usuários...');
+        
+        final usersSnapshot = await _firestore
+            .collection('Users')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+
+        for (var doc in usersSnapshot.docs) {
+          final state = doc.data()['state'] as String?;
+          if (state != null && state.isNotEmpty) {
+            states.add(state);
+          }
+        }
+        
+        debugPrint('      ✅ Estados únicos até agora: ${states.length}');
+      }
+
+      // Converter para lista ordenada
+      final result = states.toList()..sort();
+      
+      debugPrint('\n🗺️ RESULTADO:');
+      debugPrint('   ✅ Estados encontrados: ${result.length}');
+      if (result.isNotEmpty) {
+        debugPrint('   📋 Estados: ${result.join(", ")}');
+      }
+      debugPrint('========== FIM getAvailableStates ==========\n');
+
+      return result;
+    } catch (error, stackTrace) {
+      debugPrint('❌ ERRO em getAvailableStates:');
       debugPrint('   Error: $error');
       debugPrint('   StackTrace: $stackTrace');
       return [];

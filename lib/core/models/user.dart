@@ -73,7 +73,7 @@ class User {
   // Constructor
   const User({
     required this.userId,
-    required this.userProfilePhoto,
+    required this.photoUrl,
     required this.userFullname,
     required this.userGender,
     required this.userBirthDay,
@@ -99,7 +99,6 @@ class User {
     this.userInstagram,
     this.interests,
     this.languages,
-    this.photoUrl,
     this.from,
     this.distance,
     this.commonInterests,
@@ -111,7 +110,7 @@ class User {
   factory User.empty([String userId = '']) {
     return User(
       userId: userId,
-      userProfilePhoto: '',
+      photoUrl: '',
       userFullname: '',
       userGender: '',
       userBirthDay: 1,
@@ -189,7 +188,7 @@ class User {
 
     return User(
       userId: doc['userId'] ?? '',
-      userProfilePhoto: doc['profilePhotoUrl'] ?? '',
+      photoUrl: doc['photoUrl'] ?? '',
       userFullname: doc['fullName'] ?? '',
       userGender: doc['gender'] ?? '',
       userBirthDay: doc['birthDay'] ?? 1,
@@ -215,7 +214,6 @@ class User {
       userInstagram: doc['instagram'],
       interests: (doc['interests'] as List?)?.cast<String>(),
       languages: doc['languages'],
-      photoUrl: doc['photoUrl'],
       from: doc['from'],
       distance: (doc['distance'] as num?)?.toDouble(),
       commonInterests: (doc['commonInterests'] as List?)?.cast<String>(),
@@ -226,7 +224,7 @@ class User {
   
   /// User info
   final String userId;
-  final String userProfilePhoto;
+  final String photoUrl;
   final String userFullname;
   final String userGender;
   final int userBirthDay;
@@ -252,7 +250,6 @@ class User {
   final String? userInstagram;
   final List<String>? interests;
   final String? languages;
-  final String? photoUrl;
   final String? from; // País de origem
   final double? distance; // Distância em km do usuário atual
   final List<String>? commonInterests; // Interesses em comum com o usuário logado
@@ -264,7 +261,7 @@ class User {
 
   User copyWith({
     String? userId,
-    String? userProfilePhoto,
+    String? photoUrl,
     String? userFullname,
     String? userGender,
     int? userBirthDay,
@@ -290,7 +287,6 @@ class User {
     String? userInstagram,
     List<String>? interests,
     String? languages,
-    String? photoUrl,
     String? from,
     double? distance,
     List<String>? commonInterests,
@@ -299,7 +295,7 @@ class User {
   }) {
     return User(
       userId: userId ?? this.userId,
-      userProfilePhoto: userProfilePhoto ?? this.userProfilePhoto,
+      photoUrl: photoUrl ?? this.photoUrl,
       userFullname: userFullname ?? this.userFullname,
       userGender: userGender ?? this.userGender,
       userBirthDay: userBirthDay ?? this.userBirthDay,
@@ -325,7 +321,6 @@ class User {
       userInstagram: userInstagram ?? this.userInstagram,
       interests: interests ?? this.interests,
       languages: languages ?? this.languages,
-      photoUrl: photoUrl ?? this.photoUrl,
       from: from ?? this.from,
       distance: distance ?? this.distance,
       commonInterests: commonInterests ?? this.commonInterests,
@@ -337,7 +332,6 @@ class User {
   // ==================== GETTERS MODERNOS ====================
   
   String get fullName => userFullname;
-  String get profilePhotoUrl => userProfilePhoto.isNotEmpty ? userProfilePhoto : (photoUrl ?? '');
   String? get bio => userBio.isNotEmpty ? userBio : null;
   String? get jobTitle => userJobTitle.isNotEmpty ? userJobTitle : null;
   String? get gender => userGender.isNotEmpty ? userGender : null;
@@ -377,7 +371,7 @@ class User {
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
-      'profilePhotoUrl': userProfilePhoto,
+      'photoUrl': photoUrl,
       'fullName': userFullname,
       'gender': userGender,
       'birthDay': userBirthDay,
@@ -403,7 +397,6 @@ class User {
       'instagram': userInstagram,
       'interests': interests,
       'languages': languages,
-      'photoUrl': photoUrl,
       'from': from,
       'distance': distance,
       'commonInterests': commonInterests,

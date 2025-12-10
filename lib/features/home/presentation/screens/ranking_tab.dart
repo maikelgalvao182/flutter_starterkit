@@ -15,6 +15,7 @@ import 'package:partiu/features/notifications/widgets/notification_filter_shimme
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
+import 'package:partiu/shared/widgets/outline_horizontal_filter.dart';
 
 /// Tela de ranking (Tab 2)
 /// 
@@ -170,9 +171,11 @@ class _RankingTabState extends State<RankingTab> {
     debugPrint('👥 [RankingTab] _buildPeopleRankingList');
     
     final rankings = _peopleViewModel.peopleRankings;
+    final states = _peopleViewModel.availableStates;
     final cities = _peopleViewModel.availableCities;
     
     debugPrint('   - rankings.length: ${rankings.length}');
+    debugPrint('   - states.length: ${states.length}');
     debugPrint('   - cities.length: ${cities.length}');
     debugPrint('   - isLoading: ${_peopleViewModel.isLoading}');
     debugPrint('   - error: ${_peopleViewModel.error}');
@@ -189,12 +192,29 @@ class _RankingTabState extends State<RankingTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Container fixo para filtro de cidade (altura consistente)
+        // Container para ambos os filtros (altura consistente)
         SizedBox(
-          height: 56,
-          child: cities.isNotEmpty 
-              ? _buildCityFilter(cities)
-              : const SizedBox.shrink(),
+          height: states.isNotEmpty || cities.isNotEmpty ? 108 : 56,
+          child: Column(
+            children: [
+              // Filtro de Estado (padrão)
+              if (states.isNotEmpty)
+                SizedBox(
+                  height: 48,
+                  child: _buildStateFilter(states),
+                ),
+              
+              if (states.isNotEmpty && cities.isNotEmpty)
+                const SizedBox(height: 8),
+              
+              // Filtro de Cidade (outline)
+              if (cities.isNotEmpty)
+                SizedBox(
+                  height: 44,
+                  child: _buildCityFilter(cities),
+                ),
+            ],
+          ),
         ),
         
         const SizedBox(height: 12),
@@ -225,25 +245,48 @@ class _RankingTabState extends State<RankingTab> {
     );
   }
 
-  Widget _buildCityFilter(List<String> cities) {
-    final selectedCity = _peopleViewModel.selectedCity;
+  Widget _buildStateFilter(List<String> states) {
+    final selectedState = _peopleViewModel.selectedState;
     
-    // Criar lista com "Todas" + cidades
-    final items = ['Todas', ...cities];
+    // Criar lista com "Todos" + estados
+    final items = ['Todos', ...states];
     
-    // Index selecionado (0 = Todas, 1+ = cidades)
-    final selectedIndex = selectedCity == null 
+    // Index selecionado (0 = Todos, 1+ = estados)
+    final selectedIndex = selectedState == null 
         ? 0 
-        : cities.indexOf(selectedCity) + 1;
+        : states.indexOf(selectedState) + 1;
     
     return NotificationHorizontalFilters(
       items: items,
       selectedIndex: selectedIndex,
       onSelected: (index) {
         if (index == 0) {
+          _peopleViewModel.selectState(null);
+        } else {
+          _peopleViewModel.selectState(states[index - 1]);
+        }
+      },
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+    );
+  }
+
+  Widget _buildCityFilter(List<String> cities) {
+    final selectedCity = _peopleViewModel.selectedCity;
+    
+    // Criar lista com "Todas" + cidades
+    final values = ['Todas', ...cities];
+    
+    // Valor selecionado (null = Todas, string = cidade específica)
+    final selected = selectedCity ?? 'Todas';
+    
+    return OutlineHorizontalFilter(
+      values: values,
+      selected: selected,
+      onSelected: (value) {
+        if (value == null || value == 'Todas') {
           _peopleViewModel.selectCity(null);
         } else {
-          _peopleViewModel.selectCity(cities[index - 1]);
+          _peopleViewModel.selectCity(value);
         }
       },
       padding: const EdgeInsets.symmetric(horizontal: 16),

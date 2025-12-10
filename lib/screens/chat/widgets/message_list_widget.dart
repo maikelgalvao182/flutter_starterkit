@@ -280,7 +280,7 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       if (!isSender) {
         // If 1-1 chat (not event), use remoteUser info
         if (!isEventChat) {
-           avatarUrl = widget.remoteUser.profilePhotoUrl;
+           avatarUrl = widget.remoteUser.photoUrl;
            fullName = widget.remoteUser.fullName;
         }
         // For event chat, we rely on StableAvatar fetching by senderId

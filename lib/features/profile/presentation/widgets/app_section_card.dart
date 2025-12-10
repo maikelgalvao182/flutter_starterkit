@@ -7,6 +7,7 @@ import 'package:partiu/features/profile/presentation/viewmodels/app_section_view
 import 'package:partiu/features/profile/presentation/widgets/dialogs/delete_account_confirm_dialog.dart';
 import 'package:partiu/app/services/locale_service.dart';
 import 'package:partiu/shared/widgets/dialogs/language_selector_dialog.dart';
+import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 import 'package:partiu/core/helpers/app_helper.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
 import 'package:partiu/core/router/app_router.dart';
@@ -16,6 +17,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:partiu/common/state/app_state.dart';
 
 class AppSectionCard extends StatefulWidget {
   const AppSectionCard({super.key});
@@ -120,31 +123,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
             title: i18n.translate('delete_account') ?? 'Excluir Conta',
             iconColor: Colors.red,
             textColor: Colors.red,
-            onTap: () {
-              DeleteAccountConfirmDialog.show(
-                context,
-                iconData: Iconsax.trash,
-                title: '${i18n.translate("delete_account") ?? "Excluir Conta"} ?',
-                message: i18n.translate('all_your_profile_data_will_be_permanently_deleted') ?? 
-                    'Todos os seus dados de perfil serão permanentemente excluídos',
-                negativeText: i18n.translate('CANCEL') ?? 'CANCELAR',
-                positiveText: i18n.translate('DELETE') ?? 'EXCLUIR',
-                negativeAction: () => Navigator.of(context).pop(),
-                positiveAction: () async {
-                  final navigator = Navigator.of(context);
-                  Future(() => navigator.pop());
-
-                  _viewModel?.signOut().then((_) {
-                    Future(() {
-                      navigator.popUntil((route) => route.isFirst);
-                      // TODO: Implementar tela de exclusão de conta
-                      // navigator.pushReplacement(MaterialPageRoute(
-                      //     builder: (context) => const DeleteAccountScreen()));
-                    });
-                  });
-                },
-              );
-            },
+            onTap: () => _handleDeleteAccount(context, i18n),
           ),
         ],
       ),
@@ -199,6 +178,94 @@ class _AppSectionCardState extends State<AppSectionCard> {
       debugPrint('🚪 [LOGOUT] Navegando para ${AppRoutes.signIn} (após erro)');
       router.go(AppRoutes.signIn);
       debugPrint('🚪 [LOGOUT] ✅ Navegação concluída (após erro)');
+    }
+  }
+  
+  /// Executa exclusão de conta com confirmação e Cloud Function
+  Future<void> _handleDeleteAccount(BuildContext context, LocalizationService i18n) async {
+    debugPrint('🗑️ [DELETE_ACCOUNT] Iniciando processo de exclusão de conta');
+    
+    // Capturar GoRouter e userId ANTES de operações assíncronas
+    final router = GoRouter.of(context);
+    final userId = AppState.currentUserId;
+    
+    if (userId == null || userId.isEmpty) {
+      debugPrint('🗑️ [DELETE_ACCOUNT] ❌ Usuário não autenticado');
+      return;
+    }
+    
+    debugPrint('🗑️ [DELETE_ACCOUNT] UserId: ${userId.substring(0, 8)}...');
+    
+    // Mostrar diálogo de confirmação usando GlimpseCupertinoDialog
+    final confirmed = await GlimpseCupertinoDialog.showDestructive(
+      context: context,
+      title: i18n.translate('delete_account') ?? 'Excluir Conta',
+      message: i18n.translate('all_your_profile_data_will_be_permanently_deleted') ?? 
+          'Todos os seus dados de perfil serão permanentemente excluídos. Esta ação não pode ser desfeita.',
+      destructiveText: i18n.translate('DELETE') ?? 'Excluir',
+      cancelText: i18n.translate('CANCEL') ?? 'Cancelar',
+    );
+    
+    if (confirmed != true) {
+      debugPrint('🗑️ [DELETE_ACCOUNT] ❌ Usuário cancelou');
+      return;
+    }
+    
+    debugPrint('🗑️ [DELETE_ACCOUNT] ✅ Confirmado pelo usuário');
+    
+    final progressDialog = ProgressDialog(context);
+    
+    try {
+      // Mostra loading
+      debugPrint('🗑️ [DELETE_ACCOUNT] Mostrando dialog de progresso');
+      progressDialog.show(i18n.translate('deleting_account') ?? 'Excluindo conta...');
+      
+      // Chama Cloud Function para deletar dados
+      debugPrint('🗑️ [DELETE_ACCOUNT] Chamando Cloud Function deleteUserAccount');
+      final callable = FirebaseFunctions.instance.httpsCallable('deleteUserAccount');
+      final result = await callable.call<Map<String, dynamic>>({
+        'userId': userId,
+      });
+      
+      debugPrint('🗑️ [DELETE_ACCOUNT] ✅ Cloud Function executada: ${result.data}');
+      
+      // Faz logout
+      debugPrint('🗑️ [DELETE_ACCOUNT] Executando logout');
+      await _viewModel?.signOut();
+      debugPrint('🗑️ [DELETE_ACCOUNT] ✅ Logout concluído');
+      
+      // Esconde loading
+      debugPrint('🗑️ [DELETE_ACCOUNT] Escondendo dialog de progresso');
+      await progressDialog.hide();
+      
+      // Navega para tela de login
+      debugPrint('🗑️ [DELETE_ACCOUNT] Navegando para ${AppRoutes.signIn}');
+      router.go(AppRoutes.signIn);
+      debugPrint('🗑️ [DELETE_ACCOUNT] ✅ Conta excluída com sucesso');
+      
+    } catch (e, stackTrace) {
+      debugPrint('🗑️ [DELETE_ACCOUNT] ❌ Erro durante exclusão: $e');
+      debugPrint('🗑️ [DELETE_ACCOUNT] ❌ StackTrace: $stackTrace');
+      
+      // Tenta esconder loading
+      try {
+        await progressDialog.hide();
+      } catch (dialogError) {
+        debugPrint('🗑️ [DELETE_ACCOUNT] ❌ Erro ao esconder dialog: $dialogError');
+      }
+      
+      // Mostra erro ao usuário se o contexto ainda estiver montado
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              i18n.translate('error_deleting_account') ?? 
+              'Erro ao excluir conta. Tente novamente.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   

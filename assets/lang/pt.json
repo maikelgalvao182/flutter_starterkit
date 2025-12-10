@@ -48,6 +48,16 @@
   "sign_in_with_apple_failed": "Falha ao entrar com Apple",
   "apple_sign_in_not_available": "Login com Apple não disponível neste dispositivo",
   "sign_in_with_google": "Entrar com Google",
+  "review_criteria_conversation": "Conexão",
+  "review_criteria_conversation_short": "Conversa",
+  "review_criteria_conversation_description": "O papo fluiu? Rolou conexão e foi fácil trocar ideia?",
+  "review_criteria_energy": "Vibe",
+  "review_criteria_energy_short": "Energia",
+  "review_criteria_energy_description": "A pessoa trouxe uma energia boa e esteve realmente presente no rolê?",
+  "review_criteria_participation": "Se Enturmou",
+  "review_criteria_participation_description": "Entrou no clima, participou e somou na atividade?",
+  "review_criteria_coexistence": "Companhia",
+  "review_criteria_coexistence_description": "Foi leve de conviver, respeitoso e deixou o ambiente mais agradável?",
   "sign_in_with_google_failed": "Falha ao entrar com Google",
   "sign_in_with_email": "Entrar com E-mail",
   "sign_in_canceled": "Login cancelado",
@@ -335,7 +345,7 @@
   "select_languages": "Selecione os idiomas",
   "complete_your_profile": "Complete seu perfil",
   "profile_completeness_subtitle": "Seu perfil está incompleto",
-  "profile_completeness_percentage_subtitle": "Você já preencheu {percentage}% do perfil. Complete para ter mais visibilidade!",
+  "profile_completeness_percentage_subtitle": "Você já preencheu {percentage}% do perfil. Complete para ter mais credibilidade!",
   "dont_show": "Não mostrar",
   "edit_profile_button": "Editar Perfil",
   "remove_image": "Remover imagem?",
@@ -387,7 +397,7 @@
   "language_arabic": "Árabe",
   "language_hindi": "Hindi",
   "language_dutch": "Holandês",
-  "language_swedish": "Sueco",❌ Pulando - reviews já criados
+  "language_swedish": "Sueco",
   "language_norwegian": "Norueguês",
   "language_danish": "Dinamarquês",
   "language_finnish": "Finlandês",
@@ -598,6 +608,14 @@
   "unblock_user_confirmation": "Deseja desbloquear {name}?",
   "unblock": "Desbloquear",
   "user_unblocked_successfully": "Usuário desbloqueado com sucesso",
-  "error_unblocking_user": "Erro ao desbloquear usuário"
+  "error_unblocking_user": "Erro ao desbloquear usuário",
+  
+  "delete_account": "Excluir Conta",
+  "DELETE": "EXCLUIR",
+  "CANCEL": "CANCELAR",
+  "all_your_profile_data_will_be_permanently_deleted": "Todos os seus dados de perfil serão permanentemente excluídos. Esta ação não pode ser desfeita.",
+  "deleting_account": "Excluindo conta...",
+  "error_deleting_account": "Erro ao excluir conta. Tente novamente.",
+  "account_deleted_successfully": "Conta excluída com sucesso"
 }
 

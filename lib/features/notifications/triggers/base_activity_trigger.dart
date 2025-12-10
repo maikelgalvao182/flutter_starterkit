@@ -52,7 +52,7 @@ abstract class BaseActivityTrigger {
       // Tentar múltiplos campos possíveis para foto
       final photoUrl = data['photoUrl'] as String? ?? 
                       data['user_profile_photo'] as String? ?? 
-                      data['profilePhotoUrl'] as String? ?? 
+                      data['photoUrl'] as String? ?? 
                       '';
       
       final result = {

@@ -96,10 +96,17 @@ class AuthInitializationGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🚪 AuthInitializationGate.build() CHAMADO');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     return Consumer<AuthSyncService>(
       builder: (context, authSync, child) {
+        debugPrint('📊 [Gate] Consumer builder - initialized: ${authSync.initialized}');
+        
         // Aguarda inicialização do AuthSyncService
         if (!authSync.initialized) {
+          debugPrint('⏳ [Gate] Aguardando AuthSyncService inicializar...');
           return const MaterialApp(
             home: Scaffold(
               backgroundColor: Colors.white,
@@ -124,6 +131,7 @@ class AuthInitializationGate extends StatelessWidget {
         }
 
         // AuthSyncService inicializado - pode mostrar app principal
+        debugPrint('✅ [Gate] AuthSyncService inicializado - mostrando MyApp');
         return const MyApp();
       },
     );
@@ -135,9 +143,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cria goRouter com acesso ao AuthSyncService via context
-    final router = createAppRouter(context);
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🏗️ MyApp.build() CHAMADO - Construindo MaterialApp');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
+    // Cria goRouter com acesso ao AuthSyncService via context
+    debugPrint('📊 [MyApp] Criando router...');
+    final router = createAppRouter(context);
+    debugPrint('✅ [MyApp] Router criado');
+    
+    debugPrint('📊 [MyApp] Construindo MaterialApp.router...');
     return MaterialApp.router(
       title: 'Partiu',
       debugShowCheckedModeBanner: false,

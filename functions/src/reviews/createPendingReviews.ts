@@ -208,7 +208,7 @@ async function processEvent(
   // Firestore permite "in" com até 10 valores, então fazer em chunks
   const participantProfiles: Record<
     string,
-    { name: string; photo: string | null }
+    { name: string; photo: string | null; presence_confirmed: boolean }
   > = {};
 
   for (let i = 0; i < userIds.length; i += 10) {
@@ -225,6 +225,7 @@ async function processEvent(
       participantProfiles[userDoc.id] = {
         name: userData.fullName || "Usuário",
         photo: photoUrl,
+        presence_confirmed: false, // Inicializa como false
       };
     });
   }
@@ -232,47 +233,57 @@ async function processEvent(
   const profileCount = Object.keys(participantProfiles).length;
   console.log(`📸 [PendingReviews] ${profileCount} perfis carregados`);
 
-  // 3. Criar PendingReview para o OWNER
-  const ownerPendingReviewId = `${eventId}_owner_${ownerId}`;
+  // 3. Preparar Batch para criar todas as reviews atomicamente
+  const batch = admin.firestore().batch();
   const expiresAt = admin.firestore.Timestamp.fromMillis(
     admin.firestore.Timestamp.now().toMillis() +
     (30 * 24 * 60 * 60 * 1000) // 30 dias
   );
 
-  try {
-    await admin.firestore()
-      .collection("PendingReviews")
-      .doc(ownerPendingReviewId)
-      .set({
-        pending_review_id: ownerPendingReviewId,
-        event_id: eventId,
-        reviewer_id: ownerId,
-        reviewer_role: "owner",
-        event_title: eventTitle,
-        event_emoji: eventEmoji,
-        event_location: eventLocationName,
-        event_date: eventScheduleDate,
-        participant_ids: participantIds,
-        participant_profiles: participantProfiles,
-        presence_confirmed: false,
-        created_at: admin.firestore.FieldValue.serverTimestamp(),
-        expires_at: expiresAt,
-        dismissed: false,
-      });
+  // 3a. Criar PendingReview para o OWNER
+  const ownerPendingReviewId = `${eventId}_owner_${ownerId}`;
+  const ownerReviewRef = admin.firestore()
+    .collection("PendingReviews")
+    .doc(ownerPendingReviewId);
 
-    const logMsg = `Criado para owner: ${ownerPendingReviewId}`;
-    console.log(`✅ [PendingReviews] ${logMsg}`);
-  } catch (error) {
-    console.error("❌ [PendingReviews] Erro ao criar para owner:", error);
-    throw error;
-  }
+  batch.set(ownerReviewRef, {
+    pending_review_id: ownerPendingReviewId,
+    event_id: eventId,
+    reviewer_id: ownerId,
+    reviewee_id: "multiple", // Owner avalia múltiplos participantes
+    reviewer_role: "owner",
+    event_title: eventTitle,
+    event_emoji: eventEmoji,
+    event_location: eventLocationName,
+    event_date: eventScheduleDate,
+    participant_ids: userIds, // Evitar duplicatas
+    participant_profiles: participantProfiles, // presence_confirmed individual
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+    expires_at: expiresAt,
+    dismissed: false,
+  });
+
+  console.log(
+    "✅ [PendingReviews] Owner review criado com " +
+    `${userIds.length} participantes (presence_confirmed=false)`
+  );
+
+  // 3b. NÃO criar PendingReview para participantes ainda
+  // Será criado via onPresenceConfirmed quando owner confirmar presença
 
   // 4. Marcar evento como processado
-  await eventDoc.ref.update({
+  batch.update(eventDoc.ref, {
     reviewsCreated: true,
     reviewsCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  console.log(`✅ [PendingReviews] Evento ${eventId} processado com sucesso`);
+  try {
+    await batch.commit();
+    const logMsg = `Owner review criado para ${userIds.length} participantes`;
+    console.log(`✅ [PendingReviews] Evento ${eventId}. ${logMsg}`);
+  } catch (error) {
+    console.error("❌ [PendingReviews] Erro ao commitar batch:", error);
+    throw error;
+  }
 }
 

@@ -47,6 +47,10 @@ class AppRoutes {
 
 /// Cria o GoRouter com proteção baseada no AuthSyncService
 GoRouter createAppRouter(BuildContext context) {
+  debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  debugPrint('🛣️ createAppRouter() CHAMADO');
+  debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
   return GoRouter(
     initialLocation: AppRoutes.signIn,
     debugLogDiagnostics: true,
@@ -57,7 +61,12 @@ GoRouter createAppRouter(BuildContext context) {
         final authSync = Provider.of<AuthSyncService>(context, listen: false);
         final currentPath = state.uri.path;
         
-        debugPrint('🔀 [GoRouter] redirect: path=$currentPath, initialized=${authSync.initialized}, isLoggedIn=${authSync.isLoggedIn}');
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        debugPrint('🔀 [GoRouter] redirect CHAMADO');
+        debugPrint('🔀 path: $currentPath');
+        debugPrint('🔀 initialized: ${authSync.initialized}');
+        debugPrint('🔀 isLoggedIn: ${authSync.isLoggedIn}');
+        debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         // PROTEÇÃO: Se logout está em andamento, bloqueia navegação
         if (SessionCleanupService.isLoggingOut) {
@@ -70,6 +79,8 @@ GoRouter createAppRouter(BuildContext context) {
           debugPrint('⏳ [GoRouter] Aguardando inicialização do AuthSyncService');
           return null; // Bloqueia navegação até inicializar
         }
+        
+        debugPrint('✅ [GoRouter] AuthSyncService inicializado, processando redirect...');
         
         // Rotas públicas (não necessitam autenticação)
         final publicRoutes = [

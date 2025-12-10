@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
+
 /// Critérios de avaliação para reviews
 /// Mesmos critérios para owner e participantes
 class ReviewCriteria {
@@ -6,48 +9,48 @@ class ReviewCriteria {
   static const String coexistence = 'coexistence';
   static const String participation = 'participation';
 
-  static const List<Map<String, String>> all = [
+  static List<Map<String, String>> all(BuildContext context) => [
     {
       'key': conversation,
       'icon': '💬',
-      'title': 'Papo & Conexão',
-      'description': 'Conseguiu manter uma boa conversa e criar conexão?',
+      'title': AppLocalizations.of(context).translate('review_criteria_conversation'),
+      'description': AppLocalizations.of(context).translate('review_criteria_conversation_description'),
     },
     {
       'key': energy,
       'icon': '⚡',
-      'title': 'Energia & Presença',
-      'description': 'Estava presente e engajado durante o evento?',
+      'title': AppLocalizations.of(context).translate('review_criteria_energy'),
+      'description': AppLocalizations.of(context).translate('review_criteria_energy_description'),
     },
     {
       'key': coexistence,
       'icon': '🤝',
-      'title': 'Convivência',
-      'description': 'Foi agradável e respeitoso com todos?',
+      'title': AppLocalizations.of(context).translate('review_criteria_coexistence'),
+      'description': AppLocalizations.of(context).translate('review_criteria_coexistence_description'),
     },
     {
       'key': participation,
       'icon': '🎯',
-      'title': 'Participação',
-      'description': 'Participou ativamente das atividades?',
+      'title': AppLocalizations.of(context).translate('review_criteria_participation'),
+      'description': AppLocalizations.of(context).translate('review_criteria_participation_description'),
     },
   ];
 
-  static Map<String, String>? getCriterion(String key) {
+  static Map<String, String>? getCriterion(String key, BuildContext context) {
     try {
-      return all.firstWhere((c) => c['key'] == key);
+      return all(context).firstWhere((c) => c['key'] == key);
     } catch (_) {
       return null;
     }
   }
 
-  static String getTitle(String key) {
-    final criterion = getCriterion(key);
+  static String getTitle(String key, BuildContext context) {
+    final criterion = getCriterion(key, context);
     return criterion?['title'] ?? key;
   }
 
-  static String getIcon(String key) {
-    final criterion = getCriterion(key);
+  static String getIcon(String key, BuildContext context) {
+    final criterion = getCriterion(key, context);
     return criterion?['icon'] ?? '⭐';
   }
 }

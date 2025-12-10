@@ -49,6 +49,16 @@
   "sign_in_with_apple_failed": "Failed to sign in with Apple",
   "apple_sign_in_not_available": "Apple Sign-In not available on this device",
   "sign_in_with_google": "Sign in with Google",
+  "review_criteria_conversation": "Chat & Connection",
+  "review_criteria_conversation_short": "Conversation",
+  "review_criteria_conversation_description": "Were they able to maintain good conversation and create connection?",
+  "review_criteria_energy": "Energy & Presence",
+  "review_criteria_energy_short": "Energy",
+  "review_criteria_energy_description": "Were they present and engaged during the event?",
+  "review_criteria_participation": "Participation",
+  "review_criteria_participation_description": "Did they actively participate in activities?",
+  "review_criteria_coexistence": "Coexistence",
+  "review_criteria_coexistence_description": "Were they pleasant and respectful to everyone?",
   "sign_in_with_google_failed": "Failed to sign in with Google",
   "sign_in_with_email": "Sign in with Email",
   "sign_in_canceled": "Sign-in canceled",
@@ -567,5 +577,14 @@
   "unblock": "Unblock",
   "user_unblocked_successfully": "User unblocked successfully",
   "error_unblocking_user": "Error unblocking user",
+  
+  "delete_account": "Delete Account",
+  "DELETE": "DELETE",
+  "CANCEL": "CANCEL",
+  "all_your_profile_data_will_be_permanently_deleted": "All your profile data will be permanently deleted. This action cannot be undone.",
+  "deleting_account": "Deleting account...",
+  "error_deleting_account": "Error deleting account. Please try again.",
+  "account_deleted_successfully": "Account deleted successfully",
+  
   "years_old": "years old"
 }

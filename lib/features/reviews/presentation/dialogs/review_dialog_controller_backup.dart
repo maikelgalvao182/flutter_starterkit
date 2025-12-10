@@ -1090,7 +1090,7 @@ class ReviewDialogController extends ChangeNotifier {
   // ==================== HELPERS ====================
 
   /// Lista de critérios para exibir
-  List<Map<String, String>> get criteriaList => ReviewCriteria.all;
+  List<Map<String, String>> criteriaList(BuildContext context) => ReviewCriteria.all(context);
 
   /// Progresso atual (0.0 a 1.0)
   double get progress => (currentStep + 1) / totalSteps;

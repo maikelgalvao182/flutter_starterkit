@@ -46,7 +46,7 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
             return ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               itemCount: 5,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
               itemBuilder: (context, index) => const UserCardShimmer(),
             );
           }
@@ -77,7 +77,7 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               itemCount: visitors.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final visitor = visitors[index];
                 return UserCard(

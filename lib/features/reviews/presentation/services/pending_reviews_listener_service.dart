@@ -148,32 +148,38 @@ class PendingReviewsListenerService {
   }
 
   /// Mostra dialogs de review para pending reviews existentes (primeira carga)
+  /// DESABILITADO: ReviewDialog deve ser aberto apenas via ReviewCard
   Future<void> _showReviewDialogsForExistingReviews() async {
     if (_context == null || !_context!.mounted) {
       return;
     }
 
     try {
-      await PendingReviewsCheckerService().checkAndShowPendingReviews(
-        _context!,
-        forceRefresh: true,
-      );
+      // DESABILITADO: Abertura automática removida
+      // await PendingReviewsCheckerService().checkAndShowPendingReviews(
+      //   _context!,
+      //   forceRefresh: true,
+      // );
+      AppLogger.info('[PendingReviewsListener] Abertura automática de reviews desabilitada');
     } catch (e) {
       AppLogger.error('[PendingReviewsListener] Erro ao mostrar dialogs', error: e);
     }
   }
 
   /// Mostra dialogs de review para novos pending reviews
+  /// DESABILITADO: ReviewDialog deve ser aberto apenas via ReviewCard
   Future<void> _showReviewDialogsForNewReviews() async {
     if (_context == null || !_context!.mounted) {
       return;
     }
 
     try {
-      await PendingReviewsCheckerService().checkAndShowPendingReviews(
-        _context!,
-        forceRefresh: true,
-      );
+      // DESABILITADO: Abertura automática removida
+      // await PendingReviewsCheckerService().checkAndShowPendingReviews(
+      //   _context!,
+      //   forceRefresh: true,
+      // );
+      AppLogger.info('[PendingReviewsListener] Abertura automática de novos reviews desabilitada');
     } catch (e) {
       AppLogger.error('[PendingReviewsListener] Erro ao mostrar dialogs', error: e);
     }

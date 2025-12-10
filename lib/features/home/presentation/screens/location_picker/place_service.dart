@@ -166,26 +166,28 @@ class PlaceService {
         }
       }
 
-      locality = locality ?? administrativeAreaLevel1;
-      final city = locality;
+      // locality (cidade) com fallback para administrative_area_level_2
+      // administrativeAreaLevel1 (estado) mantido separado
+      final cityName = locality ?? administrativeAreaLevel2;
+      final stateName = administrativeAreaLevel1;
 
       return LocationResult()
         ..name = name
         ..formattedAddress = formattedAddress
         ..latLng = latLng
         ..placeId = placeId
-        ..locality = locality
+        ..locality = cityName
         ..postalCode = postalCode
         ..country = AddressComponent(name: country, shortName: country)
         ..administrativeAreaLevel1 = AddressComponent(
-          name: administrativeAreaLevel1,
-          shortName: administrativeAreaLevel1,
+          name: stateName,
+          shortName: stateName,
         )
         ..administrativeAreaLevel2 = AddressComponent(
           name: administrativeAreaLevel2,
           shortName: administrativeAreaLevel2,
         )
-        ..city = AddressComponent(name: city, shortName: city)
+        ..city = AddressComponent(name: cityName, shortName: cityName)
         ..subLocalityLevel1 = AddressComponent(
           name: subLocalityLevel1,
           shortName: subLocalityLevel1,

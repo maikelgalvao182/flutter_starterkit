@@ -317,14 +317,9 @@ class _ProfileHeaderState extends State<ProfileHeader> {
   }
 
   String _getFirstValidImage() {
-    // Prioriza userProfilePhoto
-    if (widget.user.userProfilePhoto.isNotEmpty) {
-      return widget.user.userProfilePhoto;
-    }
-    
-    // Fallback: photoUrl
-    if (widget.user.photoUrl != null && widget.user.photoUrl!.isNotEmpty) {
-      return widget.user.photoUrl!;
+    // Usa photoUrl (campo unificado)
+    if (widget.user.photoUrl.isNotEmpty) {
+      return widget.user.photoUrl;
     }
     
     // Fallback: galeria

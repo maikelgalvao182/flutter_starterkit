@@ -100,7 +100,7 @@ class _UserCardState extends State<UserCard> {
         from: u.from ?? '',
         distanceKm: u.distance,
         commonInterests: u.commonInterests ?? [],
-        photoUrl: u.profilePhotoUrl,
+        photoUrl: u.photoUrl,
         overallRating: rating,
       );
     }
@@ -128,7 +128,7 @@ class _UserCardState extends State<UserCard> {
       from: user.from ?? '',
       distanceKm: user.distance,
       commonInterests: user.commonInterests ?? [],
-      photoUrl: user.profilePhotoUrl,
+      photoUrl: user.photoUrl,
       overallRating: rating,
     );
   }

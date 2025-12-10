@@ -188,6 +188,22 @@ class TextStyles {
     color: Colors.black.withValues(alpha: 0.6),
   );
 
+  // TEXTOS DE FILTROS
+
+  /// Texto de filtro quando selecionado (primary color, bold)
+  static TextStyle get filterSelected => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: GlimpseColors.primary,
+  );
+
+  /// Texto de filtro quando não selecionado (textSubTitle)
+  static TextStyle get filterDefault => GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: GlimpseColors.textSubTitle,
+  );
+
   // MÉTODOS UTILITÁRIOS
 
   /// Retorna uma variação do estilo de título com cor personalizada

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:partiu/features/reviews/domain/constants/review_criteria.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/controller/review_dialog_state.dart';
 
@@ -40,7 +41,7 @@ class ReviewUIService {
   }
 
   /// Lista de critérios para exibir
-  static List<Map<String, String>> get criteriaList => ReviewCriteria.all;
+  static List<Map<String, String>> criteriaList(BuildContext context) => ReviewCriteria.all(context);
 
   /// Obtém ratings do participante atual (ou do participant)
   static Map<String, int> getCurrentRatings(ReviewDialogState state) {

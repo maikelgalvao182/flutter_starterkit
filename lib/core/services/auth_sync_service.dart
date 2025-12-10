@@ -165,14 +165,20 @@ class AuthSyncService extends ChangeNotifier {
           if (!_notificationServiceInitialized) {
             _log('🔔🔔🔔 Inicializando NotificationsCounterService pela primeira vez...');
             _log('🔔 AppState.currentUserId: ${AppState.currentUserId}');
+            
+            _log('📊 [INIT] Etapa 1/3: Inicializando NotificationsCounterService...');
             NotificationsCounterService.instance.initialize();
+            _log('✅ [INIT] Etapa 1/3: NotificationsCounterService inicializado');
             
             // Inicializar FCM Token Service
-            _log('🔑 Inicializando FcmTokenService...');
+            _log('📊 [INIT] Etapa 2/3: Inicializando FcmTokenService...');
             await FcmTokenService.instance.initialize();
+            _log('✅ [INIT] Etapa 2/3: FcmTokenService inicializado');
             
             _notificationServiceInitialized = true;
-            _log('🔔✅ NotificationsCounterService.initialize() chamado - flag: $_notificationServiceInitialized');
+            _log('📊 [INIT] Etapa 3/3: Marcando serviços como inicializados');
+            _log('✅ [INIT] Etapa 3/3: Todos os serviços de notificação inicializados');
+            _log('🎉 [INIT] INICIALIZAÇÃO COMPLETA - Chamando notifyListeners()...');
           } else {
             _log('🔔 NotificationsCounterService já foi inicializado anteriormente');
             // Verificar se os listeners ainda estão ativos (pode ter sido resetado por hot reload)
@@ -184,7 +190,9 @@ class AuthSyncService extends ChangeNotifier {
             }
           }
           
+          _log('📊 [INIT] Chamando notifyListeners() final...');
           notifyListeners();
+          _log('✅ [INIT] notifyListeners() completo - UI pode atualizar agora');
         } catch (e, stack) {
           _logError('Erro ao processar snapshot do usuário', e, stack);
         }

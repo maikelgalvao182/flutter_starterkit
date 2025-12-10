@@ -91,8 +91,8 @@ class ProfileController {
       
       _reviewsSubscription = _firestore
           .collection('Reviews')
-          .where('revieweeId', isEqualTo: targetUserId)
-          .orderBy('createdAt', descending: true)
+          .where('reviewee_id', isEqualTo: targetUserId) // FIXADO: era 'revieweeId' (camelCase)
+          .orderBy('created_at', descending: true) // FIXADO: era 'createdAt' (camelCase)
           .limit(50)
           .snapshots()
           .listen(

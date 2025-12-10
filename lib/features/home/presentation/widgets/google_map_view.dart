@@ -392,7 +392,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
             final chatUser = app_user.User.fromDocument({
               'userId': 'event_${event.id}',
               'fullName': eventName,
-              'profilePhotoUrl': emoji,
+              'photoUrl': emoji,
               'gender': '',
               'birthDay': 1,
               'birthMonth': 1,

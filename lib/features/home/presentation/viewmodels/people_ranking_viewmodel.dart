@@ -25,9 +25,14 @@ class PeopleRankingViewModel extends ChangeNotifier {
 
   // Dados
   List<UserRankingModel> _peopleRankings = [];
+  List<String> _availableStates = [];
   List<String> _availableCities = [];
+  
+  // Cache de cidades por estado para não reprocessar
+  Map<String, List<String>> _citiesByState = {};
 
   // Filtros
+  String? _selectedState;
   String? _selectedCity;
 
   PeopleRankingViewModel({
@@ -40,12 +45,14 @@ class PeopleRankingViewModel extends ChangeNotifier {
 
   // Getters - Dados
   List<UserRankingModel> get peopleRankings => _peopleRankings;
+  List<String> get availableStates => _availableStates;
   List<String> get availableCities => _availableCities;
 
   // Getters - Filtros
+  String? get selectedState => _selectedState;
   String? get selectedCity => _selectedCity;
 
-  /// Inicializa o ViewModel carregando rankings e cidades
+  /// Inicializa o ViewModel carregando rankings e filtros disponíveis
   Future<void> initialize() async {
     debugPrint('🚀 [PeopleRankingViewModel] Inicializando...');
     
@@ -54,6 +61,7 @@ class PeopleRankingViewModel extends ChangeNotifier {
     
     await Future.wait([
       loadPeopleRanking(),
+      _loadAvailableStates(),
       _loadAvailableCities(),
     ]);
     debugPrint('✅ [PeopleRankingViewModel] Inicialização completa');
@@ -89,6 +97,7 @@ class PeopleRankingViewModel extends ChangeNotifier {
   /// Carrega ranking de pessoas
   Future<void> loadPeopleRanking() async {
     debugPrint('📊 [PeopleRankingViewModel] Iniciando loadPeopleRanking');
+    debugPrint('   - selectedState: $_selectedState');
     debugPrint('   - selectedCity: $_selectedCity');
     
     _isLoading = true;
@@ -98,6 +107,7 @@ class PeopleRankingViewModel extends ChangeNotifier {
     try {
       debugPrint('   - Chamando service.getPeopleRanking...');
       _peopleRankings = await _peopleRankingService.getPeopleRanking(
+        selectedState: _selectedState,
         selectedLocality: _selectedCity,
         limit: 50,
       );
@@ -137,18 +147,97 @@ class PeopleRankingViewModel extends ChangeNotifier {
     }
   }
 
+  /// Carrega lista de estados disponíveis
+  Future<void> _loadAvailableStates() async {
+    debugPrint('🗺️ [PeopleRankingViewModel] Carregando estados...');
+    try {
+      _availableStates = await _peopleRankingService.getAvailableStates();
+      debugPrint('✅ Estados disponíveis: ${_availableStates.length}');
+      if (_availableStates.isNotEmpty) {
+        debugPrint('   - Estados: ${_availableStates.join(", ")}');
+      }
+    } catch (error, stackTrace) {
+      debugPrint('⚠️ Erro ao carregar estados: $error');
+      debugPrint('   StackTrace: $stackTrace');
+    }
+  }
+
   /// Carrega lista de cidades disponíveis
   Future<void> _loadAvailableCities() async {
     debugPrint('🌆 [PeopleRankingViewModel] Carregando cidades...');
     try {
-      _availableCities = await _peopleRankingService.getAvailableCities();
-      debugPrint('✅ Cidades disponíveis: ${_availableCities.length}');
+      final allCities = await _peopleRankingService.getAvailableCities();
+      debugPrint('✅ Cidades totais disponíveis: ${allCities.length}');
+      
+      // Inicialmente, carregar todas as cidades
+      _availableCities = allCities;
+      
       if (_availableCities.isNotEmpty) {
         debugPrint('   - Primeiras 5: ${_availableCities.take(5).join(", ")}');
       }
     } catch (error, stackTrace) {
       debugPrint('⚠️ Erro ao carregar cidades: $error');
       debugPrint('   StackTrace: $stackTrace');
+    }
+  }
+
+  /// Atualiza filtro de estado
+  Future<void> selectState(String? state) async {
+    if (_selectedState == state) {
+      debugPrint('🗺️ [PeopleRankingViewModel] Estado já selecionado: $state');
+      return;
+    }
+    
+    _selectedState = state;
+    _selectedCity = null; // Reset cidade ao trocar estado
+    
+    debugPrint('🗺️ [PeopleRankingViewModel] Estado selecionado: ${state ?? "Todos"}');
+    
+    // Atualizar lista de cidades baseado no estado
+    await _updateAvailableCitiesForState();
+    
+    notifyListeners();
+    await loadPeopleRanking();
+  }
+
+  /// Atualiza lista de cidades baseado no estado selecionado
+  Future<void> _updateAvailableCitiesForState() async {
+    if (_selectedState == null) {
+      // Se nenhum estado selecionado, mostrar todas as cidades
+      _availableCities = await _peopleRankingService.getAvailableCities();
+      return;
+    }
+    
+    // Verificar cache
+    if (_citiesByState.containsKey(_selectedState)) {
+      _availableCities = _citiesByState[_selectedState]!;
+      debugPrint('   📦 Usando cache: ${_availableCities.length} cidades');
+      return;
+    }
+    
+    // Buscar cidades do estado selecionado filtrando do ranking
+    debugPrint('   🔍 Filtrando cidades do estado: $_selectedState');
+    try {
+      // Buscar rankings do estado para extrair cidades
+      final stateRankings = await _peopleRankingService.getPeopleRanking(
+        selectedState: _selectedState,
+        limit: 1000, // Buscar bastante para pegar todas as cidades
+      );
+      
+      final cities = stateRankings
+          .map((r) => r.locality)
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+      
+      _availableCities = cities;
+      _citiesByState[_selectedState!] = cities; // Cachear
+      
+      debugPrint('   ✅ ${_availableCities.length} cidades no estado $_selectedState');
+    } catch (error) {
+      debugPrint('   ⚠️ Erro ao filtrar cidades: $error');
+      _availableCities = [];
     }
   }
 
@@ -164,6 +253,11 @@ class PeopleRankingViewModel extends ChangeNotifier {
     
     notifyListeners();
     await loadPeopleRanking();
+  }
+
+  /// Limpa filtro de estado
+  Future<void> clearStateFilter() async {
+    await selectState(null);
   }
 
   /// Limpa filtro de cidade

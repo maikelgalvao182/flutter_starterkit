@@ -322,7 +322,7 @@ class ProfileVisitsService {
       // Buscar dados do visitante para incluir na notificação
       final visitorData = await _userRepository.getUserById(visitorId);
       final visitorName = visitorData?['fullName'] as String? ?? 'Alguém';
-      final visitorPhotoUrl = visitorData?['profilePhotoUrl'] as String?;
+      final visitorPhotoUrl = visitorData?['photoUrl'] as String?;
       
       // 1. Salvar na coleção ProfileVisits (para UI de visitas)
       final docId = '${visitedUserId}_$visitorId';

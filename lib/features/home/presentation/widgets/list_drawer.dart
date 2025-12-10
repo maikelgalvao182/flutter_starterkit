@@ -193,17 +193,17 @@ class _ListDrawerContent extends StatelessWidget {
                         // SEÇÃO: Atividades próximas (do mapa)
                         if (hasNearbyEvents) ...[
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(top: 24, bottom: 16),
                             child: _buildSectionLabel('Atividades próximas'),
                           ),
                           _buildNearbyEventsList(context, nearbyEventsList),
                         ],
 
-                        // SEÇÃO: Suas atividades
+                        // SEÇÃO: photoUrl
                         if (hasMyEvents) ...[
                           Padding(
-                            padding: const EdgeInsets.only(top: 24, bottom: 16),
-                            child: _buildSectionLabel('Suas atividades'),
+                            padding: const EdgeInsets.only(top: 16, bottom: 16),
+                            child: _buildSectionLabel('photoUrl'),
                           ),
                           _buildMyEventsList(context, myEventsList),
                         ],

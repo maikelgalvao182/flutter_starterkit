@@ -21,7 +21,7 @@ class RatingCriteriaStep extends StatelessWidget {
     return Column(
       children: [
         // Lista de critérios
-        ...ReviewCriteria.all.map((criterion) {
+        ...ReviewCriteria.all(context).map((criterion) {
           return _CriterionItem(
             criterion: criterion,
             currentRating: ratings[criterion['key']],

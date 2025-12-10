@@ -358,9 +358,6 @@ class ReviewRepository {
     // Salva no Firestore
     await _firestore.collection('Reviews').add(review.toFirestore());
 
-    // Atualiza stats do reviewee
-    await _updateReviewStats(revieweeId);
-
     // Remove pending review
     if (pendingReviewId != null && pendingReviewId.isNotEmpty) {
       await _removePendingReviewById(pendingReviewId);
@@ -392,24 +389,23 @@ class ReviewRepository {
     return snapshot.docs.map((doc) => ReviewModel.fromFirestore(doc)).toList();
   }
 
-  /// Busca estatísticas de reviews
+  /// Busca estatísticas de reviews (calculadas dinamicamente)
   Future<ReviewStatsModel?> getReviewStats(String userId) async {
-    final doc =
-        await _firestore.collection('ReviewStats').doc(userId).get();
+    final reviewsSnapshot = await _firestore
+        .collection('Reviews')
+        .where('reviewee_id', isEqualTo: userId)
+        .get();
 
-    if (!doc.exists) {
-      // Calcula pela primeira vez
-      await _updateReviewStats(userId);
-      final recalculatedDoc =
-          await _firestore.collection('ReviewStats').doc(userId).get();
-
-      if (recalculatedDoc.exists) {
-        return ReviewStatsModel.fromFirestore(recalculatedDoc);
-      }
+    if (reviewsSnapshot.docs.isEmpty) {
       return null;
     }
 
-    return ReviewStatsModel.fromFirestore(doc);
+    final reviews = reviewsSnapshot.docs
+        .map((doc) => ReviewModel.fromFirestore(doc))
+        .toList();
+
+    // Calcula estatísticas dinamicamente
+    return ReviewStatsModel.calculate(userId, reviews);
   }
 
   /// Stream de reviews pendentes (para atualização em tempo real)
@@ -467,23 +463,129 @@ class ReviewRepository {
             .toList());
   }
 
-  /// Stream de estatísticas de reviews de um usuário
+  /// Stream de estatísticas de reviews de um usuário (lê de Users.overallRating)
   Stream<ReviewStatsModel> watchUserStats(String userId) {
+    debugPrint('🔍 [ReviewRepository] Iniciando watchUserStats para userId: ${userId.substring(0, 8)}...');
+    
     return _firestore
-        .collection('ReviewStats')
+        .collection('Users')
         .doc(userId)
         .snapshots()
-        .asyncMap((doc) async {
-          if (!doc.exists) {
-            // Calcula pela primeira vez
-            await _updateReviewStats(userId);
-            final recalculatedDoc =
-                await _firestore.collection('ReviewStats').doc(userId).get();
-
-            if (recalculatedDoc.exists) {
-              return ReviewStatsModel.fromFirestore(recalculatedDoc);
+        .asyncMap((userDoc) async {
+          try {
+            debugPrint('📊 [ReviewRepository] watchUserStats snapshot recebido do Users');
+            
+            final userData = userDoc.data();
+            if (userData == null) {
+              debugPrint('  ⚠️  Documento Users não existe');
+              return ReviewStatsModel(
+                userId: userId,
+                totalReviews: 0,
+                overallRating: 0.0,
+                ratingsBreakdown: {},
+                badgesCount: {},
+                last30DaysCount: 0,
+                last90DaysCount: 0,
+                lastUpdated: DateTime.now(),
+              );
             }
-            // Retorna stats vazias se ainda não há reviews
+
+            final overallRating = (userData['overallRating'] as num?)?.toDouble() ?? 0.0;
+            final totalReviews = (userData['totalReviews'] as num?)?.toInt() ?? 0;
+            
+            debugPrint('  - overallRating: $overallRating');
+            debugPrint('  - totalReviews: $totalReviews');
+
+            if (totalReviews == 0) {
+              debugPrint('  ⚠️  Nenhuma review, retornando stats vazias');
+              return ReviewStatsModel(
+                userId: userId,
+                totalReviews: 0,
+                overallRating: 0.0,
+                ratingsBreakdown: {},
+                badgesCount: {},
+                last30DaysCount: 0,
+                last90DaysCount: 0,
+                lastUpdated: DateTime.now(),
+              );
+            }
+
+            // Buscar reviews para calcular breakdown e badges
+            debugPrint('  🔍 Buscando reviews para breakdown e badges...');
+            final reviewsSnapshot = await _firestore
+                .collection('Reviews')
+                .where('reviewee_id', isEqualTo: userId)
+                .get();
+
+            debugPrint('  - Reviews encontradas: ${reviewsSnapshot.docs.length}');
+
+            final reviews = <ReviewModel>[];
+            for (final doc in reviewsSnapshot.docs) {
+              try {
+                final review = ReviewModel.fromFirestore(doc);
+                reviews.add(review);
+              } catch (e) {
+                debugPrint('  ❌ Erro ao parsear review ${doc.id}: $e');
+                // Continua processando outras reviews
+              }
+            }
+
+            debugPrint('  ✅ Reviews parseadas com sucesso: ${reviews.length}');
+
+            // Calcula breakdown por critério
+            final Map<String, List<int>> criteriaValues = {};
+            for (final review in reviews) {
+              for (final entry in review.criteriaRatings.entries) {
+                criteriaValues.putIfAbsent(entry.key, () => []).add(entry.value);
+              }
+            }
+
+            final ratingsBreakdown = criteriaValues.map((key, values) {
+              final sum = values.reduce((a, b) => a + b);
+              return MapEntry(key, double.parse((sum / values.length).toStringAsFixed(1)));
+            });
+
+            // Conta badges
+            final Map<String, int> badgesCount = {};
+            for (final review in reviews) {
+              for (final badge in review.badges) {
+                badgesCount[badge] = (badgesCount[badge] ?? 0) + 1;
+              }
+            }
+
+            final now = DateTime.now();
+            final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+            final ninetyDaysAgo = now.subtract(const Duration(days: 90));
+
+            int last30DaysCount = 0;
+            int last90DaysCount = 0;
+            for (final review in reviews) {
+              if (review.createdAt.isAfter(thirtyDaysAgo)) {
+                last30DaysCount++;
+              }
+              if (review.createdAt.isAfter(ninetyDaysAgo)) {
+                last90DaysCount++;
+              }
+            }
+
+            final stats = ReviewStatsModel(
+              userId: userId,
+              totalReviews: totalReviews,
+              overallRating: overallRating, // Usa valor de Users, não calcula
+              ratingsBreakdown: ratingsBreakdown,
+              badgesCount: badgesCount,
+              last30DaysCount: last30DaysCount,
+              last90DaysCount: last90DaysCount,
+              lastUpdated: DateTime.now(),
+            );
+
+            debugPrint('  📈 Stats finais criadas: totalReviews=${stats.totalReviews}, overallRating=${stats.overallRating}, hasReviews=${stats.hasReviews}');
+            
+            return stats;
+          } catch (e, stackTrace) {
+            debugPrint('  ❌ ERRO em watchUserStats: $e');
+            debugPrint('  Stack: $stackTrace');
+            // Retorna stats vazias em caso de erro
             return ReviewStatsModel(
               userId: userId,
               totalReviews: 0,
@@ -495,37 +597,10 @@ class ReviewRepository {
               lastUpdated: DateTime.now(),
             );
           }
-
-          return ReviewStatsModel.fromFirestore(doc);
         });
   }
 
   // ==================== PRIVATE HELPERS ====================
-
-  Future<void> _updateReviewStats(String userId) async {
-    final reviewsSnapshot = await _firestore
-        .collection('Reviews')
-        .where('reviewee_id', isEqualTo: userId)
-        .get();
-
-    if (reviewsSnapshot.docs.isEmpty) {
-      // Sem reviews ainda
-      return;
-    }
-
-    final reviews = reviewsSnapshot.docs
-        .map((doc) => ReviewModel.fromFirestore(doc))
-        .toList();
-
-    // Calcula estatísticas
-    final stats = ReviewStatsModel.calculate(userId, reviews);
-
-    // Salva no Firestore
-    await _firestore
-        .collection('ReviewStats')
-        .doc(userId)
-        .set(stats.toFirestore(), SetOptions(merge: true));
-  }
 
   Future<void> _removePendingReview(
     String reviewerId,

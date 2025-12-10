@@ -5,23 +5,36 @@ import 'package:flutter/foundation.dart';
 class ParticipantProfile {
   final String name;
   final String? photoUrl;
+  final bool presenceConfirmed;
 
   const ParticipantProfile({
     required this.name,
     this.photoUrl,
+    this.presenceConfirmed = false,
   });
 
   factory ParticipantProfile.fromMap(Map<String, dynamic> map) {
     return ParticipantProfile(
       name: map['name'] as String? ?? '',
       photoUrl: map['photo'] as String?,
+      presenceConfirmed: map['presence_confirmed'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toMap() => {
         'name': name,
         'photo': photoUrl,
+        'presence_confirmed': presenceConfirmed,
       };
+
+  /// Cria cópia com presença confirmada
+  ParticipantProfile copyWithConfirmed() {
+    return ParticipantProfile(
+      name: name,
+      photoUrl: photoUrl,
+      presenceConfirmed: true,
+    );
+  }
 }
 
 /// Modelo de review pendente (aguardando avaliação)
@@ -43,10 +56,9 @@ class PendingReviewModel {
   final String? revieweePhotoUrl;
 
   // Campos específicos do OWNER
-  final bool? presenceConfirmed; // null para participant
   final List<String>? participantIds; // null para participant
   final List<String>? confirmedParticipantIds; // null para participant
-  final Map<String, ParticipantProfile>? participantProfiles; // null para participant
+  final Map<String, ParticipantProfile>? participantProfiles; // null para participant (com presence_confirmed individual)
 
   // Campos específicos do PARTICIPANT
   final bool? allowedToReviewOwner; // null para owner
@@ -68,7 +80,6 @@ class PendingReviewModel {
     required this.revieweeName,
     this.revieweePhotoUrl,
     // Owner fields
-    this.presenceConfirmed,
     this.participantIds,
     this.confirmedParticipantIds,
     this.participantProfiles,
@@ -119,7 +130,6 @@ class PendingReviewModel {
       revieweeName: data['reviewee_name'] as String? ?? '',
       revieweePhotoUrl: data['reviewee_photo_url'] as String?,
       // Owner fields
-      presenceConfirmed: data['presence_confirmed'] as bool?,
       participantIds: (data['participant_ids'] as List<dynamic>?)?.cast<String>(),
       confirmedParticipantIds: (data['confirmed_participant_ids'] as List<dynamic>?)?.cast<String>(),
       participantProfiles: profiles,
@@ -149,9 +159,6 @@ class PendingReviewModel {
     };
 
     // Owner fields
-    if (presenceConfirmed != null) {
-      map['presence_confirmed'] = presenceConfirmed;
-    }
     if (participantIds != null) {
       map['participant_ids'] = participantIds;
     }
@@ -190,7 +197,7 @@ class PendingReviewModel {
   /// Verifica se owner precisa confirmar presença (STEP 0)
   bool get needsPresenceConfirmation =>
       isOwnerReview &&
-      presenceConfirmed == false &&
+      (participantProfiles?.values.every((p) => !p.presenceConfirmed) ?? true) &&
       (participantIds?.isNotEmpty ?? false);
 
   /// Verifica se participante tem permissão para avaliar
@@ -213,7 +220,6 @@ class PendingReviewModel {
     bool? dismissed,
     String? revieweeName,
     String? revieweePhotoUrl,
-    bool? presenceConfirmed,
     List<String>? participantIds,
     List<String>? confirmedParticipantIds,
     Map<String, ParticipantProfile>? participantProfiles,
@@ -235,7 +241,6 @@ class PendingReviewModel {
       dismissed: dismissed ?? this.dismissed,
       revieweeName: revieweeName ?? this.revieweeName,
       revieweePhotoUrl: revieweePhotoUrl ?? this.revieweePhotoUrl,
-      presenceConfirmed: presenceConfirmed ?? this.presenceConfirmed,
       participantIds: participantIds ?? this.participantIds,
       confirmedParticipantIds: confirmedParticipantIds ?? this.confirmedParticipantIds,
       participantProfiles: participantProfiles ?? this.participantProfiles,

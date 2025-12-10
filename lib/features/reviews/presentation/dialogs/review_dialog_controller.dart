@@ -81,7 +81,7 @@ class ReviewDialogController extends ChangeNotifier {
   String get currentStepLabel => ReviewUIService.getStepLabel(_state);
   String get buttonText => ReviewUIService.getButtonText(_state, commentController.text.isNotEmpty);
   bool get shouldShowSkipButton => ReviewUIService.shouldShowSkipButton(_state, commentController.text.isNotEmpty);
-  List<Map<String, String>> get criteriaList => ReviewUIService.criteriaList;
+  List<Map<String, String>> criteriaList(BuildContext context) => ReviewUIService.criteriaList(context);
   Map<String, int> getCurrentRatings() => ReviewUIService.getCurrentRatings(_state);
   List<String> getCurrentBadges() => ReviewUIService.getCurrentBadges(_state);
 
@@ -261,7 +261,11 @@ class ReviewDialogController extends ChangeNotifier {
   void _initializeOwnerState(PendingReviewModel pendingReview) {
     _state.participantIds = pendingReview.participantIds ?? [];
     _state.participantProfiles = pendingReview.participantProfiles ?? {};
-    _state.presenceConfirmed = pendingReview.presenceConfirmed ?? false;
+    
+    // Verificar se há pelo menos um participante confirmado nos perfis
+    final hasConfirmedParticipants = _state.participantProfiles.values
+        .any((profile) => profile.presenceConfirmed);
+    _state.presenceConfirmed = hasConfirmedParticipants;
     
     // VALIDAÇÃO CRÍTICA: Filtrar o owner dos participantIds (defesa em profundidade)
     if (_state.participantIds.contains(_state.reviewerId)) {
@@ -471,11 +475,18 @@ class ReviewDialogController extends ChangeNotifier {
       } else {
         // CAMINHO PADRÃO: Operações sequenciais (mais simples, suficiente para ≤15)
         debugPrint('📝 Usando operações sequenciais (poucos participantes)');
+        
+        // Atualizar presence_confirmed por participante em participant_profiles
+        final Map<String, dynamic> participantProfilesUpdate = {};
+        for (final participantId in _state.selectedParticipants) {
+          participantProfilesUpdate['participant_profiles.$participantId.presence_confirmed'] = true;
+        }
+        
         await _repository.updatePendingReview(
           pendingReviewId: pendingReviewId,
           data: {
-            'presence_confirmed': true,
             'confirmed_participant_ids': _state.selectedParticipants,
+            ...participantProfilesUpdate,
           },
         );
 
@@ -512,13 +523,18 @@ class ReviewDialogController extends ChangeNotifier {
     final firestore = FirebaseFirestore.instance;
     final batch = firestore.batch();
 
-    // 1. Atualizar PendingReview
+    // 1. Atualizar PendingReview com presence_confirmed por participante
+    final Map<String, dynamic> participantProfilesUpdate = {
+      'confirmed_participant_ids': _state.selectedParticipants,
+    };
+    
+    for (final participantId in _state.selectedParticipants) {
+      participantProfilesUpdate['participant_profiles.$participantId.presence_confirmed'] = true;
+    }
+    
     batch.update(
       firestore.collection('PendingReviews').doc(pendingReviewId),
-      {
-        'presence_confirmed': true,
-        'confirmed_participant_ids': _state.selectedParticipants,
-      },
+      participantProfilesUpdate,
     );
 
     // 2. Criar ConfirmedParticipants em batch
@@ -801,11 +817,9 @@ class ReviewDialogController extends ChangeNotifier {
     const maxBatchSize = 490; // Margem de segurança (limite Firestore: 500)
     
     for (final participantId in _state.selectedParticipants) {
-      // Adicionar 2 operações por participante (removemos ConfirmedParticipants do batch)
+      // Adicionar 1 operação por participante (Review)
+      // PendingReview do participante agora é criada via Cloud Function (createPendingReviewsScheduled)
       ReviewBatchService.createReviewBatch(batch, participantId, _state, firestore);
-      operationCount++;
-
-      ReviewBatchService.createPendingReviewBatch(batch, participantId, ownerName, ownerPhotoUrl, _state, firestore);
       operationCount++;
 
       // Commit parcial se atingir limite

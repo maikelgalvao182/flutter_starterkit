@@ -119,7 +119,10 @@ export const processProfileViewNotifications = functions
       for (const [userId, data] of Object.entries(aggregated)) {
         // Mínimo de 3 visualizações para notificar (empilhamento)
         if (data.count < 3) {
-          console.log(`⏭️ Pulando ${userId}: apenas ${data.count} visualizações (mínimo: 3)`);
+          console.log(
+            `⏭️ Pulando ${userId}: apenas ${data.count} ` +
+            "visualizações (mínimo: 3)"
+          );
           continue;
         }
 
@@ -248,7 +251,10 @@ export const processProfileViewNotificationsHttp = functions.https.onRequest(
       for (const [userId, data] of Object.entries(aggregated)) {
         // Mínimo de 3 visualizações para notificar (empilhamento)
         if (data.count < 3) {
-          console.log(`⏭️ Pulando ${userId}: apenas ${data.count} visualizações (mínimo: 3)`);
+          console.log(
+            `⏭️ Pulando ${userId}: apenas ${data.count} ` +
+            "visualizações (mínimo: 3)"
+          );
           continue;
         }
 

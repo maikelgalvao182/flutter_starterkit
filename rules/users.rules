@@ -18,7 +18,14 @@
 
 match /Users/{userId} {
   allow read: if isSignedIn();
+  
+  // Permite que o próprio usuário atualize seus dados
   allow create, update, delete: if isOwner(userId);
+  
+  // Permite que Cloud Functions atualizem campos específicos de rating
+  // (overallRating, totalReviews, lastRatingUpdate são gerenciados pela Cloud Function updateUserRating)
+  allow update: if request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['overallRating', 'totalReviews', 'lastRatingUpdate']);
   
   /// 👁️ Subcoleção de visitas ao perfil (legacy - deprecada)
   /// Path: Users/{userId}/visits/{visitId}
@@ -36,7 +43,13 @@ match /Users/{userId} {
 
 match /users/{userId} {
   allow read: if isSignedIn();
+  
+  // Permite que o próprio usuário atualize seus dados
   allow create, update, delete: if isOwner(userId);
+  
+  // Permite que Cloud Functions atualizem campos específicos de rating
+  allow update: if request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['overallRating', 'totalReviews', 'lastRatingUpdate']);
   
   /// 👁️ Subcoleção de visitas ao perfil (duplicada por compatibilidade)
   /// Path: users/{userId}/visits/{visitId}

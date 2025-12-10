@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/common/state/app_state.dart';
-import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view_model.dart';
+import 'package:partiu/features/profile/data/services/profile_completeness_prompt_service.dart';
 import 'package:partiu/shared/widgets/profile_completeness_ring.dart';
 
-/// 🎯 Anel de completude de perfil reativo
-/// Reconstrói APENAS quando o usuário logado muda no AppState
+/// 🎯 Anel de completude de perfil reativo com atualização em TEMPO REAL
 /// 
-/// Calcula automaticamente a porcentagem via ProfileTabViewModel
-/// e exibe o anel de progresso ao redor do avatar.
+/// Observa mudanças no documento do Firestore via Stream e recalcula
+/// automaticamente o percentual de completude quando o perfil é atualizado.
+/// 
+/// Features:
+/// - ✅ Atualização em tempo real via Firestore Streams
+/// - ✅ Recalcula percentual automaticamente quando campos são preenchidos
+/// - ✅ Otimizado para evitar rebuilds desnecessários
+/// - ✅ Fallback para 0% se usuário não estiver logado
 /// 
 /// Usage:
 /// ```dart
@@ -23,7 +28,7 @@ import 'package:partiu/shared/widgets/profile_completeness_ring.dart';
 ///   child: StableAvatar(...),
 /// )
 /// ```
-class ReactiveProfileCompletenessRing extends StatefulWidget {
+class ReactiveProfileCompletenessRing extends StatelessWidget {
   const ReactiveProfileCompletenessRing({
     required this.size,
     required this.child,
@@ -36,35 +41,34 @@ class ReactiveProfileCompletenessRing extends StatefulWidget {
   final double strokeWidth;
 
   @override
-  State<ReactiveProfileCompletenessRing> createState() =>
-      _ReactiveProfileCompletenessRingState();
-}
-
-class _ReactiveProfileCompletenessRingState
-    extends State<ReactiveProfileCompletenessRing> {
-  late final ProfileTabViewModel _viewModel;
-
-  @override
-  void initState() {
-    super.initState();
-    _viewModel = ProfileTabViewModel();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
       valueListenable: AppState.currentUser,
       builder: (context, user, _) {
-        // Calcula percentual via ViewModel (separação de responsabilidades)
-        final percentage = user != null
-            ? _viewModel.calculateCompletenessPercentage()
-            : 0;
-
-        return ProfileCompletenessRing(
-          size: widget.size,
-          strokeWidth: widget.strokeWidth,
-          percentage: percentage,
-          child: widget.child,
+        if (user == null || user.userId.isEmpty) {
+          // Sem usuário logado - mostra anel vazio
+          return ProfileCompletenessRing(
+            size: size,
+            strokeWidth: strokeWidth,
+            percentage: 0,
+            child: child,
+          );
+        }
+        
+        // 🎯 REATIVO: Observa mudanças no Firestore em tempo real
+        return StreamBuilder<int>(
+          stream: ProfileCompletenessPromptService.instance.watchCompleteness(user.userId),
+          initialData: 0,
+          builder: (context, snapshot) {
+            final percentage = snapshot.data ?? 0;
+            
+            return ProfileCompletenessRing(
+              size: size,
+              strokeWidth: strokeWidth,
+              percentage: percentage,
+              child: child,
+            );
+          },
         );
       },
     );

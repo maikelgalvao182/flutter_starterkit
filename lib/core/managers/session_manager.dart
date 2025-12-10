@@ -111,7 +111,7 @@ class SessionManager {
       // Campos principais
       'userId': user.userId,
       'fullName': user.userFullname,
-      'profilePhotoUrl': user.userProfilePhoto,
+      'photoUrl': user.photoUrl,
       'gender': user.userGender,
       'birthDay': user.userBirthDay,
       'birthMonth': user.userBirthMonth,

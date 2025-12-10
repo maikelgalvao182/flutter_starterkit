@@ -8,9 +8,8 @@ import 'package:partiu/shared/stores/user_store.dart';
 
 /// About Me section widget com espaçamento interno
 /// 
-/// - Espaçamento superior: 24px
-/// - Espaçamento inferior: 16px  
-/// - Padding horizontal: 20px
+/// - Padding padrão: GlimpseStyles.profileSectionPadding (20px horizontal, 36px bottom)
+/// - Padding customizado: Quando hasActionsBelow=true (16px bottom)
 /// - Auto-oculta se bio vazia
 class AboutMeSection extends StatelessWidget {
 
@@ -20,12 +19,14 @@ class AboutMeSection extends StatelessWidget {
     this.title,
     this.titleColor,
     this.textColor,
+    this.hasActionsBelow = false,
   });
   
   final String userId;
   final String? title;
   final Color? titleColor;
   final Color? textColor;
+  final bool hasActionsBelow;
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +45,9 @@ class AboutMeSection extends StatelessWidget {
         if (trimmed.isEmpty) return const SizedBox.shrink();
         
         return Container(
-          padding: const EdgeInsets.only(
-            left: 20,
-            right: 20,
-            bottom: 16,
-          ),
+          padding: hasActionsBelow
+            ? const EdgeInsets.only(left: 20, right: 20, bottom: 16)
+            : GlimpseStyles.profileSectionPadding,
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

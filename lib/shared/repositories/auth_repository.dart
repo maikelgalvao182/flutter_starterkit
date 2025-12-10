@@ -330,9 +330,8 @@ class AuthRepository implements IAuthRepository {
       // Obter URL de download
       final downloadUrl = await snapshot.ref.getDownloadURL();
       
-      // Atualizar documento do usuário (ambos os campos para compatibilidade)
+      // Atualizar documento do usuário
       await _firestore.collection('Users').doc(user.uid).update({
-        'profilePhotoUrl': downloadUrl,
         'photoUrl': downloadUrl,
       });
 

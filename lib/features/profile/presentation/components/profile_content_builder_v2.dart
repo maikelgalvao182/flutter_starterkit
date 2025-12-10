@@ -84,7 +84,7 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
         // HEADER com foto, nome, idade
         RepaintBoundary(
           child: ProfileHeader(
-            key: ValueKey('${widget.displayUser.userId}_${widget.displayUser.userProfilePhoto}'),
+            key: ValueKey('${widget.displayUser.userId}_${widget.displayUser.photoUrl}'),
             user: widget.displayUser,
             isMyProfile: widget.myProfile,
             i18n: widget.i18n,
@@ -118,7 +118,10 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
       builder: (context, bio, _) {
         if (bio == null || bio.trim().isEmpty) return const SizedBox();
         return RepaintBoundary(
-          child: AboutMeSection(userId: widget.displayUser.userId),
+          child: AboutMeSection(
+            userId: widget.displayUser.userId,
+            hasActionsBelow: !widget.myProfile,
+          ),
         );
       },
     );
@@ -221,11 +224,27 @@ class _ProfileReviewsSectionState extends State<_ProfileReviewsSection> {
     return StreamBuilder<ReviewStatsModel>(
       stream: widget.statsStream,
       builder: (context, statsSnapshot) {
+        debugPrint('🔍 [ProfileReviewsSection] StreamBuilder status:');
+        debugPrint('  - hasData: ${statsSnapshot.hasData}');
+        debugPrint('  - connectionState: ${statsSnapshot.connectionState}');
+        
+        if (statsSnapshot.hasData) {
+          final stats = statsSnapshot.data!;
+          debugPrint('  - hasReviews: ${stats.hasReviews}');
+          debugPrint('  - totalReviews: ${stats.totalReviews}');
+          debugPrint('  - overallRating: ${stats.overallRating}');
+          debugPrint('  - badgesCount: ${stats.badgesCount}');
+        } else {
+          debugPrint('  - data is null');
+        }
+        
         if (!statsSnapshot.hasData || !statsSnapshot.data!.hasReviews) {
+          debugPrint('  ❌ Não renderizando ReviewStatsSection/ReviewBadgesSection');
           return const SizedBox.shrink();
         }
 
         final stats = statsSnapshot.data!;
+        debugPrint('  ✅ Renderizando ReviewStatsSection e ReviewBadgesSection');
 
         return RepaintBoundary(
           child: Column(

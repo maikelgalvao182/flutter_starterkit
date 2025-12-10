@@ -331,7 +331,7 @@ class EditProfileViewModel extends ChangeNotifier {
         debugPrint('[$_tag] 🔄 Updating local state...');
         _currentData = ProfileFormData.fromFirestore({
           ..._currentData!.toFirestore(),
-          'userProfilePhoto': 'updated', // O repository já atualiza a URL
+          'photoUrl': 'updated', // O repository já atualiza a URL
         });
       }
       
@@ -347,7 +347,7 @@ class EditProfileViewModel extends ChangeNotifier {
         ));
       }
       
-      final newPhotoUrl = AppState.currentUser.value?.userProfilePhoto ?? '';
+      final newPhotoUrl = AppState.currentUser.value?.photoUrl ?? '';
       _emitCommand(UpdatePhotoSuccessCommand(newPhotoUrl));
       
       debugPrint('[$_tag] ✅ Profile photo update complete');

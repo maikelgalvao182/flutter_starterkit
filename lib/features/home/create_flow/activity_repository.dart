@@ -48,6 +48,7 @@ class ActivityRepository {
         'formattedAddress': draft.location!.formattedAddress ?? '',
         'locationName': draft.location!.name ?? '',
         'locality': draft.location!.locality ?? '',
+        'state': draft.location!.administrativeAreaLevel1?.shortName ?? '',
         'placeId': draft.location!.placeId,
       },
 

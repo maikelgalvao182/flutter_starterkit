@@ -23,20 +23,19 @@ class NotificationFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: padding,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (int i = 0; i < items.length; i++)
-            _NotificationChipButton(
-              title: items[i],
-              selected: selectedIndex == i,
-              onTap: () => onSelected(i),
-            ),
-          if (items.isEmpty) const SizedBox.shrink(),
-        ],
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: padding,
+        physics: const BouncingScrollPhysics(),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) => _NotificationChipButton(
+          title: items[i],
+          selected: selectedIndex == i,
+          onTap: () => onSelected(i),
+        ),
       ),
     );
   }
@@ -71,13 +70,16 @@ class _NotificationChipButton extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-            child: Text(
-              title,
-              style: GoogleFonts.getFont(
-                FONT_PLUS_JAKARTA_SANS,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: fg,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
               ),
             ),
           ),
@@ -86,3 +88,4 @@ class _NotificationChipButton extends StatelessWidget {
     );
   }
 }
+

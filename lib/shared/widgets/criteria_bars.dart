@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Widget compartilhado para exibir barras de critérios de avaliação
 class CriteriaBars extends StatelessWidget {
@@ -20,18 +21,18 @@ class CriteriaBars extends StatelessWidget {
   final Color? barColor;
   final bool showDecimals;
 
-  static const Map<String, String> _criteriaLabels = {
-    'conversation': 'Conversa',
-    'energy': 'Energia',
-    'participation': 'Participação',
-    'coexistence': 'Convivência',
+  Map<String, String> _criteriaLabels(BuildContext context) => {
+    'conversation': AppLocalizations.of(context).translate('review_criteria_conversation_short'),
+    'energy': AppLocalizations.of(context).translate('review_criteria_energy_short'),
+    'participation': AppLocalizations.of(context).translate('review_criteria_participation'),
+    'coexistence': AppLocalizations.of(context).translate('review_criteria_coexistence'),
   };
 
-  static const Map<String, String> _criteriaLabelsDetailed = {
-    'conversation': 'Papo & Conexão',
-    'energy': 'Energia & Presença',
-    'participation': 'Participação',
-    'coexistence': 'Convivência',
+  Map<String, String> _criteriaLabelsDetailed(BuildContext context) => {
+    'conversation': AppLocalizations.of(context).translate('review_criteria_conversation'),
+    'energy': AppLocalizations.of(context).translate('review_criteria_energy'),
+    'participation': AppLocalizations.of(context).translate('review_criteria_participation'),
+    'coexistence': AppLocalizations.of(context).translate('review_criteria_coexistence'),
   };
 
   static const Map<String, String> _criteriaEmojis = {
@@ -57,6 +58,9 @@ class CriteriaBars extends StatelessWidget {
     
     if (displayCriteria.isEmpty) return const SizedBox.shrink();
     
+    final criteriaLabels = _criteriaLabels(context);
+    final criteriaLabelsDetailed = _criteriaLabelsDetailed(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,7 +78,7 @@ class CriteriaBars extends StatelessWidget {
           final key = entry.value;
           final isLast = index == displayCriteria.length - 1;
           final rating = criteriaRatings[key] ?? 0.0;
-          final label = showEmojis ? _criteriaLabelsDetailed[key] : _criteriaLabels[key];
+          final label = showEmojis ? criteriaLabelsDetailed[key] : criteriaLabels[key];
           final emoji = _criteriaEmojis[key];
           
           return Padding(

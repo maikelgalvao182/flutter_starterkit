@@ -120,36 +120,30 @@ class _ProfileScreenOptimizedState extends State<ProfileScreenOptimized>
         ),
         actions: myProfile ? [
           Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: SizedBox(
-              width: 28,
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Iconsax.edit_2, size: 22),
-                color: Colors.black87,
-                onPressed: () {
-                  context.push(AppRoutes.editProfile);
-                },
-              ),
+            padding: const EdgeInsets.only(right: 16),
+            child: IconButton(
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              icon: const Icon(Iconsax.edit, size: 22),
+              color: Colors.black87,
+              onPressed: () {
+                context.push(AppRoutes.editProfile);
+              },
             ),
           ),
         ] : [
           Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: SizedBox(
-              width: 28,
-              child: ReportWidget(
-                userId: widget.user.userId,
-                iconSize: 22,
-                iconColor: Colors.black87,
-                onBlockSuccess: () {
-                  // Redireciona para discover (home) após bloqueio
-                  if (mounted) {
-                    context.go(AppRoutes.home);
-                  }
-                },
-              ),
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: ReportWidget(
+              userId: widget.user.userId,
+              iconSize: 22,
+              iconColor: Colors.black87,
+              onBlockSuccess: () {
+                // Redireciona para discover (home) após bloqueio
+                if (mounted) {
+                  context.go(AppRoutes.home);
+                }
+              },
             ),
           ),
         ],

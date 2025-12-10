@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/managers/session_manager.dart';
+import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/features/profile/domain/calculators/i_profile_completeness_calculator.dart';
@@ -101,7 +103,7 @@ class ProfileCompletenessPromptService {
         builder: (ctx) {
           return ProfileCompletenessDialog(
             userId: currentUserId,
-            photoUrl: currentUser.userProfilePhoto,
+            photoUrl: currentUser.photoUrl,
             percentage: pct,
             title: i18n.translate('complete_your_profile'),
             subtitle: i18n.translate('profile_completeness_percentage_subtitle')
@@ -159,6 +161,52 @@ class ProfileCompletenessPromptService {
   /// Mantido para compatibilidade com código existente
   int calculateCompletenessSync(user) {
     return _vendorCalculator.calculate(user);
+  }
+  
+  /// 🎯 Stream reativo que observa mudanças no perfil do usuário em tempo real
+  /// Retorna percentual de completude (0-100) sempre que o perfil é atualizado no Firestore
+  /// 
+  /// Usage:
+  /// ```dart
+  /// StreamBuilder<int>(
+  ///   stream: ProfileCompletenessPromptService.instance.watchCompleteness(userId),
+  ///   builder: (context, snapshot) {
+  ///     final percentage = snapshot.data ?? 0;
+  ///     return ProfileCompletenessRing(percentage: percentage);
+  ///   },
+  /// )
+  /// ```
+  Stream<int> watchCompleteness(String userId) {
+    if (userId.isEmpty) {
+      return Stream.value(0);
+    }
+    
+    return FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) {
+        AppLogger.debug('User document not found', tag: _tag);
+        return 0;
+      }
+      
+      try {
+        final data = snapshot.data();
+        if (data == null) {
+          AppLogger.debug('User data is null', tag: _tag);
+          return 0;
+        }
+        final user = User.fromDocument(data);
+        final percentage = _vendorCalculator.calculate(user);
+        AppLogger.debug('Completeness updated: $percentage%', tag: _tag);
+        return percentage;
+      } catch (e, stack) {
+        AppLogger.error('Error calculating completeness from stream', 
+          tag: _tag, error: e, stackTrace: stack);
+        return 0;
+      }
+    });
   }
   
   /// Retorna detalhes granulares do cálculo (para debug/logs)
