@@ -296,7 +296,11 @@ class NotificationTemplates {
       }
     } else {
       // Apenas contador
-      body = "$count pessoas da região visualizaram seu perfil";
+      if (count == 1) {
+        body = "1 pessoa da região visualizou seu perfil";
+      } else {
+        body = "$count pessoas da região visualizaram seu perfil";
+      }
     }
 
     // Adiciona tempo relativo se disponível

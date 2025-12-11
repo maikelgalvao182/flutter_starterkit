@@ -87,10 +87,20 @@ dependencies:
   iconsax_plus: ^1.0.0
   google_fonts: ^6.2.1
   
+  # Toast
+  fluttertoast: ^8.2.8
+  
+  # WebView
+  # flutter_inappwebview removed in favor of webview_flutter
+  permission_handler: ^11.0.0
+  
   # Router
   go_router: ^17.0.0
   circle_flags: ^5.0.1
   brazilian_locations: ^3.4.1
+  webview_flutter: ^4.13.0
+  webview_flutter_android: ^4.10.11
+  webview_flutter_wkwebview: ^3.23.5
 
 dev_dependencies:
   freezed: ^2.5.7

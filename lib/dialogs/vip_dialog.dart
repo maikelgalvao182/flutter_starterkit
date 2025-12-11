@@ -12,7 +12,7 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/helpers/toast_messages_helper.dart';
 import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
 import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/features/subscription/services/vip_access_service.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:flutter/material.dart';
@@ -105,8 +105,7 @@ class _VipDialogState extends State<VipDialog> with SingleTickerProviderStateMix
 
     final tm = ToastMessagesHelper(context);
     ToastService.showSuccess(
-      context: context,
-      title: tm.vipSubscriptionRestored,
+      message: tm.vipSubscriptionRestored,
     );
 
     _animation.close(context, returnSuccess: true);
@@ -120,21 +119,15 @@ class _VipDialogState extends State<VipDialog> with SingleTickerProviderStateMix
 
     if (error.contains('cancelled')) {
       ToastService.showInfo(
-        context: context,
-        title: tm.paymentCancelled,
-        subtitle: tm.paymentCancelledByUser,
+        message: '${tm.paymentCancelled}: ${tm.paymentCancelledByUser}',
       );
     } else if (error.contains('No previous')) {
       ToastService.showError(
-        context: context,
-        title: tm.error,
-        subtitle: AppLocalizations.of(context).translate('no_previous_purchase_found'),
+        message: '${tm.error}: ${AppLocalizations.of(context).translate('no_previous_purchase_found')}',
       );
     } else {
       ToastService.showError(
-        context: context,
-        title: tm.error,
-        subtitle: error,
+        message: '${tm.error}: $error',
       );
     }
   }
@@ -144,8 +137,7 @@ class _VipDialogState extends State<VipDialog> with SingleTickerProviderStateMix
     if (!mounted) return;
 
     ToastService.showInfo(
-      context: context,
-      title: AppLocalizations.of(context).translate('processing'),
+      message: AppLocalizations.of(context).translate('processing'),
     );
 
     await _controller.restorePurchases();

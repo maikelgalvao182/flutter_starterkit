@@ -4,6 +4,8 @@ import 'package:partiu/core/services/app_initializer_service.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
+import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
 import 'package:provider/provider.dart';
 
@@ -19,6 +21,8 @@ class _SplashScreenState extends State<SplashScreen> {
   // ViewModels instanciados aqui e passados para frente
   final MapViewModel mapViewModel = MapViewModel();
   final PeopleRankingViewModel peopleRankingViewModel = PeopleRankingViewModel();
+  final RankingViewModel locationsRankingViewModel = RankingViewModel();
+  final ConversationsViewModel conversationsViewModel = ConversationsViewModel();
   bool _isReady = false;
 
   @override
@@ -32,6 +36,8 @@ class _SplashScreenState extends State<SplashScreen> {
     final initializer = AppInitializerService(
       mapViewModel,
       peopleRankingViewModel,
+      locationsRankingViewModel,
+      conversationsViewModel,
     );
     
     // Definir instância global para acesso compartilhado
@@ -55,6 +61,8 @@ class _SplashScreenState extends State<SplashScreen> {
       return HomeScreenRefactored(
         mapViewModel: mapViewModel,
         peopleRankingViewModel: peopleRankingViewModel,
+        locationsRankingViewModel: locationsRankingViewModel,
+        conversationsViewModel: conversationsViewModel,
       );
     }
 

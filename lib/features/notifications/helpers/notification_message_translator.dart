@@ -1,6 +1,7 @@
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/notifications/models/notification_event.dart';
+import 'package:partiu/features/notifications/templates/notification_templates.dart';
 
 /// Helper para traduzir mensagens de notificação baseadas em tipo semântico
 /// 
@@ -84,7 +85,12 @@ class NotificationMessageTranslator {
         translationKey = 'notification_event_chat_message';
       
       case 'profile_views_aggregated':
-        translationKey = 'notification_profile_views_aggregated';
+        final count = int.tryParse(params?['count']?.toString() ?? '0') ?? 0;
+        
+        return NotificationTemplates.profileViewsAggregated(
+          count: count,
+          viewerNames: null,
+        ).body;
       
       case 'alert':
         // Alertas podem ter mensagem customizada nos parâmetros

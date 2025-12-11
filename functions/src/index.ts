@@ -418,3 +418,8 @@ export * from "./debug";
 // ===== USER MANAGEMENT =====
 // Importa e exporta as Cloud Functions de gerenciamento de usuários
 export * from "./users/deleteUserAccount";
+
+// ===== WEBHOOKS =====
+// Importa e exporta webhooks de integração
+export * from "./webhooks/faceio-webhook";
+export * from "./didit-webhook";

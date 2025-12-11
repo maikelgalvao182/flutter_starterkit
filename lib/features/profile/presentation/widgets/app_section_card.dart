@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/app/services/localization_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/app_section_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/dialogs/delete_account_confirm_dialog.dart';
@@ -256,14 +258,9 @@ class _AppSectionCardState extends State<AppSectionCard> {
       
       // Mostra erro ao usuário se o contexto ainda estiver montado
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              i18n.translate('error_deleting_account') ?? 
-              'Erro ao excluir conta. Tente novamente.',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        final i18nToast = AppLocalizations.of(context);
+        ToastService.showError(
+          message: i18n.translate('error_deleting_account') ?? i18nToast.translate('error_deleting_account'),
         );
       }
     }

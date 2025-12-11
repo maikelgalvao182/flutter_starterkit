@@ -40,13 +40,21 @@ class ProfileVisitsController extends ChangeNotifier {
   
   // Subscription do stream do service
   StreamSubscription<List<User>>? _visitsSubscription;
-
+  
+  // 🚀 Paginação para listas grandes
+  int _displayedCount = 20; // Mostra 20 inicialmente
+  
   // Getters
   List<User> get visitors => _visitors;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isEmpty => _visitors.isEmpty && !_isLoading;
   String? get currentUserId => _currentUserId;
+  
+  // 🚀 Getters de paginação
+  List<User> get displayedVisitors => _visitors.take(_displayedCount).toList();
+  bool get hasMore => _displayedCount < _visitors.length;
+  bool get isLoadingMore => false; // Dados já estão em memória
 
   /// Inicializa listener do stream do service
   void _initializeStream() {
@@ -83,6 +91,25 @@ class ProfileVisitsController extends ChangeNotifier {
     _visitors = newVisitors;
     _isLoading = false;
     _error = null;
+    
+    // 🚀 Reset de paginação se lista mudou significativamente
+    if (newVisitors.length < _displayedCount) {
+      _displayedCount = 20;
+    }
+    
+    notifyListeners();
+  }
+  
+  /// Carrega mais visitantes (paginação local - dados já estão em memória)
+  /// 
+  /// 🚀 Usado com InfiniteListView para scroll infinito
+  void loadMore() {
+    if (!hasMore) return;
+    
+    final newCount = (_displayedCount + 20).clamp(0, _visitors.length);
+    debugPrint('📄 [ProfileVisitsController] LoadMore: $_displayedCount -> $newCount');
+    
+    _displayedCount = newCount;
     notifyListeners();
   }
 

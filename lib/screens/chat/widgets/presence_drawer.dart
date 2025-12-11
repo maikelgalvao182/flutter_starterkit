@@ -227,7 +227,7 @@ class _PresenceUserCardState extends State<_PresenceUserCard> {
     if (userData != null) {
       // Calcular interesses em comum usando Helper
       final userInterests = List<String>.from(userData['interests'] ?? []);
-      userData['commonInterests'] = InterestsHelper.calculateCommonInterests(
+      userData['commonInterests'] = InterestsHelper.getCommonInterestsList(
         userInterests,
         widget.myInterests,
       );

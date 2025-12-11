@@ -11,7 +11,7 @@ import 'package:partiu/features/events/presentation/screens/group_info/widgets/e
 import 'package:partiu/features/events/presentation/screens/group_info/widgets/map_and_error_widgets.dart';
 import 'package:partiu/features/events/presentation/screens/group_info/widgets/settings_widgets.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/swipeable_member_card.dart';

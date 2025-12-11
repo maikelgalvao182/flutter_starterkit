@@ -243,9 +243,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final i18n = AppLocalizations.of(context);
     
     ToastService.showSuccess(
-      context: context,
-      title: i18n.translate('success'),
-      subtitle: i18n.translate(command.messageKey),
+      message: i18n.translate(command.messageKey) ?? 'Salvo com sucesso!',
     );
     
     // Removido redirecionamento - usuário permanece na tela após salvar
@@ -257,9 +255,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final i18n = AppLocalizations.of(context);
     
     ToastService.showError(
-      context: context,
-      title: i18n.translate('error'),
-      subtitle: i18n.translate(command.messageKey),
+      message: i18n.translate(command.messageKey) ?? 'Erro ao salvar',
     );
   }
   
@@ -301,9 +297,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     }
     
     ToastService.showSuccess(
-      context: context,
-      title: displayTitle,
-      subtitle: displaySubtitle,
+      message: displayTitle,
     );
   }
   
@@ -312,9 +306,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final i18n = AppLocalizations.of(context);
     
     ToastService.showError(
-      context: context,
-      title: i18n.translate('error'),
-      subtitle: i18n.translate(command.messageKey),
+      message: i18n.translate(command.messageKey) ?? 'Erro ao atualizar foto',
     );
   }
   
@@ -324,21 +316,15 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     if (command.isError) {
       ToastService.showError(
-        context: context,
-        title: i18n.translate('error'),
-        subtitle: i18n.translate(command.messageKey),
+        message: i18n.translate(command.messageKey) ?? 'Erro',
       );
     } else if (command.isSuccess) {
       ToastService.showSuccess(
-        context: context,
-        title: i18n.translate('success'),
-        subtitle: i18n.translate(command.messageKey),
+        message: i18n.translate(command.messageKey) ?? 'Sucesso!',
       );
     } else {
       ToastService.showInfo(
-        context: context,
-        title: ToastMessages.information,
-        subtitle: i18n.translate(command.messageKey),
+        message: i18n.translate(command.messageKey) ?? 'Informação',
       );
     }
   }
@@ -349,9 +335,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     // Mostra toast genérico
     ToastService.showError(
-      context: context,
-      title: i18n.translate('error'),
-      subtitle: i18n.translate(command.messageKey),
+      message: i18n.translate(command.messageKey) ?? 'Validação falhou',
     );
     
     // Poderia destacar campos com erro na UI aqui
@@ -373,9 +357,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     if (!_formKey.currentState!.validate()) {
       final i18n = AppLocalizations.of(context);
       ToastService.showError(
-        context: context,
-        title: i18n.translate('error'),
-        subtitle: i18n.translate('please_fill_required_fields'),
+        message: i18n.translate('please_fill_required_fields') ?? 'Preencha os campos obrigatórios',
       );
       return;
     }

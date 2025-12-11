@@ -67,10 +67,14 @@ class ConversationStreamWidget extends StatelessWidget {
       buildTile: (context, index) {
         final item = items[index];
         final isLast = index == items.length - 1;
+        // ✅ FIX: Pre-populate rawData with all necessary fields to avoid "Usuário" flash
         final data = {
           USER_ID: item.userId,
           fullname: item.userFullname,
+          'activityText': item.userFullname, // For event chats
           USER_PROFILE_PHOTO: item.userPhotoUrl,
+          'profileImageURL': item.userPhotoUrl,
+          'emoji': item.userPhotoUrl, // For event emoji avatars
           LAST_MESSAGE: item.lastMessage ?? '',
           MESSAGE_READ: item.isRead,
           TIMESTAMP: item.lastMessageAt?.millisecondsSinceEpoch,

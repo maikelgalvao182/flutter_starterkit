@@ -10,7 +10,7 @@ import 'package:partiu/features/auth/presentation/screens/signup_wizard_screen.d
 import 'package:partiu/shared/widgets/glimpse_signup_layout.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/profile/presentation/screens/update_location_screen_router.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/validators/auth_validators.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
@@ -117,9 +117,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       _emailAuthViewModel.setLoading(false);
       if (currentContext.mounted) {
         ToastService.showError(
-          context: currentContext,
-          title: ToastMessages.authenticationFailed,
-          subtitle: e.toString(),
+          message: e.toString(),
         );
       }
     }
@@ -142,9 +140,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
       _emailAuthViewModel.setLoading(false);
       if (currentContext.mounted) {
         ToastService.showError(
-          context: currentContext,
-          title: ToastMessages.error,
-          subtitle: e.toString(),
+          message: e.toString(),
         );
       }
     }
@@ -182,9 +178,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     }
 
     ToastService.showError(
-      context: context,
-      title: isLogin ? ToastMessages.authenticationFailed : ToastMessages.error,
-      subtitle: message,
+      message: message,
     );
   }
 

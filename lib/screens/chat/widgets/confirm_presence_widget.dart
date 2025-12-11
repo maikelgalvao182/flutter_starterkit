@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/chat/widgets/presence_drawer.dart';
 import 'package:partiu/shared/widgets/animated_expandable.dart';
 
@@ -78,37 +80,10 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
 
       // Feedback visual
       if (mounted) {
-        // SnackBar SEM Material - usando overlay direto
-        final overlay = Overlay.of(context);
-        final overlayEntry = OverlayEntry(
-          builder: (context) => Positioned(
-            bottom: 50,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: GlimpseColors.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Presença atualizada!',
-                style: GoogleFonts.getFont(
-                  FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
+        final i18n = AppLocalizations.of(context);
+        ToastService.showSuccess(
+          message: i18n.translate('presence_updated') ?? 'Presença atualizada!',
         );
-        
-        overlay.insert(overlayEntry);
-        Future.delayed(const Duration(seconds: 2), () {
-          overlayEntry.remove();
-        });
       }
     } catch (e) {
       debugPrint('❌ Erro ao atualizar presença: $e');
@@ -116,37 +91,10 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
       setState(() => _isUpdating = false);
 
       if (mounted) {
-        // Erro SEM Material - usando overlay direto
-        final overlay = Overlay.of(context);
-        final overlayEntry = OverlayEntry(
-          builder: (context) => Positioned(
-            bottom: 50,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: GlimpseColors.dangerRed,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Erro ao atualizar presença',
-                style: GoogleFonts.getFont(
-                  FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
+        final i18n = AppLocalizations.of(context);
+        ToastService.showError(
+          message: i18n.translate('presence_update_error') ?? 'Erro ao atualizar presença',
         );
-        
-        overlay.insert(overlayEntry);
-        Future.delayed(const Duration(seconds: 2), () {
-          overlayEntry.remove();
-        });
       }
     }
   }

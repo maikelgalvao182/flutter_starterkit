@@ -1,8 +1,8 @@
 /**
  * Cloud Function: deleteUserAccount
- * 
+ *
  * Deleta todos os registros do usuário no Firestore, EXCETO na coleção Events.
- * 
+ *
  * Coleções afetadas:
  * - Users (documento principal)
  * - applications (sub-coleção e documentos onde userId aparece)
@@ -14,7 +14,7 @@
  * - ranking (documentos de ranking do usuário)
  * - UserLocations (localização do usuário)
  * - blocked_users (bloqueios feitos ou recebidos)
- * 
+ *
  * NÃO DELETA:
  * - events (mantém eventos criados pelo usuário para histórico)
  * - Firebase Auth (deve ser deletado manualmente pelo usuário ou admin)
@@ -27,6 +27,10 @@ const db = admin.firestore();
 
 /**
  * Helper: Deleta documentos em lote
+ * @param {string} collection Nome da coleção
+ * @param {FirebaseFirestore.Query} query Query do Firestore
+ * @param {number} batchSize Tamanho do lote
+ * @return {Promise<number>} Número de documentos deletados
  */
 async function batchDelete(
   collection: string,
@@ -34,32 +38,36 @@ async function batchDelete(
   batchSize = 500
 ): Promise<number> {
   let deletedCount = 0;
-  
+
   const snapshot = await query.limit(batchSize).get();
-  
+
   if (snapshot.empty) {
     return 0;
   }
-  
+
   const batch = db.batch();
   snapshot.docs.forEach((doc) => {
     batch.delete(doc.ref);
     deletedCount++;
   });
-  
+
   await batch.commit();
-  
+
   // Se ainda há mais documentos, continua recursivamente
   if (snapshot.size >= batchSize) {
     const moreDeleted = await batchDelete(collection, query, batchSize);
     deletedCount += moreDeleted;
   }
-  
+
   return deletedCount;
 }
 
 /**
  * Helper: Deleta sub-coleção de um documento
+ * @param {FirebaseFirestore.DocumentReference} parentRef
+ * Referência do documento pai
+ * @param {string} subcollectionName Nome da sub-coleção
+ * @return {Promise<number>} Número de documentos deletados
  */
 async function deleteSubcollection(
   parentRef: FirebaseFirestore.DocumentReference,
@@ -72,7 +80,7 @@ async function deleteSubcollection(
 export const deleteUserAccount = functions.https.onCall(
   async (data, context) => {
     console.log("🗑️ [DELETE_ACCOUNT] Iniciando Cloud Function");
-    
+
     // Validação de autenticação
     if (!context.auth) {
       console.error("🗑️ [DELETE_ACCOUNT] ❌ Não autenticado");
@@ -81,9 +89,9 @@ export const deleteUserAccount = functions.https.onCall(
         "Usuário não autenticado"
       );
     }
-    
+
     const userId = data.userId;
-    
+
     // Validação do userId
     if (!userId || typeof userId !== "string") {
       console.error("🗑️ [DELETE_ACCOUNT] ❌ userId inválido");
@@ -92,20 +100,20 @@ export const deleteUserAccount = functions.https.onCall(
         "userId é obrigatório"
       );
     }
-    
     // Validação de permissão (apenas pode deletar própria conta)
     if (context.auth.uid !== userId) {
       console.error(
-        `🗑️ [DELETE_ACCOUNT] ❌ Permissão negada. Auth: ${context.auth.uid}, Requested: ${userId}`
+        "🗑️ [DELETE_ACCOUNT] ❌ Permissão negada. " +
+        `Auth: ${context.auth.uid}, Requested: ${userId}`
       );
       throw new functions.https.HttpsError(
         "permission-denied",
         "Você só pode deletar sua própria conta"
       );
     }
-    
+
     console.log(`🗑️ [DELETE_ACCOUNT] UserId: ${userId.substring(0, 8)}...`);
-    
+
     const deletionStats = {
       users: 0,
       applications: 0,
@@ -118,12 +126,12 @@ export const deleteUserAccount = functions.https.onCall(
       userLocations: 0,
       blockedUsers: 0,
     };
-    
+
     try {
       // 1. Deletar sub-coleções do documento Users
       console.log("🗑️ [1/11] Deletando sub-coleções de Users...");
       const userRef = db.collection("Users").doc(userId);
-      
+
       // Deletar applications sub-coleção
       const applicationsDeleted = await deleteSubcollection(
         userRef,
@@ -131,13 +139,13 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.applications += applicationsDeleted;
       console.log(`✅ Deletadas ${applicationsDeleted} applications`);
-      
+
       // 2. Deletar documento principal do usuário
       console.log("🗑️ [2/11] Deletando documento Users...");
       await userRef.delete();
       deletionStats.users = 1;
       console.log("✅ Documento Users deletado");
-      
+
       // 3. Deletar reviews (como reviewer)
       console.log("🗑️ [3/11] Deletando reviews como reviewer...");
       const reviewsAsReviewer = await batchDelete(
@@ -146,7 +154,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.reviews += reviewsAsReviewer;
       console.log(`✅ Deletadas ${reviewsAsReviewer} reviews como reviewer`);
-      
+
       // 4. Deletar reviews (como reviewed)
       console.log("🗑️ [4/11] Deletando reviews como reviewed...");
       const reviewsAsReviewed = await batchDelete(
@@ -155,20 +163,20 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.reviews += reviewsAsReviewed;
       console.log(`✅ Deletadas ${reviewsAsReviewed} reviews como reviewed`);
-      
+
       // 5. Remover usuário de Connections (conversas)
       console.log("🗑️ [5/11] Removendo de Connections...");
       const connectionsSnapshot = await db
         .collection("Connections")
         .where("memberIds", "array-contains", userId)
         .get();
-      
+
       const connectionBatch = db.batch();
       connectionsSnapshot.docs.forEach((doc) => {
         const data = doc.data();
         const memberIds = data.memberIds || [];
         const updatedMembers = memberIds.filter((id: string) => id !== userId);
-        
+
         if (updatedMembers.length === 0) {
           // Se era a única pessoa, deleta a conversa
           connectionBatch.delete(doc.ref);
@@ -184,7 +192,7 @@ export const deleteUserAccount = functions.https.onCall(
       });
       await connectionBatch.commit();
       console.log(`✅ Removido de ${connectionsSnapshot.size} Connections`);
-      
+
       // 6. Deletar mensagens do Chats
       console.log("🗑️ [6/11] Deletando mensagens de Chats...");
       const chatsDeleted = await batchDelete(
@@ -193,7 +201,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.chats = chatsDeleted;
       console.log(`✅ Deletadas ${chatsDeleted} mensagens`);
-      
+
       // 7. Deletar notificações
       console.log("🗑️ [7/11] Deletando Notifications...");
       const notificationsDeleted = await batchDelete(
@@ -202,7 +210,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.notifications = notificationsDeleted;
       console.log(`✅ Deletadas ${notificationsDeleted} notificações`);
-      
+
       // 8. Deletar visitas ao perfil (feitas)
       console.log("🗑️ [8/11] Deletando profile_visits (feitas)...");
       const visitsAsVisitor = await batchDelete(
@@ -211,7 +219,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.profileVisits += visitsAsVisitor;
       console.log(`✅ Deletadas ${visitsAsVisitor} visitas feitas`);
-      
+
       // 9. Deletar visitas ao perfil (recebidas)
       console.log("🗑️ [9/11] Deletando profile_visits (recebidas)...");
       const visitsAsVisited = await batchDelete(
@@ -220,7 +228,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.profileVisits += visitsAsVisited;
       console.log(`✅ Deletadas ${visitsAsVisited} visitas recebidas`);
-      
+
       // 10. Deletar ranking
       console.log("🗑️ [10/11] Deletando ranking...");
       const rankingDeleted = await batchDelete(
@@ -229,14 +237,14 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.ranking = rankingDeleted;
       console.log(`✅ Deletados ${rankingDeleted} registros de ranking`);
-      
+
       // 11. Deletar localização do usuário
       console.log("🗑️ [11/11] Deletando UserLocations...");
       const locationRef = db.collection("UserLocations").doc(userId);
       await locationRef.delete();
       deletionStats.userLocations = 1;
       console.log("✅ UserLocation deletada");
-      
+
       // 12. Deletar bloqueios (como bloqueador)
       console.log("🗑️ [12/12] Deletando blocked_users (como bloqueador)...");
       const blocksAsBlocker = await batchDelete(
@@ -245,7 +253,7 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.blockedUsers += blocksAsBlocker;
       console.log(`✅ Deletados ${blocksAsBlocker} bloqueios feitos`);
-      
+
       // 13. Deletar bloqueios (como bloqueado)
       console.log("🗑️ [13/13] Deletando blocked_users (como bloqueado)...");
       const blocksAsBlocked = await batchDelete(
@@ -254,10 +262,10 @@ export const deleteUserAccount = functions.https.onCall(
       );
       deletionStats.blockedUsers += blocksAsBlocked;
       console.log(`✅ Deletados ${blocksAsBlocked} bloqueios recebidos`);
-      
+
       console.log("🗑️ [DELETE_ACCOUNT] ✅ Todos os dados deletados");
       console.log("📊 Estatísticas:", deletionStats);
-      
+
       return {
         success: true,
         message: "Conta deletada com sucesso",

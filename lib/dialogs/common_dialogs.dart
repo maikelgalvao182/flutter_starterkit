@@ -1,5 +1,5 @@
 import 'package:partiu/core/helpers/toast_messages_helper.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:flutter/material.dart';
 
 /// Success Dialog - Agora usando ToastService
@@ -21,9 +21,7 @@ void successDialog(
   final tm = ToastMessagesHelper(context);
   
   // Exibe notificação de sucesso
-  ToastService.showSuccessDialog(
-    context: context,
-    title: title ?? tm.success,
+  ToastService.showSuccess(
     message: message,
   );
 }
@@ -47,9 +45,7 @@ void errorDialog(
   final tm = ToastMessagesHelper(context);
   
   // Exibe notificação de erro
-  ToastService.showErrorDialog(
-    context: context,
-    title: title ?? tm.error,
+  ToastService.showError(
     message: message,
   );
 }

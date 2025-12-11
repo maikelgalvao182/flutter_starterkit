@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/create_flow/activity_repository.dart';
 import 'package:partiu/features/home/presentation/widgets/controllers/participants_drawer_controller.dart';
@@ -120,11 +121,9 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
     } catch (e, stack) {
       if (mounted) {
         // Mostrar erro para o usuário
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).translate('error_creating_activity').replaceAll('{error}', e.toString())),
-            backgroundColor: Colors.red,
-          ),
+        final i18n = AppLocalizations.of(context);
+        ToastService.showError(
+          message: i18n.translate('error_creating_activity').replaceAll('{error}', e.toString()),
         );
         
         setState(() {

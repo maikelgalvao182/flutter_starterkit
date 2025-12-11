@@ -137,18 +137,17 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
 
   Widget _buildBody(AppLocalizations i18n) {
     // Loading state
-    return ValueListenableBuilder<bool>(
+        return ValueListenableBuilder<bool>(
       valueListenable: _controller.isLoading,
       builder: (context, isLoading, _) {
         if (isLoading) {
-          return ListView.builder(
+          return ListView.separated(
             padding: const EdgeInsets.all(20),
             itemCount: 5,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) => const UserCardShimmer(),
           );
-        }
-
-        // Error state
+        }        // Error state
         return ValueListenableBuilder<String?>(
           valueListenable: _controller.error,
           builder: (context, errorMessage, _) {

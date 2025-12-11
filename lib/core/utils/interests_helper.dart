@@ -6,7 +6,19 @@ import 'package:partiu/core/utils/geo_distance_helper.dart';
 /// Para buscar dados, use UserRepository
 class InterestsHelper {
   /// Calcula interesses em comum entre duas listas de interesses
-  static List<String> calculateCommonInterests(
+  /// Retorna a porcentagem de interesses em comum (0.0 a 1.0)
+  static double calculateCommonInterests(
+    List<String> userInterests,
+    List<String> myInterests,
+  ) {
+    if (userInterests.isEmpty || myInterests.isEmpty) return 0.0;
+    
+    final common = userInterests.toSet().intersection(myInterests.toSet());
+    return common.length / userInterests.length;
+  }
+  
+  /// Retorna lista de interesses em comum
+  static List<String> getCommonInterestsList(
     List<String> userInterests,
     List<String> myInterests,
   ) {
@@ -44,7 +56,7 @@ class InterestsHelper {
   }) {
     // Adicionar interesses em comum
     final userInterests = List<String>.from(userData['interests'] ?? []);
-    userData['commonInterests'] = calculateCommonInterests(userInterests, myInterests);
+    userData['commonInterests'] = getCommonInterestsList(userInterests, myInterests);
 
     // Adicionar distância se dados de localização disponíveis
     if (myUserData != null) {

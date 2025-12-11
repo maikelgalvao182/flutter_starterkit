@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
+import 'package:partiu/shared/widgets/infinite_list_view.dart';
 import 'package:partiu/features/profile/presentation/controllers/profile_visits_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
@@ -10,6 +11,7 @@ import 'package:partiu/common/state/app_state.dart';
 /// 
 /// Features:
 /// - 🔥 OTIMIZADO: Lista local + Stream de eventos
+/// - 🚀 PAGINAÇÃO: Usa InfiniteListView para scroll infinito
 /// - Não reconstrói toda a lista a cada mudança
 /// - Apenas cards afetados atualizam
 /// - Scroll não reseta
@@ -22,11 +24,19 @@ class ProfileVisitsScreen extends StatefulWidget {
 }
 
 class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
+  final ScrollController _scrollController = ScrollController();
+  
   @override
   void initState() {
     super.initState();
     final userId = AppState.currentUserId ?? '';
     ProfileVisitsController.instance.watchUser(userId);
+  }
+  
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -69,17 +79,17 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
             );
           }
 
-          // Success - Lista de visitantes
-          final visitors = controller.visitors;
+          // Success - Lista de visitantes com paginação
+          // 🚀 OTIMIZAÇÃO: InfiniteListView carrega 20 por vez
+          final displayedVisitors = controller.displayedVisitors;
 
           return RefreshIndicator(
             onRefresh: controller.refresh,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              itemCount: visitors.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
+            child: InfiniteListView(
+              controller: _scrollController,
+              itemCount: displayedVisitors.length,
               itemBuilder: (context, index) {
-                final visitor = visitors[index];
+                final visitor = displayedVisitors[index];
                 return UserCard(
                   key: ValueKey(visitor.userId),
                   user: visitor,
@@ -87,6 +97,11 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
                   overallRating: visitor.overallRating,
                 );
               },
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
+              onLoadMore: controller.loadMore,
+              isLoadingMore: controller.isLoadingMore,
+              exhausted: !controller.hasMore,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             ),
           );
         },

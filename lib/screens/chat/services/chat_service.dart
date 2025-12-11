@@ -14,7 +14,7 @@ import 'package:partiu/screens/chat/models/message.dart';
 import 'package:partiu/screens/chat/models/user_model.dart' as chat_user_model;
 import 'package:partiu/screens/chat/viewmodels/chat_view_model.dart';
 import 'package:partiu/core/services/image_compress_service.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:flutter/material.dart';
 
 class ChatService {
@@ -109,9 +109,8 @@ class ChatService {
 
         // Show success toast
         ToastService.showSuccess(
-          context: context,
-          title: ToastMessages.userBlocked,
-          subtitle: i18n.translate('user_has_been_blocked'),
+        message: i18n.translate('user_has_been_blocked',
+      ),
         );
       },
     );
@@ -144,9 +143,8 @@ class ChatService {
 
         // Show success toast
         ToastService.showSuccess(
-          context: context,
-          title: ToastMessages.userUnblocked,
-          subtitle: i18n.translate('user_has_been_unblocked'),
+        message: i18n.translate('user_has_been_unblocked',
+      ),
         );
       },
     );
@@ -193,9 +191,7 @@ class ChatService {
           
           // Show success toast após fechar a tela
           ToastService.showSuccess(
-            context: context,
-            title: title.isNotEmpty ? title : 'Excluir conversa',
-            subtitle: subtitle.isNotEmpty ? subtitle : 'A conversa foi excluída com sucesso',
+            message: subtitle.isNotEmpty ? subtitle : 'A conversa foi excluída com sucesso',
           );
         }
       },
@@ -220,17 +216,14 @@ class ChatService {
         receiver: receiver,
         onError: (error) {
           ToastService.showError(
-            context: context,
-            title: ToastMessages.error,
-            subtitle: error,
+            message: error,
           );
         },
       );
     } catch (e) {
       ToastService.showError(
-        context: context,
-        title: ToastMessages.error,
-        subtitle: i18n.translate('an_error_has_occurred'),
+        message: i18n.translate('an_error_has_occurred',
+      ),
       );
     } finally {
       setIsSending(false);
@@ -263,17 +256,14 @@ class ChatService {
         receiver: receiver,
         onError: (error) {
           ToastService.showError(
-            context: context,
-            title: ToastMessages.uploadFailed,
-            subtitle: error,
+            message: error,
           );
         },
       );
     } catch (e) {
       ToastService.showError(
-        context: context,
-        title: ToastMessages.uploadFailed,
-        subtitle: i18n.translate('an_error_has_occurred'),
+        message: i18n.translate('an_error_has_occurred',
+      ),
       );
     } finally {
       // Cleanup: Remove compressed temp file if different from original

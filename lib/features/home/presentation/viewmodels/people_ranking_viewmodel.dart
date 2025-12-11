@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:partiu/features/home/data/models/user_ranking_model.dart';
 import 'package:partiu/features/home/data/services/people_ranking_service.dart';
 import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:partiu/common/state/app_state.dart';
 
 /// ViewModel para gerenciar estado do ranking de pessoas
@@ -13,6 +14,7 @@ import 'package:partiu/common/state/app_state.dart';
 /// - Fornecer dados limpos para a UI
 class PeopleRankingViewModel extends ChangeNotifier {
   final PeopleRankingService _peopleRankingService;
+  final GlobalCacheService _cache = GlobalCacheService.instance;
   
   // Instância compartilhada (opcional - para acesso global)
   static PeopleRankingViewModel? _instance;
@@ -94,11 +96,28 @@ class PeopleRankingViewModel extends ChangeNotifier {
     }
   }
 
-  /// Carrega ranking de pessoas
+  /// Carrega ranking de pessoas com cache global
   Future<void> loadPeopleRanking() async {
     debugPrint('📊 [PeopleRankingViewModel] Iniciando loadPeopleRanking');
     debugPrint('   - selectedState: $_selectedState');
     debugPrint('   - selectedCity: $_selectedCity');
+    
+    // 🔵 STEP 1: Tentar buscar do cache global primeiro
+    final cacheKey = _buildCacheKey();
+    final cached = _cache.get<List<UserRankingModel>>(cacheKey);
+    
+    if (cached != null && cached.isNotEmpty) {
+      debugPrint('🗂️ [PeopleRanking] Cache HIT - ${cached.length} pessoas');
+      _peopleRankings = cached;
+      _isLoading = false;
+      notifyListeners();
+      
+      // Atualização silenciosa em background
+      _silentRefreshPeopleRanking();
+      return;
+    }
+    
+    debugPrint('🗂️ [PeopleRanking] Cache MISS - carregando do Firestore');
     
     _isLoading = true;
     _error = null;
@@ -133,6 +152,14 @@ class PeopleRankingViewModel extends ChangeNotifier {
           final r = _peopleRankings[i];
           debugPrint('     ${i + 1}. ${r.fullName} - ${r.overallRating}⭐ (${r.totalReviews} reviews)');
         }
+        
+        // 🔵 STEP 2: Salvar no cache global (TTL: 10 minutos)
+        _cache.set(
+          cacheKey,
+          _peopleRankings,
+          ttl: const Duration(minutes: 10),
+        );
+        debugPrint('🗂️ [PeopleRanking] Cache SAVED - ${_peopleRankings.length} pessoas');
       }
     } catch (error, stackTrace) {
       _error = 'Erro ao carregar ranking de pessoas';
@@ -147,14 +174,85 @@ class PeopleRankingViewModel extends ChangeNotifier {
     }
   }
 
-  /// Carrega lista de estados disponíveis
+  /// Constrói chave de cache baseada nos filtros atuais
+  String _buildCacheKey() {
+    final state = _selectedState ?? 'all';
+    final city = _selectedCity ?? 'all';
+    return '${CacheKeys.rankingGlobal}_people_${state}_$city';
+  }
+
+  /// Atualização silenciosa em background (não mostra loading)
+  Future<void> _silentRefreshPeopleRanking() async {
+    try {
+      debugPrint('🔄 [PeopleRanking] Silent refresh iniciado');
+      
+      final fresh = await _peopleRankingService.getPeopleRanking(
+        selectedState: _selectedState,
+        selectedLocality: _selectedCity,
+        limit: 50,
+      );
+
+      // Filtrar bloqueados
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId != null) {
+        final blockedIds = BlockService.instance.getAllBlockedIds(currentUserId);
+        final filtered = fresh
+            .where((person) => !blockedIds.contains(person.userId))
+            .toList();
+
+        // Comparar com cache atual
+        final hasChanges = filtered.length != _peopleRankings.length ||
+            (filtered.isNotEmpty && 
+             _peopleRankings.isNotEmpty && 
+             filtered.first.userId != _peopleRankings.first.userId);
+
+        if (hasChanges) {
+          debugPrint('🔄 [PeopleRanking] Dados atualizados detectados');
+          _peopleRankings = filtered;
+          
+          // Atualizar cache
+          final cacheKey = _buildCacheKey();
+          _cache.set(
+            cacheKey,
+            filtered,
+            ttl: const Duration(minutes: 10),
+          );
+          
+          notifyListeners();
+        } else {
+          debugPrint('🔄 [PeopleRanking] Nenhuma mudança detectada');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [PeopleRanking] Erro no silent refresh: $e');
+      // Não exibe erro ao usuário - silent refresh falhou mas UI continua ok
+    }
+  }
+
+  /// Carrega lista de estados disponíveis com cache
   Future<void> _loadAvailableStates() async {
     debugPrint('🗺️ [PeopleRankingViewModel] Carregando estados...');
+    
+    // 🔵 Tentar cache primeiro
+    final cached = _cache.get<List<String>>('${CacheKeys.rankingGlobal}_people_states');
+    if (cached != null && cached.isNotEmpty) {
+      debugPrint('🗂️ [PeopleRanking] Estados do cache - ${cached.length}');
+      _availableStates = cached;
+      return;
+    }
+    
     try {
       _availableStates = await _peopleRankingService.getAvailableStates();
       debugPrint('✅ Estados disponíveis: ${_availableStates.length}');
       if (_availableStates.isNotEmpty) {
         debugPrint('   - Estados: ${_availableStates.join(", ")}');
+        
+        // Salvar no cache (TTL: 10 minutos)
+        _cache.set(
+          '${CacheKeys.rankingGlobal}_people_states',
+          _availableStates,
+          ttl: const Duration(minutes: 10),
+        );
       }
     } catch (error, stackTrace) {
       debugPrint('⚠️ Erro ao carregar estados: $error');
@@ -162,9 +260,18 @@ class PeopleRankingViewModel extends ChangeNotifier {
     }
   }
 
-  /// Carrega lista de cidades disponíveis
+  /// Carrega lista de cidades disponíveis com cache
   Future<void> _loadAvailableCities() async {
     debugPrint('🌆 [PeopleRankingViewModel] Carregando cidades...');
+    
+    // 🔵 Tentar cache primeiro
+    final cached = _cache.get<List<String>>('${CacheKeys.rankingGlobal}_people_cities');
+    if (cached != null && cached.isNotEmpty) {
+      debugPrint('🗂️ [PeopleRanking] Cidades do cache - ${cached.length}');
+      _availableCities = cached;
+      return;
+    }
+    
     try {
       final allCities = await _peopleRankingService.getAvailableCities();
       debugPrint('✅ Cidades totais disponíveis: ${allCities.length}');
@@ -174,6 +281,13 @@ class PeopleRankingViewModel extends ChangeNotifier {
       
       if (_availableCities.isNotEmpty) {
         debugPrint('   - Primeiras 5: ${_availableCities.take(5).join(", ")}');
+        
+        // Salvar no cache (TTL: 10 minutos)
+        _cache.set(
+          '${CacheKeys.rankingGlobal}_people_cities',
+          _availableCities,
+          ttl: const Duration(minutes: 10),
+        );
       }
     } catch (error, stackTrace) {
       debugPrint('⚠️ Erro ao carregar cidades: $error');

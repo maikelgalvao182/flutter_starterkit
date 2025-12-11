@@ -9,13 +9,12 @@ class UserCardShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: GlimpseColors.borderColorLight,
+          color: GlimpseColors.textSubTitle,
           width: 1,
         ),
       ),

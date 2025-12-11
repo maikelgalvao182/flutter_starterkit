@@ -12,7 +12,7 @@ import 'package:partiu/features/home/data/repositories/event_application_reposit
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/screens/chat/services/event_application_removal_service.dart';
 import 'package:partiu/screens/chat/services/event_deletion_service.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
@@ -253,9 +253,7 @@ class GroupInfoController extends ChangeNotifier {
 
       if (context.mounted) {
         ToastService.showSuccess(
-          context: context,
-          title: i18n.translate('success'),
-          subtitle: i18n.translate('event_name_updated'),
+          message: i18n.translate('event_name_updated'),
         );
       }
     } catch (e) {
@@ -264,9 +262,7 @@ class GroupInfoController extends ChangeNotifier {
 
       if (context.mounted) {
         ToastService.showError(
-          context: context,
-          title: i18n.translate('error'),
-          subtitle: i18n.translate('failed_to_update_event_name'),
+          message: i18n.translate('failed_to_update_event_name'),
         );
       }
     }

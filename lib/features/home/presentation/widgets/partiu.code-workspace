@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "../../../../.."
+		},
+		{
+			"path": "../../../../../../Downloads/flutter-didit-verification-webview-main"
 		}
 	],
 	"settings": {}

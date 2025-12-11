@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
@@ -98,25 +100,17 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              i18n.translate('user_unblocked_successfully') ?? 
-              'Usuário desbloqueado com sucesso',
-            ),
-          ),
+        final i18nToast = AppLocalizations.of(context);
+        ToastService.showSuccess(
+          message: i18n.translate('user_unblocked_successfully') ?? i18nToast.translate('success_generic'),
         );
       }
     } catch (e) {
       debugPrint('❌ Erro ao desbloquear usuário: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              i18n.translate('error_unblocking_user') ?? 
-              'Erro ao desbloquear usuário',
-            ),
-          ),
+        final i18nToast = AppLocalizations.of(context);
+        ToastService.showError(
+          message: i18n.translate('error_unblocking_user') ?? i18nToast.translate('error_generic'),
         );
       }
     }

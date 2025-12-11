@@ -406,11 +406,9 @@
   "notification_profile_views_aggregated": "{count} personas vieron tu perfil ✨",
   
   "notif_filter_all": "Todas",
-  "notif_filter_messages": "Mensajes",
   "notif_filter_activities": "Actividades",
-  "notif_filter_requests": "Solicitudes",
-  "notif_filter_social": "Social",
-  "notif_filter_system": "Sistema",
+  "notif_filter_event_chat": "Chat de Eventos",
+  "notif_filter_profile_views": "Visualizaciones",
   
   "help_us_keep_community_safe": "Ayúdanos a mantener la comunidad segura",
   "report_dialog_description": "Elige una acción para este usuario.",
@@ -427,5 +425,12 @@
   "unblock": "Desbloquear",
   "user_unblocked_successfully": "Usuario desbloqueado exitosamente",
   "error_unblocking_user": "Error al desbloquear usuario",
+  
+  "face_verification": "Verificación Facial",
+  "verification_success": "¡Verificación completada con éxito!",
+  "verification_save_error": "Error al guardar verificación",
+  "error_opening_verification": "Error al abrir verificación",
+  "view_profile": "Ver Perfil",
+  
   "years_old": "años"
 }

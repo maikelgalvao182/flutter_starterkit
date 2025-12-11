@@ -3,7 +3,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/profile/presentation/controllers/profile_controller.dart';
 import 'package:partiu/core/services/block_service.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/features/profile/presentation/components/profile_header.dart';
 import 'package:partiu/features/profile/presentation/widgets/about_me_section.dart';
 import 'package:partiu/features/profile/presentation/widgets/basic_information_profile_section.dart';
@@ -182,8 +182,7 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
           // Verificar se usuário está bloqueado
           if (BlockService().isBlockedCached(widget.currentUserId, widget.displayUser.userId)) {
             ToastService.showWarning(
-              context: context,
-              title: widget.i18n.translate('user_blocked_cannot_message') ?? 
+              message: widget.i18n.translate('user_blocked_cannot_message') ?? 
               'Você não pode enviar mensagens para este usuário',
             );
             return;

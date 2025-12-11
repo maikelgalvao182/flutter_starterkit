@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/presentation/widgets/animated_removal_wrapper.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
@@ -60,12 +62,8 @@ class _ActionCardState extends State<ActionCard> {
     } catch (e) {
       debugPrint('❌ Erro na ação primária: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao executar ação: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        final i18n = AppLocalizations.of(context);
+        ToastService.showError(message: i18n.translate('action_error'));
       }
     } finally {
       if (mounted) {
@@ -87,12 +85,8 @@ class _ActionCardState extends State<ActionCard> {
     } catch (e) {
       debugPrint('❌ Erro na ação secundária: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao executar ação: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        final i18n = AppLocalizations.of(context);
+        ToastService.showError(message: i18n.translate('action_error'));
       }
     } finally {
       if (mounted) {

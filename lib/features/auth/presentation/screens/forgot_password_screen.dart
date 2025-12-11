@@ -4,7 +4,7 @@ import 'package:partiu/core/constants/text_styles.dart';
 import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_signup_layout.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_text_field.dart';
@@ -62,11 +62,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         
         // Mostra sucesso com toast
         ToastService.showSuccess(
-          context: context,
-          title: _i18n.translate('success') != '' 
-              ? _i18n.translate('success')
-              : ToastMessages.passwordResetSuccess,
-          subtitle: _i18n.translate('password_reset_link_sent') != '' 
+          message: _i18n.translate('password_reset_link_sent') != '' 
               ? _i18n.translate('password_reset_link_sent')
               : ToastMessages.passwordResetLinkSent,
         );
@@ -101,11 +97,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         }
 
         ToastService.showError(
-          context: context,
-          title: _i18n.translate('error') != '' 
-              ? _i18n.translate('error')
-              : ToastMessages.error,
-          subtitle: message,
+          message: message,
         );
       }
     } catch (e) {
@@ -115,9 +107,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() => _isLoading = false);
         
         ToastService.showError(
-          context: context,
-          title: ToastMessages.error,
-          subtitle: _i18n.translate('something_went_wrong') != '' 
+          message: _i18n.translate('something_went_wrong') != '' 
               ? _i18n.translate('something_went_wrong')
               : ToastMessages.somethingWentWrong,
         );

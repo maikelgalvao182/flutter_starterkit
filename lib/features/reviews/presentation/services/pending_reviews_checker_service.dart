@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:partiu/features/reviews/data/repositories/review_repository.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/review_dialog.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Serviço que verifica e exibe automaticamente PendingReviews
 /// quando o usuário abre o app
@@ -152,26 +154,20 @@ class PendingReviewsCheckerService {
         'review(s) pendente(s)'
       );
 
-      // Mostra snackbar informando sobre reviews restantes
+      // Mostra toast informando sobre reviews restantes
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              remainingReviews.length == 1
-                  ? 'Você ainda tem 1 avaliação pendente'
-                  : 'Você ainda tem ${remainingReviews.length} avaliações pendentes',
-            ),
-            action: SnackBarAction(
-              label: 'Avaliar',
-              onPressed: () {
-                if (context.mounted) {
-                  _showReviewDialog(context, remainingReviews.first);
-                }
-              },
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        final i18n = AppLocalizations.of(context);
+        final message = remainingReviews.length == 1
+            ? i18n.translate('pending_review_remaining_single')
+            : i18n.translate('pending_reviews_remaining').replaceAll('{count}', remainingReviews.length.toString());
+        
+        ToastService.showInfo(message: message);
+        
+        // Aguardar um momento antes de mostrar o próximo dialog
+        await Future.delayed(const Duration(seconds: 2));
+        if (context.mounted) {
+          _showReviewDialog(context, remainingReviews.first);
+        }
       }
     } catch (e) {
       debugPrint('❌ [PendingReviewsChecker] Erro ao verificar mais reviews: $e');

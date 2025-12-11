@@ -6,6 +6,7 @@ import 'package:partiu/features/notifications/widgets/notification_item_widget.d
 import 'package:partiu/features/notifications/widgets/notification_horizontal_filters.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
+import 'package:partiu/shared/widgets/infinite_list_view.dart';
 import 'package:partiu/widgets/skeletons/notification_list_skeleton.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// [MVVM] Constantes da View - evita magic numbers
 class _NotificationScreenConstants {
-  static const int filterCount = 6; // All, Messages, Activities, Requests, Social, System
+  static const int filterCount = 4; // All, Activities, Event Chat, Profile Views
   static const double titleFontSize = 20;
   static const double clearFontSize = 14;
   static const double backButtonSize = 24;
@@ -262,50 +263,33 @@ class _NotificationFilterPageState extends State<_NotificationFilterPage>
           );
         }
 
-        // Lista com dados
-        return CustomScrollView(
-          key: PageStorageKey('notif_${widget.filterIndex}'),
-          controller: widget.controller.getScrollController(widget.filterIndex),
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            CupertinoSliverRefreshControl(
-              onRefresh: () => widget.controller.fetchNotifications(shouldRefresh: true),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == notifications.length) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(
-                            _NotificationScreenConstants.loadingIndicatorPadding,
-                          ),
-                          child: CupertinoActivityIndicator(),
-                        ),
-                      );
-                    }
-
-                    final doc = notifications[index];
-                    
-                    return RepaintBoundary(
-                      child: NotificationItemWidget(
-                        key: ValueKey(doc.id),
-                        notification: doc,
-                        isVipEffective: isVipEffective,
-                        i18n: i18n,
-                        index: index,
-                        totalCount: notifications.length,
-                        onTap: () => widget.controller.markAsRead(doc.id),
-                      ),
-                    );
-                  },
-                  childCount: notifications.length + (hasMore ? 1 : 0),
+        // Lista com dados - 🚀 USANDO InfiniteListView
+        return RefreshIndicator(
+          onRefresh: () => widget.controller.fetchNotifications(shouldRefresh: true),
+          child: InfiniteListView(
+            key: PageStorageKey('notif_${widget.filterIndex}'),
+            controller: widget.controller.getScrollController(widget.filterIndex),
+            itemCount: notifications.length,
+            itemBuilder: (context, index) {
+              final doc = notifications[index];
+              
+              return RepaintBoundary(
+                child: NotificationItemWidget(
+                  key: ValueKey(doc.id),
+                  notification: doc,
+                  isVipEffective: isVipEffective,
+                  i18n: i18n,
+                  index: index,
+                  totalCount: notifications.length,
+                  onTap: () => widget.controller.markAsRead(doc.id),
                 ),
-              ),
-            ),
-          ],
+              );
+            },
+            onLoadMore: widget.controller.loadMore,
+            isLoadingMore: widget.controller.isLoadingMore,
+            exhausted: !hasMore,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+          ),
         );
       },
     );

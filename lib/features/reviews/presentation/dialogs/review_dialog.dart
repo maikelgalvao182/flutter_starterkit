@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/review_dialog_controller.dart';
 import 'package:partiu/features/reviews/presentation/components/review_dialog_progress_bar.dart';
@@ -300,18 +302,9 @@ class _ReviewDialogContentState extends State<_ReviewDialogContent> {
           widget.pendingReview.pendingReviewId,
         );
         if (!success && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                controller.errorMessage ?? 'Erro ao confirmar presença',
-                style: GoogleFonts.getFont(
-                  FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              backgroundColor: GlimpseColors.error,
-            ),
+          final i18n = AppLocalizations.of(context);
+          ToastService.showError(
+            message: controller.errorMessage ?? i18n.translate('error_confirming_presence'),
           );
         }
         break;
@@ -365,26 +358,14 @@ class _ReviewDialogContentState extends State<_ReviewDialogContent> {
   }
 
   void _showSuccessMessage(BuildContext context, ReviewDialogController controller) {
+    final i18n = AppLocalizations.of(context);
     String message;
     if (controller.isOwnerReview && controller.selectedParticipants.length > 1) {
-      message = '✅ ${controller.selectedParticipants.length} avaliações enviadas com sucesso!';
+      message = i18n.translate('reviews_sent_successfully').replaceAll('{count}', controller.selectedParticipants.length.toString());
     } else {
-      message = '✅ Avaliação enviada com sucesso!';
+      message = i18n.translate('review_sent_successfully');
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: GoogleFonts.getFont(
-            FONT_PLUS_JAKARTA_SANS,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: GlimpseColors.success,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    ToastService.showSuccess(message: message);
   }
 }

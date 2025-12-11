@@ -15,12 +15,14 @@ import 'package:partiu/core/services/auth_state_service.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/services/socket_service.dart';
 import 'package:partiu/core/services/subscription_monitoring_service.dart';
+import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// ViewModel responsável por coordenar conversas
-/// Usa services dedicados para cache e paginação, mantendo apenas coordenação e estado global
+/// Usa services dedicados para cache local e paginação
+/// + GlobalCacheService para cache enterprise com TTL
 class ConversationsViewModel extends ChangeNotifier {
   ConversationsViewModel() {
     _initialize();
@@ -32,6 +34,7 @@ class ConversationsViewModel extends ChangeNotifier {
   late final ConversationCacheService _cacheService;
   late final ConversationPaginationService _paginationService;
   final SocketService _socket = SocketService.instance;
+  final GlobalCacheService _globalCache = GlobalCacheService.instance;
   
   // WebSocket-backed state (ainda não usado na UI)
   List<ConversationItem> _wsConversations = <ConversationItem>[];
@@ -251,6 +254,29 @@ class ConversationsViewModel extends ChangeNotifier {
 
   /// Carrega conversas existentes diretamente do Firestore (uma vez),
   /// convertendo-as para ConversationItem para preencher a lista inicial.
+  /// 
+  /// ✅ Pode ser chamado externamente pelo AppInitializer para pré-carregar conversas
+  /// ✅ Usa GlobalCache para carregamento instantâneo
+  Future<void> preloadConversations() async {
+    // 🔵 STEP 1: Tentar buscar do cache global primeiro
+    final cached = _globalCache.get<List<ConversationItem>>(CacheKeys.conversations);
+    
+    if (cached != null && cached.isNotEmpty) {
+      _log('🗂️ [Conversations] Cache HIT - ${cached.length} conversas');
+      _wsConversations = cached;
+      _updateVisibleUnreadCount();
+      _hasReceivedFirstSnapshot = true;
+      notifyListeners();
+      
+      // Atualização silenciosa em background
+      _silentRefreshConversations();
+      return;
+    }
+    
+    _log('🗂️ [Conversations] Cache MISS - carregando do Firestore');
+    await _loadInitialFromFirestore();
+  }
+
   Future<void> _loadInitialFromFirestore() async {
     _log('📥 _loadInitialFromFirestore: INICIANDO');
     try {
@@ -275,9 +301,11 @@ class ConversationsViewModel extends ChangeNotifier {
         try {
           final data = doc.data();
           final otherUserId = (data[USER_ID] ?? doc.id).toString();
-          final rawName = (data[fullname] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
+          // ✅ FIX: Check activityText first (for event chats), then fullname variants
+          final rawName = (data['activityText'] ?? data[fullname] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
           final name = _sanitizeText(rawName);
-          final photo = (data[USER_PROFILE_PHOTO] ?? data['other_user_photo'] ?? data['otherUserPhoto']) as String?;
+          // ✅ FIX: Extract photo with same logic as ConversationDataProcessor
+          final photo = _extractPhotoUrl(data);
           final rawLastMessage = (data[LAST_MESSAGE] ?? '').toString();
           final lastMessage = _sanitizeText(rawLastMessage);
 
@@ -330,6 +358,16 @@ class ConversationsViewModel extends ChangeNotifier {
         _wsConversations = filteredItems;
         _updateVisibleUnreadCount(); // Atualiza contador
         _log('📥 _loadInitialFromFirestore: _wsConversations atualizado com ${filteredItems.length} items (${items.length - filteredItems.length} bloqueados removidos)');
+        
+        // 🔵 STEP 2: Salvar no cache global (TTL: 3 minutos)
+        if (filteredItems.isNotEmpty) {
+          _globalCache.set(
+            CacheKeys.conversations,
+            filteredItems,
+            ttl: const Duration(minutes: 3),
+          );
+          _log('🗂️ [Conversations] Cache SAVED - ${filteredItems.length} conversas');
+        }
       }
     } catch (e, stack) {
       _log('❌ _loadInitialFromFirestore: ERRO - $e');
@@ -343,6 +381,130 @@ class ConversationsViewModel extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  /// Atualização silenciosa em background (não mostra loading)
+  Future<void> _silentRefreshConversations() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+
+      _log('🔄 [Conversations] Silent refresh iniciado');
+      
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Connections')
+          .doc(userId)
+          .collection('Conversations')
+          .orderBy('timestamp', descending: true)
+          .limit(20)
+          .get();
+
+      final items = <ConversationItem>[];
+      for (final doc in snapshot.docs) {
+        try {
+          final data = doc.data();
+          final otherUserId = (data[USER_ID] ?? doc.id).toString();
+          final rawName = (data['activityText'] ?? data[fullname] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
+          final name = _sanitizeText(rawName);
+          final photo = _extractPhotoUrl(data);
+          final rawLastMessage = (data[LAST_MESSAGE] ?? '').toString();
+          final lastMessage = _sanitizeText(rawLastMessage);
+
+          DateTime? ts;
+          final rawTs = data[TIMESTAMP];
+          if (rawTs is Timestamp) {
+            ts = rawTs.toDate();
+          } else if (rawTs is int) {
+            ts = DateTime.fromMillisecondsSinceEpoch(rawTs);
+          }
+
+          final unreadFlag = data[MESSAGE_READ];
+          final unreadCount = (data['unread_count'] as num?)?.toInt() ?? (data['unreadCount'] as num?)?.toInt() ?? 0;
+          final isRead = (unreadFlag is bool) ? unreadFlag : unreadCount == 0;
+          final isEventChat = data['is_event_chat'] == true;
+          final eventId = data['event_id']?.toString();
+
+          items.add(
+            ConversationItem(
+              id: doc.id,
+              userId: otherUserId,
+              userFullname: name.isNotEmpty ? name : 'Unknown',
+              userPhotoUrl: photo,
+              lastMessage: lastMessage,
+              lastMessageType: data[MESSAGE_TYPE]?.toString(),
+              lastMessageAt: ts,
+              unreadCount: unreadCount,
+              isRead: isRead,
+              isEventChat: isEventChat,
+              eventId: eventId,
+            ),
+          );
+        } catch (_) {
+          // Continua para próxima conversa
+        }
+      }
+
+      // Filtrar bloqueados
+      final currentUserId = AppState.currentUserId;
+      final filteredItems = currentUserId != null
+          ? items.where((conv) => !BlockService().isBlockedCached(currentUserId, conv.userId)).toList()
+          : items;
+
+      // Comparar com cache atual
+      final hasChanges = filteredItems.length != _wsConversations.length ||
+          (filteredItems.isNotEmpty && 
+           _wsConversations.isNotEmpty && 
+           (filteredItems.first.id != _wsConversations.first.id ||
+            filteredItems.first.lastMessage != _wsConversations.first.lastMessage));
+
+      if (hasChanges) {
+        _log('🔄 [Conversations] Mudanças detectadas - atualizando');
+        _wsConversations = filteredItems;
+        _updateVisibleUnreadCount();
+        
+        // Atualizar cache
+        _globalCache.set(
+          CacheKeys.conversations,
+          filteredItems,
+          ttl: const Duration(minutes: 3),
+        );
+        
+        notifyListeners();
+      } else {
+        _log('🔄 [Conversations] Nenhuma mudança detectada');
+      }
+    } catch (e) {
+      _log('⚠️ [Conversations] Erro no silent refresh: $e');
+      // Não exibe erro ao usuário
+    }
+  }
+  /// Extract photo URL with fallback chain (same logic as ConversationDataProcessor)
+  String _extractPhotoUrl(Map<String, dynamic> data) {
+    final candidates = <dynamic>[
+      data['profileImageURL'],
+      data['emoji'],
+      data['user_profile_photo'],
+      data['photo_url'],
+      data['user_photo_link'],
+      data['user_photo'],
+      data['profile_photo'],
+      data['profile_photo_url'],
+      data['avatar_url'],
+      data['avatar'],
+      data['photo'],
+      data['image_url'],
+      data['profile_image_url'],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is String) {
+        final trimmed = candidate.trim();
+        if (trimmed.isNotEmpty) {
+          return trimmed;
+        }
+      }
+    }
+    return '';
   }
 
   /// Remove caracteres inválidos UTF-16 (emojis problemáticos)
@@ -582,7 +744,6 @@ class ConversationsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  @override
   @override
   void dispose() {
     _searchDebounce?.cancel();

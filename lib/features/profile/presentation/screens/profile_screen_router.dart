@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/router/app_router.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 
 /// Router para navegação de perfil
@@ -90,14 +92,9 @@ class ProfileScreenRouter {
     }
   }
 
-  /// Mostra erro via SnackBar
+  /// Mostra erro via Toast
   static void _showError(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red[700],
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final i18n = AppLocalizations.of(context);
+    ToastService.showError(message: message);
   }
 }

@@ -631,6 +631,12 @@ match /Users/{userId} {
     || (resource == null && request.resource.data.keys()
     .hasOnly(['overallRating', 'totalReviews', 'lastRatingUpdate']));
   
+  // Permite que Cloud Functions atualizem campos de verificação Didit
+  allow write: if request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['isVerified', 'verifiedAt', 'facialId', 'verificationType'])
+    || (resource == null && request.resource.data.keys()
+    .hasOnly(['isVerified', 'verifiedAt', 'facialId', 'verificationType']));
+  
   /// 👁️ Subcoleção de visitas ao perfil (legacy - deprecada)
   /// Path: Users/{userId}/visits/{visitId}
   match /visits/{visitId} {
@@ -662,6 +668,65 @@ match /users/{userId} {
     allow create, update: if isSignedIn();
     allow delete: if isOwner(userId);
   }
+}
+
+/// 🎭 Coleção de verificações faciais/ID com Didit
+/// Path usado no app:
+/// - FaceVerifications/{userId}
+///   - facialId: string (session_id do Didit)
+///   - verificationType: string ("didit")
+///   - verifiedAt: timestamp
+///   - userInfo: map (dados extraídos)
+match /FaceVerifications/{userId} {
+  allow read: if isOwner(userId);
+  allow create, update: if isOwner(userId);
+  // Cloud Functions podem criar verificações (webhook do Didit)
+  allow create: if true;
+  allow delete: if false; // Não permite deletar verificações
+}
+
+/// 📋 Coleção de sessões de verificação Didit
+/// Path usado no app:
+/// - DiditSessions/{sessionId}
+///   - sessionId: string
+///   - userId: string
+///   - url: string
+///   - workflowId: string
+///   - status: string
+///   - createdAt: timestamp
+///   - vendorData: string
+match /DiditSessions/{sessionId} {
+  // Usuário pode criar suas próprias sessões
+  allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+  
+  // Usuário pode ler suas próprias sessões (verifica se existe primeiro)
+  allow read: if isSignedIn() && (
+    resource == null || // Documento não existe ainda
+    resource.data.userId == request.auth.uid // Ou pertence ao usuário
+  );
+  
+  // Cloud Functions podem atualizar campos específicos
+  allow update: if request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['status', 'completedAt', 'result', 'lastWebhookType', 'lastWebhookAt']);
+  
+  allow delete: if false;
+}
+
+/// 📨 Coleção de webhooks recebidos do Didit
+/// Path usado no app:
+/// - DiditWebhooks/{webhookId}
+///   - sessionId: string
+///   - webhookType: string
+///   - decision: map
+///   - idVerification: map
+///   - receivedAt: timestamp
+match /DiditWebhooks/{webhookId} {
+  // Apenas leitura para o usuário da sessão
+  allow read: if isSignedIn();
+  // Cloud Functions podem criar webhooks
+  allow create: if true; // Vem de servidor externo (Didit)
+  allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['processed']);
+  allow delete: if false;
 }
 
   } // match /databases/{database}/documents

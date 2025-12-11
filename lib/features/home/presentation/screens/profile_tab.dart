@@ -8,12 +8,14 @@ import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/models/user.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/skeletons/profile_header_skeleton.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
+import 'package:partiu/shared/widgets/verification_card.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/profile_info_chips.dart';
 import 'package:partiu/features/profile/presentation/widgets/app_section_card.dart';
@@ -91,12 +93,14 @@ class _ProfileTabState extends State<ProfileTab> {
   /// Usa Command pattern - ViewModel valida, View executa navegação
   Future<void> _handleViewProfileTap(BuildContext context) async {
     final command = _viewModel?.prepareViewProfileNavigation();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     
     if (command == null) {
       // Usuário não autenticado - mostra feedback
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('profile_not_found'));
+        final i18n = AppLocalizations.of(context);
+        ToastService.showError(
+          message: i18n.translate('profile_not_found') ?? 'Perfil não encontrado',
+        );
       }
       return;
     }
@@ -113,30 +117,23 @@ class _ProfileTabState extends State<ProfileTab> {
       );
     } catch (e) {
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('error_loading_profile'));
+        _showError(AppLocalizations.of(context).translate('error_loading_profile'));
       }
     }
   }
 
-  /// Exibe toast de erro usando ScaffoldMessenger já capturado
-  void _showErrorWithMessenger(ScaffoldMessengerState scaffoldMessenger, String message) {
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red[700],
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  /// Exibe toast de erro
+  void _showError(String message) {
+    ToastService.showError(message: message);
   }
   
   /// Handler: Navegar para edição de perfil
   Future<void> _handleEditProfileTap(BuildContext context) async {
     final command = _viewModel?.prepareEditProfileNavigation();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     
     if (command == null) {
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('user_not_authenticated'));
+        _showError(AppLocalizations.of(context).translate('user_not_authenticated'));
       }
       return;
     }
@@ -145,7 +142,7 @@ class _ProfileTabState extends State<ProfileTab> {
       await ProfileScreenRouter.navigateToEditProfile(context);
     } catch (e) {
       if (mounted) {
-        _showErrorWithMessenger(scaffoldMessenger, AppLocalizations.of(context).translate('error_opening_edit_profile'));
+        _showError(AppLocalizations.of(context).translate('error_opening_edit_profile'));
       }
     }
   }
@@ -291,6 +288,13 @@ class _ProfileHeaderContent extends StatelessWidget {
           
           // Localização + Visits
           const ProfileInfoChips(),
+          const SizedBox(height: 16),
+          
+          // Verification Card
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: GlimpseStyles.horizontalMargin),
+            child: const VerificationCard(),
+          ),
         ],
       ),
     );

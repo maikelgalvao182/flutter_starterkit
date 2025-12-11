@@ -579,11 +579,9 @@
   
   
   "notif_filter_all": "Todas",
-  "notif_filter_messages": "Mensagens",
   "notif_filter_activities": "Atividades",
-  "notif_filter_requests": "Pedidos",
-  "notif_filter_social": "Social",
-  "notif_filter_system": "Sistema",
+  "notif_filter_event_chat": "Chat de Eventos",
+  "notif_filter_profile_views": "Visualizações",
   
   "help_us_keep_community_safe": "Bora manter esse lugar seguro?",
   "report_dialog_description": "Este usuário está sendo desrespeitoso ou inadequado? Conte para a gente o que aconteceu. Vamos analisar e tomar as medidas necessárias.",
@@ -616,6 +614,12 @@
   "all_your_profile_data_will_be_permanently_deleted": "Todos os seus dados de perfil serão permanentemente excluídos. Esta ação não pode ser desfeita.",
   "deleting_account": "Excluindo conta...",
   "error_deleting_account": "Erro ao excluir conta. Tente novamente.",
-  "account_deleted_successfully": "Conta excluída com sucesso"
+  "account_deleted_successfully": "Conta excluída com sucesso",
+  
+  "face_verification": "Verificação Facial",
+  "verification_success": "Verificação concluída com sucesso!",
+  "verification_save_error": "Erro ao salvar verificação",
+  "error_opening_verification": "Erro ao abrir verificação",
+  "view_profile": "Ver Perfil"
 }
 

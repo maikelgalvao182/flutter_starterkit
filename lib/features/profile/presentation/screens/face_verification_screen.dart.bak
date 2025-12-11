@@ -1,0 +1,529 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/services/face_verification_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/core/utils/app_logger.dart';
+import 'dart:convert';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+
+/// Tela de verificação facial usando FACEIO
+/// 
+/// Exibe WebView com o widget FACEIO para verificação biométrica
+class FaceVerificationScreen extends StatefulWidget {
+  const FaceVerificationScreen({super.key});
+
+  @override
+  State<FaceVerificationScreen> createState() => _FaceVerificationScreenState();
+}
+
+class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
+  static const String _tag = 'FaceVerificationScreen';
+  
+  WebViewController? _controller;
+  bool _isLoading = true;
+  bool _isLoadingApiKey = true;
+  String? _faceioApiKey;
+  late AppLocalizations _i18n;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Aguarda múltiplos frames para garantir que todos os plugins nativos estejam prontos
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _loadApiKeyAndInitialize();
+        }
+      });
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _i18n = AppLocalizations.of(context);
+  }
+
+  /// Carrega API key do Firestore e inicializa WebView
+  Future<void> _loadApiKeyAndInitialize() async {
+    try {
+      final apiKey = await FaceVerificationService.instance.getFaceioApiKey();
+      
+      if (apiKey == null || apiKey.isEmpty) {
+        if (mounted) {
+          _showErrorAndClose('Erro ao carregar configuração de verificação');
+        }
+        return;
+      }
+      
+      if (!mounted) return;
+      
+      setState(() {
+        _faceioApiKey = apiKey;
+        _isLoadingApiKey = false;
+      });
+      
+      // Aguardar mais tempo para garantir que os canais nativos estejam prontos
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      if (mounted) {
+        _initializeWebView();
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Erro ao carregar API key: $e', tag: _tag, error: e, stackTrace: stackTrace);
+      if (mounted) {
+        _showErrorAndClose('Erro ao carregar verificação');
+      }
+    }
+  }
+
+  /// Mostra erro e fecha a tela
+  void _showErrorAndClose(String message) {
+    // Fecha a tela primeiro
+    Navigator.of(context).pop();
+    
+    // Mostra toast após um pequeno delay para evitar MissingPluginException
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        ToastService.showError(message: message);
+      }
+    });
+  }
+
+  /// Inicializa WebView com configurações específicas para cada plataforma
+  void _initializeWebView() {
+    if (_faceioApiKey == null || !mounted) return;
+    
+    try {
+      late final PlatformWebViewControllerCreationParams params;
+      
+      if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+        params = WebKitWebViewControllerCreationParams(
+          allowsInlineMediaPlayback: true,
+          mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+        );
+      } else {
+        params = const PlatformWebViewControllerCreationParams();
+      }
+
+      final WebViewController controller = WebViewController.fromPlatformCreationParams(params);
+      
+      // Construir URL com API key
+      final url = Uri.parse(
+        'https://partiu-479902.web.app/face-verification.html?apiKey=$_faceioApiKey'
+      );
+      
+      // Configurar WebView
+      controller
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(GlimpseColors.primaryColorLight)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (int progress) {
+              if (progress == 100 && mounted) {
+                setState(() => _isLoading = false);
+              }
+            },
+            onPageStarted: (String url) {
+              if (mounted) {
+                setState(() => _isLoading = true);
+              }
+            },
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+              }
+            },
+            onWebResourceError: (WebResourceError error) {
+              AppLogger.error(
+                'Erro no WebView: ${error.description}',
+                tag: _tag,
+              );
+            },
+          ),
+        )
+        ..addJavaScriptChannel(
+          'FaceIOResult',
+          onMessageReceived: (JavaScriptMessage message) {
+            _handleFaceIOMessage(message.message);
+          },
+        )
+        ..loadRequest(url);
+
+      // Configurações específicas de Android
+      if (controller.platform is AndroidWebViewController) {
+        AndroidWebViewController.enableDebugging(false);
+        (controller.platform as AndroidWebViewController).setMediaPlaybackRequiresUserGesture(false);
+      }
+
+      if (mounted) {
+        setState(() {
+          _controller = controller;
+        });
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Erro ao inicializar WebView: $e',
+        tag: _tag,
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (mounted) {
+        _showErrorAndClose('Erro ao inicializar verificação');
+      }
+    }
+  }
+
+  /// Gera HTML com integração FACEIO (baseado no boilerplate oficial)
+  String _getFaceIOHtml() {
+    return '''
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Verificação Facial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000000;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+        
+        button {
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 20px;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            min-width: 200px;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .icon {
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+        
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .error {
+            color: #ff6b6b;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔐</div>
+        <h1>Verificação Facial</h1>
+        <p>Clique no botão abaixo para iniciar a verificação biométrica do seu perfil</p>
+        <button id="enrollBtn" onclick="enrollNewUser()">Iniciar Verificação</button>
+        <div id="status"></div>
+    </div>
+    
+    <div id="faceio-modal"></div>
+    <script src="https://cdn.faceio.net/fio.js"></script>
+    <script type="text/javascript">
+        // Initialize FACEIO with application Public ID
+        console.log('Inicializando FACEIO com API Key:', '$_faceioApiKey');
+        const faceio = new faceIO("$_faceioApiKey");
+        const enrollBtn = document.getElementById('enrollBtn');
+        const statusDiv = document.getElementById('status');
+        
+        function setStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : '';
+        }
+        
+        function sendToFlutter(type, data) {
+            if (window.FaceIOResult) {
+                window.FaceIOResult.postMessage(JSON.stringify({
+                    type: type,
+                    data: data
+                }));
+            }
+        }
+        
+        function enrollNewUser() {
+            enrollBtn.disabled = true;
+            setStatus('Iniciando verificação...');
+            
+            // Start the facial enrollment process
+            faceio.enroll({
+                "locale": "auto", // Default user locale
+                "userConsent": false, // We already have user consent
+                "payload": {
+                    /* Payload to associate with this user */
+                    "timestamp": new Date().toISOString(),
+                    "source": "mobile_app"
+                }
+            }).then(userInfo => {
+                // User Successfully Enrolled!
+                setStatus('Verificação concluída com sucesso! ✓');
+                console.log('User enrolled:', userInfo);
+                
+                // Send result to Flutter
+                sendToFlutter('success', {
+                    facialId: userInfo.facialId,
+                    timestamp: userInfo.timestamp,
+                    gender: userInfo.details?.gender,
+                    age: userInfo.details?.age,
+                    details: userInfo
+                });
+                
+            }).catch(errCode => {
+                // Handle enrollment failure
+                const errorMessage = handleError(errCode);
+                setStatus(errorMessage, true);
+                sendToFlutter('error', { errorCode: errCode, message: errorMessage });
+                
+                // Re-enable button for retry
+                enrollBtn.disabled = false;
+                
+                // Optional: restart session without page reload
+                // faceio.restartSession();
+            });
+        }
+        
+        function handleError(errCode) {
+            // Log all possible error codes during user interaction
+            // Refer to: https://faceio.net/integration-guide#error-codes
+            switch (errCode) {
+                case fioErrCode.PERMISSION_REFUSED:
+                    console.log("Access to the Camera stream was denied by the end user");
+                    return "Permissão de câmera negada";
+                case fioErrCode.NO_FACES_DETECTED:
+                    console.log("No faces were detected during the enroll or authentication process");
+                    return "Nenhum rosto detectado";
+                case fioErrCode.UNRECOGNIZED_FACE:
+                    console.log("Unrecognized face on this application's Facial Index");
+                    return "Rosto não reconhecido";
+                case fioErrCode.MANY_FACES:
+                    console.log("Two or more faces were detected during the scan process");
+                    return "Múltiplos rostos detectados";
+                case fioErrCode.FACE_DUPLICATION:
+                    console.log("User enrolled previously (facial features already recorded). Cannot enroll again!");
+                    return "Este rosto já está cadastrado";
+                case fioErrCode.MINORS_NOT_ALLOWED:
+                    console.log("Minors are not allowed to enroll on this application!");
+                    return "Menores de idade não são permitidos";
+                case fioErrCode.PAD_ATTACK:
+                    console.log("Presentation (Spoof) Attack (PAD) detected during the scan process");
+                    return "Tentativa de falsificação detectada";
+                case fioErrCode.FACE_MISMATCH:
+                    console.log("Calculated Facial Vectors of the user being enrolled do not matches");
+                    return "Características faciais não correspondem";
+                case fioErrCode.WRONG_PIN_CODE:
+                    console.log("Wrong PIN code supplied by the user being authenticated");
+                    return "Código PIN incorreto";
+                case fioErrCode.PROCESSING_ERR:
+                    console.log("Server side error");
+                    return "Erro no servidor";
+                case fioErrCode.UNAUTHORIZED:
+                    console.log("Your application is not allowed to perform the requested operation");
+                    return "Operação não autorizada";
+                case fioErrCode.TERMS_NOT_ACCEPTED:
+                    console.log("Terms & Conditions set out by FACEIO/host application rejected by the end user");
+                    return "Termos de uso não aceitos";
+                case fioErrCode.UI_NOT_READY:
+                    console.log("The FACEIO Widget could not be (or is being) injected onto the client DOM");
+                    return "Interface não está pronta";
+                case fioErrCode.SESSION_EXPIRED:
+                    console.log("Client session expired");
+                    return "Sessão expirada";
+                case fioErrCode.TIMEOUT:
+                    console.log("Ongoing operation timed out");
+                    return "Tempo esgotado";
+                case fioErrCode.TOO_MANY_REQUESTS:
+                    console.log("Widget instantiation requests exceeded for freemium applications");
+                    return "Muitas requisições";
+                case fioErrCode.EMPTY_ORIGIN:
+                    console.log("Origin or Referer HTTP request header is empty or missing");
+                    return "Origem da requisição inválida";
+                case fioErrCode.FORBIDDDEN_ORIGIN:
+                    console.log("Domain origin is forbidden from instantiating fio.js");
+                    return "Domínio não autorizado";
+                case fioErrCode.FORBIDDDEN_COUNTRY:
+                    console.log("Country ISO-3166-1 Code is forbidden from instantiating fio.js");
+                    return "País não autorizado";
+                case fioErrCode.SESSION_IN_PROGRESS:
+                    console.log("Another authentication or enrollment session is in progress");
+                    return "Sessão em andamento";
+                case fioErrCode.NETWORK_IO:
+                default:
+                    console.log("Error while establishing network connection with the target FACEIO processing node");
+                    return "Erro de conexão com o servidor";
+            }
+        }
+    </script>
+</body>
+</html>
+    ''';
+  }
+
+  /// Processa mensagens do JavaScript
+  void _handleFaceIOMessage(String message) {
+    try {
+      final data = jsonDecode(message) as Map<String, dynamic>;
+      final type = data['type'] as String?;
+      final payload = data['data'] as Map<String, dynamic>?;
+
+      AppLogger.info('Mensagem FACEIO recebida: $type', tag: _tag);
+
+      if (type == 'success' && payload != null) {
+        _handleSuccess(payload);
+      } else if (type == 'error' && payload != null) {
+        _handleError(payload);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Erro ao processar mensagem: $e',
+        tag: _tag,
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Processa sucesso da verificação
+  Future<void> _handleSuccess(Map<String, dynamic> data) async {
+    final facialId = data['facialId'] as String?;
+    
+    if (facialId == null || facialId.isEmpty) {
+      if (mounted) {
+        ToastService.showError(message: 'Erro ao processar verificação');
+      }
+      return;
+    }
+
+    // Salvar verificação no Firestore
+    final success = await FaceVerificationService.instance.saveVerification(
+      facialId: facialId,
+      userInfo: data,
+    );
+
+    if (success && mounted) {
+      HapticFeedback.mediumImpact();
+      
+      // Navega primeiro
+      Navigator.of(context).pop(true);
+      
+      // Toast após navegação para evitar MissingPluginException
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          ToastService.showSuccess(message: _i18n.translate('verification_success') ?? 'Verificação concluída!');
+        }
+      });
+    } else if (mounted) {
+      ToastService.showError(message: _i18n.translate('verification_save_error') ?? 'Erro ao salvar verificação');
+    }
+  }
+
+  /// Processa erro da verificação
+  void _handleError(Map<String, dynamic> data) {
+    final errorMessage = data['message'] as String? ?? 'Erro na verificação';
+    AppLogger.warning('Erro FACEIO: $errorMessage', tag: _tag);
+    
+    if (mounted) {
+      // Aguarda um frame antes de mostrar toast para evitar timing issues
+      Future.microtask(() {
+        if (mounted) {
+          ToastService.showError(message: errorMessage);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: GlimpseColors.primaryColorLight,
+      appBar: AppBar(
+        backgroundColor: GlimpseColors.primaryColorLight,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          _i18n.translate('face_verification') ?? 'Verificação Facial',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      body: _isLoadingApiKey || _controller == null
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Stack(
+              children: [
+                WebViewWidget(controller: _controller!),
+                if (_isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+}

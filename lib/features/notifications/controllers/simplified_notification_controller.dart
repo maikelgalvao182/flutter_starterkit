@@ -3,11 +3,13 @@ import 'package:partiu/features/notifications/repositories/notifications_reposit
 import 'package:flutter/material.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:partiu/core/services/global_cache_service.dart';
 
 /// Controlador de notificações simples inspirado no padrão Chatter.
 /// - Lista única por filtro (source of truth)
 /// - Paginação por lastDocument
 /// - ValueNotifiers granular por filtro
+/// - Cache global com TTL para performance
 /// - SEM dependências de i18n (labels são responsabilidade da View)
 class SimplifiedNotificationController extends ChangeNotifier {
 
@@ -15,8 +17,9 @@ class SimplifiedNotificationController extends ChangeNotifier {
     required INotificationsRepository repository,
   }) : _repository = repository;
   final INotificationsRepository _repository;
+  final GlobalCacheService _cache = GlobalCacheService.instance;
 
-  // Cache por filtro
+  // Cache por filtro (mantido em memória durante sessão)
   final Map<String?, List<DocumentSnapshot<Map<String, dynamic>>>> _notificationsByFilter = {};
   final Map<String?, DocumentSnapshot<Map<String, dynamic>>?> _lastDocumentByFilter = {};
   final Map<String?, bool> _hasMoreByFilter = {};
@@ -58,6 +61,10 @@ class SimplifiedNotificationController extends ChangeNotifier {
   int get selectedFilterIndex => _selectedFilterIndex;
   ValueNotifier<int> get selectedFilterIndexNotifier => _selectedFilterIndexNotifier;
   bool get isVipEffective => _isVipEffective;
+  
+  // 🚀 Getters para paginação com InfiniteListView
+  bool get isLoadingMore => _isLoadingMore[_selectedFilterIndex] ?? false;
+  bool get exhausted => !hasMore;
 
   // Atualiza status VIP
   void updateVipStatus(bool isVip) {
@@ -75,7 +82,25 @@ class SimplifiedNotificationController extends ChangeNotifier {
     return _scrollControllers[filterIndex]!;
   }
 
-  // Detecta quando chegou perto do fim e carrega mais
+  // 🚀 Método público para loadMore (usado pelo InfiniteListView)
+  Future<void> loadMore() async {
+    final key = _selectedFilterKey;
+    final filterIndex = _selectedFilterIndex;
+    
+    if (_isLoadingMore[filterIndex] ?? false) return;
+    if (!hasMoreForFilter(key)) return;
+    if (_isLoading) return;
+    
+    _isLoadingMore[filterIndex] = true;
+    notifyListeners();
+    
+    await fetchNotifications(filterKey: key);
+    
+    _isLoadingMore[filterIndex] = false;
+    notifyListeners();
+  }
+  
+  // Detecta quando chegou perto do fim e carrega mais (DEPRECATED - InfiniteListView faz isso agora)
   void _onScrollUpdate(int filterIndex) {
     final key = mapFilterIndexToKey(filterIndex);
     if (_isLoadingMore[filterIndex] ?? false) return;
@@ -116,26 +141,24 @@ class SimplifiedNotificationController extends ChangeNotifier {
 
   // Mapeamento público para a View usar
   // Cada índice corresponde a um tipo de notificação ou grupo
+  // IMPORTANTE: Apenas categorias com triggers IMPLEMENTADOS
   String? mapFilterIndexToKey(int index) {
     switch (index) {
-      case 0: return null; // All
-      case 1: return 'message'; // Messages
-      case 2: return 'activity'; // Activities (todos os tipos activity_*)
-      case 3: return 'activity_join_request'; // Requests
-      case 4: return 'profile_views_aggregated'; // Social
-      case 5: return 'alert'; // System
+      case 0: return null; // Todas
+      case 1: return 'activity'; // Atividades (todos os tipos activity_*)
+      case 2: return 'event_chat_message'; // Chat de Eventos
+      case 3: return 'profile_views_aggregated'; // Visualizações de Perfil
       default: return null;
     }
   }
 
   // Keys de tradução para filtros (a View deve traduzir)
+  // Correspondem exatamente aos triggers implementados
   static const List<String> filterLabelKeys = [
     'notif_filter_all',
-    'notif_filter_messages',
     'notif_filter_activities',
-    'notif_filter_requests',
-    'notif_filter_social',
-    'notif_filter_system',
+    'notif_filter_event_chat',
+    'notif_filter_profile_views',
   ];
 
   /// Inicializa o controller com status VIP e carrega dados iniciais
@@ -147,7 +170,7 @@ class SimplifiedNotificationController extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // FETCH DE NOTIFICAÇÕES
+  // FETCH DE NOTIFICAÇÕES COM CACHE GLOBAL
   // ---------------------------------------------------------------------------
   Future<void> fetchNotifications({
     bool shouldRefresh = false,
@@ -156,6 +179,25 @@ class SimplifiedNotificationController extends ChangeNotifier {
     final key = filterKey ?? _selectedFilterKey;
     
     if (_isLoading) return;
+    
+    // 🔵 STEP 1: Tentar buscar do cache global primeiro
+    if (!shouldRefresh) {
+      final cacheKey = CacheKeys.notificationsFilter(key);
+      final cached = _cache.get<List<DocumentSnapshot<Map<String, dynamic>>>>(cacheKey);
+      
+      if (cached != null && cached.isNotEmpty) {
+        print('🗂️ [NotificationController] Cache HIT para filtro: $key');
+        _notificationsByFilter[key] = cached;
+        _isFirstLoadByFilter[key] = false;
+        _notifyFilterUpdate(key);
+        notifyListeners();
+        
+        // Atualização silenciosa em background
+        _silentRefresh(key);
+        return;
+      }
+      print('🗂️ [NotificationController] Cache MISS para filtro: $key');
+    }
     
     // Verifica hasMore específico do filtro
     final hasMore = _hasMoreByFilter[key] ?? true;
@@ -211,6 +253,17 @@ class SimplifiedNotificationController extends ChangeNotifier {
         _isFirstLoadByFilter[key] = false;
       }
 
+      // 🔵 STEP 2: Salvar no cache global (TTL: 5 minutos)
+      if (_notificationsByFilter[key]?.isNotEmpty ?? false) {
+        final cacheKey = CacheKeys.notificationsFilter(key);
+        _cache.set(
+          cacheKey,
+          _notificationsByFilter[key]!,
+          ttl: const Duration(minutes: 5),
+        );
+        print('🗂️ [NotificationController] Cache SAVED para filtro: $key');
+      }
+
       _notifyFilterUpdate(key);
     } catch (e) {
       _errorMessage = e.toString();
@@ -218,6 +271,62 @@ class SimplifiedNotificationController extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Atualização silenciosa em background (não mostra loading)
+  Future<void> _silentRefresh(String? filterKey) async {
+    final key = filterKey ?? _selectedFilterKey;
+    
+    try {
+      print('🔄 [NotificationController] Silent refresh para filtro: $key');
+      
+      final result = await _repository.getNotificationsPaginated(
+        lastDocument: null, // Sempre busca do início
+        filterKey: key,
+      );
+
+      // Filtrar bloqueados
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      final filteredDocs = currentUserId != null
+          ? result.docs.where((doc) {
+              final senderId = doc.data()?['n_sender_id'] as String?;
+              if (senderId == null || senderId.isEmpty) return true;
+              return !BlockService().isBlockedCached(currentUserId, senderId);
+            }).toList()
+          : result.docs;
+
+      // Comparar com cache atual
+      final currentList = _notificationsByFilter[key] ?? [];
+      final hasChanges = filteredDocs.length != currentList.length ||
+          (filteredDocs.isNotEmpty && 
+           currentList.isNotEmpty && 
+           filteredDocs.first.id != currentList.first.id);
+
+      if (hasChanges) {
+        print('🔄 [NotificationController] Dados atualizados detectados');
+        _notificationsByFilter[key] = filteredDocs;
+        
+        if (filteredDocs.isNotEmpty) {
+          _lastDocumentByFilter[key] = filteredDocs.last;
+        }
+
+        // Atualizar cache
+        final cacheKey = CacheKeys.notificationsFilter(key);
+        _cache.set(
+          cacheKey,
+          filteredDocs,
+          ttl: const Duration(minutes: 5),
+        );
+
+        _notifyFilterUpdate(key);
+        notifyListeners();
+      } else {
+        print('🔄 [NotificationController] Nenhuma mudança detectada');
+      }
+    } catch (e) {
+      print('⚠️ [NotificationController] Erro no silent refresh: $e');
+      // Não exibe erro ao usuário - silent refresh falhou mas UI continua ok
     }
   }
 
@@ -257,6 +366,14 @@ class SimplifiedNotificationController extends ChangeNotifier {
       _hasMoreByFilter.clear();
       _isFirstLoadByFilter.clear();
 
+      // 🔵 Limpar todo o cache de notificações
+      for (int i = 0; i < 4; i++) {
+        final key = mapFilterIndexToKey(i);
+        final cacheKey = CacheKeys.notificationsFilter(key);
+        _cache.remove(cacheKey);
+      }
+      print('🗂️ [NotificationController] Cache limpo após delete all');
+
       for (final notifier in _filterUpdateNotifiers.values) {
         notifier.value++;
       }
@@ -276,6 +393,16 @@ class SimplifiedNotificationController extends ChangeNotifier {
       if (list != null) {
         list.removeWhere((doc) => doc.id == notificationId);
         _notificationsByFilter[_selectedFilterKey] = list;
+        
+        // 🔵 Atualizar cache após remoção individual
+        if (list.isNotEmpty) {
+          final cacheKey = CacheKeys.notificationsFilter(_selectedFilterKey);
+          _cache.set(
+            cacheKey,
+            list,
+            ttl: const Duration(minutes: 5),
+          );
+        }
       }
 
       _notifyFilterUpdate(_selectedFilterKey);

@@ -3,7 +3,7 @@ import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/dialogs/common_dialogs.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
-import 'package:partiu/core/utils/app_localizations.dart';import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';import 'package:partiu/core/services/toast_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
@@ -188,17 +188,15 @@ class ApplicationRemovalService {
         
     if (success) {
           ToastService.showSuccess(
-            context: context,
-      title: i18n.translate('application_removed_title'),
-      subtitle: i18n.translate('application_removed_subtitle')
+        message: i18n.translate('application_removed_subtitle',
+      )
         .replaceAll('{announcement}', candidate.announcementName.isNotEmpty ? candidate.announcementName : candidate.announcementId),
           );
           onSuccess();
         } else {
           ToastService.showError(
-            context: context,
-            title: ToastMessages.error,
-            subtitle: i18n.translate('an_error_has_occurred'),
+        message: i18n.translate('an_error_has_occurred',
+      ),
           );
         }
       },
@@ -277,9 +275,7 @@ class ApplicationRemovalService {
       if (candidates.isEmpty) {
         
         ToastService.showError(
-          context: context,
-          title: ToastMessages.noApplicationsFound,
-          subtitle: ToastMessages.noApplicationsFoundMessage,
+          message: ToastMessages.noApplicationsFoundMessage,
         );
         return;
       }
@@ -310,9 +306,8 @@ class ApplicationRemovalService {
       
       await progressDialog.hide();
       ToastService.showError(
-        context: context,
-        title: ToastMessages.error,
-        subtitle: i18n.translate('an_error_has_occurred'),
+        message: i18n.translate('an_error_has_occurred',
+      ),
       );
     }
   }

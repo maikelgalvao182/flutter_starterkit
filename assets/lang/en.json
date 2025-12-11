@@ -14,7 +14,6 @@
   "dont_have_account": "Don't have an account?",
   "already_have_account": "Already have an account?",
   "cancel": "Cancel",
-  "CANCEL": "Cancel",
   "continue": "Continue",
   "back": "Back",
   "next": "Next",
@@ -556,11 +555,9 @@
   "notification_profile_views_aggregated": "{count} people viewed your profile ✨",
   
   "notif_filter_all": "All",
-  "notif_filter_messages": "Messages",
   "notif_filter_activities": "Activities",
-  "notif_filter_requests": "Requests",
-  "notif_filter_social": "Social",
-  "notif_filter_system": "System",
+  "notif_filter_event_chat": "Event Chat",
+  "notif_filter_profile_views": "Profile Views",
   
   "help_us_keep_community_safe": "Help us keep the community safe",
   "report_dialog_description": "Choose an action for this user.",
@@ -586,5 +583,10 @@
   "error_deleting_account": "Error deleting account. Please try again.",
   "account_deleted_successfully": "Account deleted successfully",
   
-  "years_old": "years old"
+  "face_verification": "Face Verification",
+  "verification_success": "Verification completed successfully!",
+  "verification_save_error": "Error saving verification",
+  "error_opening_verification": "Error opening verification",
+  "view_profile": "View Profile"
+  
 }

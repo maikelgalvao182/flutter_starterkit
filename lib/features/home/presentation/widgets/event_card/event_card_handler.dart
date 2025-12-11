@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/dialogs/common_dialogs.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
 import 'package:partiu/screens/chat/services/event_deletion_service.dart';
-import 'package:partiu/shared/services/toast_service.dart';
 
 /// Handler externo para ações do EventCard
 /// 
@@ -51,11 +51,9 @@ class EventCardHandler {
       } catch (e) {
         debugPrint('❌ Erro ao aplicar: $e');
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erro ao aplicar: $e'),
-              backgroundColor: Colors.red,
-            ),
+          final i18n = AppLocalizations.of(context);
+          ToastService.showError(
+            message: i18n.translate('error_applying_to_event'),
           );
         }
       }
@@ -115,10 +113,7 @@ class EventCardHandler {
           if (!context.mounted) return;
           
           ToastService.showSuccess(
-            context: context,
-            title: i18n.translate('left_event'),
-            subtitle: i18n.translate('left_event_successfully')
-                .replaceAll('{event}', eventName),
+            message: i18n.translate('left_event_successfully')?.replaceAll('{event}', eventName) ?? 'Você saiu do evento',
           );
           
           // Fechar o card
@@ -131,9 +126,7 @@ class EventCardHandler {
           if (!context.mounted) return;
           
           ToastService.showError(
-            context: context,
-            title: i18n.translate('error'),
-            subtitle: i18n.translate('failed_to_leave_event'),
+            message: i18n.translate('failed_to_leave_event') ?? 'Erro ao sair do evento',
           );
         }
       },

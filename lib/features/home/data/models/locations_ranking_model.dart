@@ -10,6 +10,7 @@ class LocationRankingModel {
   final String locationName;
   final String formattedAddress;
   final String? locality;
+  final String? state;
   final int totalEventsHosted;
   final int totalVisitors;
   final List<Map<String, dynamic>> visitors;
@@ -23,6 +24,7 @@ class LocationRankingModel {
     required this.locationName,
     required this.formattedAddress,
     this.locality,
+    this.state,
     required this.totalEventsHosted,
     this.totalVisitors = 0,
     this.visitors = const [],
@@ -58,6 +60,7 @@ class LocationRankingModel {
       locationName: data['locationName'] ?? 'Local desconhecido',
       formattedAddress: data['formattedAddress'] ?? '',
       locality: data['locality'] as String?,
+      state: data['state'] as String?,
       totalEventsHosted: data['totalEventsHosted'] ?? 0,
       totalVisitors: data['totalVisitors'] ?? 0,
       visitors: visitorsList,
@@ -75,6 +78,7 @@ class LocationRankingModel {
       'locationName': locationName,
       'formattedAddress': formattedAddress,
       if (locality != null) 'locality': locality,
+      if (state != null) 'state': state,
       'totalEventsHosted': totalEventsHosted,
       'totalVisitors': totalVisitors,
       'visitors': visitors,

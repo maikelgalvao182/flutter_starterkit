@@ -293,7 +293,8 @@ class ReviewDialogController extends ChangeNotifier {
     if (pendingReview.isOwnerReview) {
       participantIds = pendingReview.participantIds ?? [];
       participantProfiles = pendingReview.participantProfiles ?? {};
-      presenceConfirmed = pendingReview.presenceConfirmed ?? false;
+      // presenceConfirmed é determinado pelos profiles individuais, não pelo pendingReview
+      presenceConfirmed = pendingReview.participantProfiles?.values.any((p) => p.presenceConfirmed) ?? false;
 
       if (presenceConfirmed) {
         // Restaurar participantes confirmados

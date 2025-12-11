@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:partiu/core/models/user.dart' as app_user;
 import 'package:partiu/core/services/block_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/models/map_bounds.dart';
@@ -290,12 +290,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    ToastService.showInfo(message: message);
   }
 
   /// Handler de navegação chamado pelo MapNavigationService
@@ -419,8 +414,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
                 BlockService().isBlockedCached(currentUserId, event.createdBy)) {
               final i18n = AppLocalizations.of(context);
               ToastService.showWarning(
-                context: context,
-                title: i18n?.translate('user_blocked_cannot_message') ?? 
+                message: i18n?.translate('user_blocked_cannot_message') ?? 
                 'Você não pode enviar mensagens para este usuário',
               );
               return;

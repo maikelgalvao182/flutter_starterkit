@@ -6,7 +6,7 @@ import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/dialogs/common_dialogs.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 
 /// Serviço responsável por deletar eventos criados pelo usuário
 /// 
@@ -35,9 +35,8 @@ class EventDeletionService {
     final currentUserId = AppState.currentUserId;
     if (currentUserId == null || currentUserId.isEmpty) {
       ToastService.showError(
-        context: context,
-        title: i18n.translate('error'),
-        subtitle: i18n.translate('user_not_authenticated'),
+        message: i18n.translate('user_not_authenticated',
+      ),
       );
       return;
     }
@@ -47,9 +46,8 @@ class EventDeletionService {
     
     if (!eventDoc.exists) {
       ToastService.showError(
-        context: context,
-        title: i18n.translate('error'),
-        subtitle: i18n.translate('event_not_found'),
+        message: i18n.translate('event_not_found',
+      ),
       );
       return;
     }
@@ -59,9 +57,8 @@ class EventDeletionService {
     
     if (createdBy != currentUserId) {
       ToastService.showError(
-        context: context,
-        title: i18n.translate('error'),
-        subtitle: i18n.translate('not_event_owner'),
+        message: i18n.translate('not_event_owner',
+      ),
       );
       return;
     }
@@ -105,16 +102,14 @@ class EventDeletionService {
         
         if (success && context.mounted) {
           ToastService.showSuccess(
-            context: context,
-            title: i18n.translate('event_deleted'),
-            subtitle: i18n.translate('event_deleted_successfully'),
+        message: i18n.translate('event_deleted_successfully',
+      ),
           );
           onSuccess();
         } else if (context.mounted) {
           ToastService.showError(
-            context: context,
-            title: i18n.translate('error'),
-            subtitle: i18n.translate('failed_to_delete_event'),
+        message: i18n.translate('failed_to_delete_event',
+      ),
           );
         }
       },

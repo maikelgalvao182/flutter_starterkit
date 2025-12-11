@@ -13,7 +13,7 @@ import 'package:partiu/features/profile/presentation/viewmodels/image_upload_vie
 import 'package:partiu/features/profile/presentation/widgets/media_delete_button.dart';
 import 'package:partiu/features/profile/presentation/widgets/gallery_skeleton.dart';
 import 'package:partiu/shared/screens/media_viewer_screen.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 
 class UserImagesGrid extends StatefulWidget {
   const UserImagesGrid({super.key});
@@ -55,18 +55,14 @@ class _UserImagesGridState extends State<UserImagesGrid> {
     if (result.success) {
       debugPrint('[UserImagesGrid] ✅ Delete SUCCESS for index: $index');
       if (!context.mounted) return;
-      ToastService.showError(
-        context: context,
-        title: imageDeletedMsg,
-        subtitle: imageRemovedMsg,
+      ToastService.showSuccess(
+        message: imageDeletedMsg ?? 'Imagem removida!',
       );
     } else {
       debugPrint('[UserImagesGrid] ❌ Delete FAILED for index: $index - ${result.errorMessage}');
       if (!context.mounted) return;
       ToastService.showError(
-        context: context,
-        title: deleteFailedMsg,
-        subtitle: 'Failed to remove image: ${result.errorMessage}',
+        message: deleteFailedMsg ?? 'Falha ao remover imagem',
       );
     }
   }
@@ -136,9 +132,7 @@ class _UserImagesGridState extends State<UserImagesGrid> {
         debugPrint('[UserImagesGrid] ✅ Upload SUCCESS for index: $index');
         if (!context.mounted) return;
         ToastService.showSuccess(
-          context: context,
-          title: i18n.translate('image_uploaded'),
-          subtitle: i18n.translate('image_uploaded_successfully'),
+          message: i18n.translate('image_uploaded') ?? 'Imagem enviada!',
         );
       } else {
         debugPrint('[UserImagesGrid] ❌ Upload FAILED for index: $index - ${result.errorMessage}');
@@ -161,9 +155,7 @@ class _UserImagesGridState extends State<UserImagesGrid> {
 
   void _showErrorToastWithI18n(BuildContext context, AppLocalizations i18n, String message) {
     ToastService.showError(
-      context: context,
-      title: i18n.translate('upload_failed'),
-      subtitle: message,
+      message: i18n.translate('upload_failed') ?? 'Falha no upload',
     );
   }
 

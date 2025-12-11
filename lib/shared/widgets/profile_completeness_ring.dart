@@ -79,6 +79,36 @@ class ProfileCompletenessRing extends StatelessWidget {
             height: size - (strokeWidth * 2) - 4,
             child: child,
           ),
+
+          // Badge de percentual (apenas se incompleto)
+          if (percentage < 100 && percentage > 0)
+            Positioned(
+              bottom: -5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ringColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '$percentage%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

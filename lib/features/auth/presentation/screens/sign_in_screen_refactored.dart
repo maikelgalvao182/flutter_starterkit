@@ -8,7 +8,7 @@ import 'package:partiu/shared/models/user_model.dart';
 import 'package:partiu/features/auth/presentation/controllers/sign_in_view_model.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/shared/widgets/cached_svg_icon.dart';
-import 'package:partiu/shared/services/toast_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -214,9 +214,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                   onNotAvailable: () {
                                     // Show user-friendly message for Apple Sign-In not available
                                     ToastService.showError(
-                                      context: context,
-                                      title: ToastMessages.signInWithAppleFailed,
-                                      subtitle: ToastMessages.appleSignInNotAvailable,
+                                      message: ToastMessages.appleSignInNotAvailable,
                                     );
                                   },
                                   onError: (error) {
@@ -226,16 +224,12 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                         error.code == 'sign_in_canceled') {
                                       // User canceled sign-in
                                       ToastService.showError(
-                                        context: context,
-                                        title: ToastMessages.signInCanceled,
-                                        subtitle: ToastMessages.signInCanceledMessage,
+                                        message: ToastMessages.signInCanceledMessage,
                                       );
                                     } else {
                                       // Other Apple Sign-In errors
                                       ToastService.showError(
-                                        context: context,
-                                        title: ToastMessages.signInWithAppleFailed,
-                                        subtitle: (error.message as String?) ?? ToastMessages.anErrorOccurred,
+                                        message: (error.message as String?) ?? ToastMessages.anErrorOccurred,
                                       );
                                     }
                                     // Debug
@@ -323,16 +317,12 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                       error.code == 'network_error') {
                                     // User canceled sign-in or network issues
                                     ToastService.showError(
-                                      context: context,
-                                      title: ToastMessages.signInCanceled,
-                                      subtitle: ToastMessages.signInCanceledMessage,
+                                      message: ToastMessages.signInCanceledMessage,
                                     );
                                   } else {
                                     // Other Google Sign-In errors
                                     ToastService.showError(
-                                      context: context,
-                                      title: ToastMessages.signInWithGoogleFailed,
-                                      subtitle: (error.message as String?) ?? ToastMessages.anErrorOccurred,
+                                      message: (error.message as String?) ?? ToastMessages.anErrorOccurred,
                                     );
                                   }
                                 },

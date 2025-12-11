@@ -146,10 +146,12 @@ class ConversationTile extends StatelessWidget {
             child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: chatService.getConversationSummary(displayData.otherUserId),
               builder: (context, snap) {
-                String displayName = 'Usuário';
+                // ✅ FIX: Use rawData or displayData as initial value to prevent "Usuário" flash
+                String displayName = rawData['activityText'] ?? rawData['fullname'] ?? displayData.displayName;
+                
                 if (snap.hasData && snap.data!.data() != null) {
                   final data = snap.data!.data()!;
-                  displayName = data['activityText'] ?? data['fullname'] ?? 'Usuário';
+                  displayName = data['activityText'] ?? data['fullname'] ?? displayName;
                 }
                 return ConversationStyles.buildEventNameText(
                   name: displayName,

@@ -180,17 +180,4 @@ class EditProfileStyles {
   static InputDecoration phoneInputDecoration(String labelText) {
     return baseInputDecoration(labelText: labelText);
   }
-  
-  // SnackBar styles
-  static SnackBar successSnackBar(String message) {
-    return SnackBar(
-      content: Text(message),
-      backgroundColor: GlimpseColors.primaryColorLight,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      margin: const EdgeInsets.all(16),
-    );
-  }
 }

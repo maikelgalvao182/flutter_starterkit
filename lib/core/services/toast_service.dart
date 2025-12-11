@@ -1,132 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
 
-/// Serviço para exibição de toasts e mensagens
+/// Serviço para exibição de toasts
+/// 
+/// Usa Fluttertoast para exibir mensagens toast na parte inferior da tela
+/// com cores definidas em GlimpseColors e sem decorações de texto.
 class ToastService {
   
-  /// Exibe uma notificação de sucesso (verde)
+  /// Exibe um toast de sucesso (verde)
   static void showSuccess({
-    required BuildContext context,
-    required String title,
-    String? subtitle,
+    required String message,
     Duration? duration,
   }) {
-    _showSnackBar(
-      context: context,
-      title: title,
-      subtitle: subtitle,
-      backgroundColor: Colors.green[600]!,
+    _showToast(
+      message: message,
+      backgroundColor: GlimpseColors.success,
       textColor: Colors.white,
-      icon: Icons.check_circle,
       duration: duration ?? const Duration(seconds: 3),
     );
   }
   
-  /// Exibe uma notificação de erro (vermelho)
+  /// Exibe um toast de erro (vermelho)
   static void showError({
-    required BuildContext context,
-    required String title,
-    String? subtitle,
+    required String message,
     Duration? duration,
   }) {
-    _showSnackBar(
-      context: context,
-      title: title,
-      subtitle: subtitle,
-      backgroundColor: Colors.red[600]!,
+    _showToast(
+      message: message,
+      backgroundColor: GlimpseColors.error,
       textColor: Colors.white,
-      icon: Icons.error,
       duration: duration ?? const Duration(seconds: 4),
     );
   }
   
-  /// Exibe uma notificação de informação (azul)
+  /// Exibe um toast de informação (azul)
   static void showInfo({
-    required BuildContext context,
-    required String title,
-    String? subtitle,
+    required String message,
     Duration? duration,
   }) {
-    _showSnackBar(
-      context: context,
-      title: title,
-      subtitle: subtitle,
-      backgroundColor: Colors.blue[600]!,
+    _showToast(
+      message: message,
+      backgroundColor: GlimpseColors.info,
       textColor: Colors.white,
-      icon: Icons.info,
       duration: duration ?? const Duration(seconds: 3),
     );
   }
   
-  /// Exibe uma notificação de aviso (laranja)
+  /// Exibe um toast de aviso (laranja)
   static void showWarning({
-    required BuildContext context,
-    required String title,
-    String? subtitle,
+    required String message,
     Duration? duration,
   }) {
-    _showSnackBar(
-      context: context,
-      title: title,
-      subtitle: subtitle,
-      backgroundColor: Colors.orange[600]!,
+    _showToast(
+      message: message,
+      backgroundColor: GlimpseColors.warning,
       textColor: Colors.white,
-      icon: Icons.warning,
       duration: duration ?? const Duration(seconds: 3),
     );
   }
 
-  /// Método interno para exibir SnackBar customizado
-  static void _showSnackBar({
-    required BuildContext context,
-    required String title,
-    String? subtitle,
+  /// Método interno para exibir Toast
+  static void _showToast({
+    required String message,
     required Color backgroundColor,
     required Color textColor,
-    required IconData icon,
     required Duration duration,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: textColor, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: textColor.withValues(alpha: 0.9),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: backgroundColor,
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
-      ),
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: duration.inSeconds <= 3 ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      timeInSecForIosWeb: duration.inSeconds,
+      backgroundColor: backgroundColor,
+      textColor: textColor,
+      fontSize: 14.0,
     );
   }
 }

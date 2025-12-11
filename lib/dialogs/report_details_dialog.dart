@@ -3,6 +3,7 @@ import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/services/report_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/shared/widgets/glimpse_text_field.dart';
 
 /// 🚩 Diálogo profissional de denúncia
@@ -104,24 +105,12 @@ class _ReportDetailsDialogState extends State<ReportDetailsDialog> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastService.showError(message: message);
   }
 
   void _showSuccess(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastService.showSuccess(message: message);
   }
 
   @override

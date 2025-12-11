@@ -59,7 +59,10 @@ function calculateRatingFromCriteria(
  * @param {any} data - Dados da review
  * @return {number} Rating calculado ou 0
  */
-function extractRatingFromReview(data: Record<string, any>): number {
+function extractRatingFromReview(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any>
+): number {
   // PRIORIDADE 1: usar overall_rating salvo pelo app
   // (já calculado e validado)
   if (data.overall_rating && typeof data.overall_rating === "number") {
