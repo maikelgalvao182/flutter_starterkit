@@ -470,15 +470,17 @@ class LocationQueryService {
       return users;
     }
     
-    debugPrint('🔍 _filterByVerified: Filtrando ${users.length} usuários por isVerified=true');
+    debugPrint('🔍 _filterByVerified: Filtrando ${users.length} usuários por user_is_verified=true');
     
     final filtered = users.where((u) {
-      final userIsVerified = u.userData['isVerified'] == true;
+      // Verificar ambos os campos (prioridade para user_is_verified)
+      final userIsVerified = u.userData['user_is_verified'] == true || 
+                            u.userData['isVerified'] == true;
       
       if (!userIsVerified) {
-        debugPrint('   ❌ User ${u.userId}: isVerified=false (NÃO verificado)');
+        debugPrint('   ❌ User ${u.userId}: user_is_verified=false (NÃO verificado)');
       } else {
-        debugPrint('   ✅ User ${u.userId}: isVerified=true (VERIFICADO)');
+        debugPrint('   ✅ User ${u.userId}: user_is_verified=true (VERIFICADO)');
       }
       
       return userIsVerified;

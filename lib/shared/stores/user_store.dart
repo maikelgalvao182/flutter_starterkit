@@ -438,7 +438,8 @@ class UserStore {
     final jobTitle = userData['jobTitle'] as String?;
 
     // Verificação de booleano
-    dynamic rawVerified = userData['isVerified'];
+    // Verifica tanto isVerified (antigo) quanto user_is_verified (novo/correto)
+    dynamic rawVerified = userData['user_is_verified'] ?? userData['isVerified'];
     bool isVerified = false;
     if (rawVerified is bool) {
       isVerified = rawVerified;

@@ -149,6 +149,14 @@ class ReviewDialogController extends ChangeNotifier {
   // Seguindo o padrão do AppInitializerService para evitar queries durante a UI
   // Dados são pré-carregados do PendingReviewModel e acessados via getters
   
+  /// ID do usuário sendo avaliado
+  String get currentRevieweeId {
+    if (_state.isOwnerReview && _state.presenceConfirmed) {
+      return _state.currentParticipantId ?? '';
+    }
+    return _state.revieweeId;
+  }
+
   /// Nome do usuário sendo avaliado (pré-carregado)
   /// 
   /// - Owner avaliando participante: Retorna nome do participante atual

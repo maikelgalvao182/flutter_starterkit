@@ -116,9 +116,15 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                   ),
                   onPressed: () async {
                     HapticFeedback.lightImpact();
-                    final result = await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const AdvancedFiltersScreen(),
+                    final result = await showModalBottomSheet<bool>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.85,
+                        ),
+                        child: const AdvancedFiltersScreen(),
                       ),
                     );
                     

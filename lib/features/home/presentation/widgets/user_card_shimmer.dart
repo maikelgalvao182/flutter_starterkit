@@ -14,7 +14,7 @@ class UserCardShimmer extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: GlimpseColors.textSubTitle,
+          color: GlimpseColors.lightTextField,
           width: 1,
         ),
       ),

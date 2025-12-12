@@ -4,6 +4,7 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/review_dialog_controller.dart';
+import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 
 /// Informações do usuário sendo avaliado (avatar, nome, contador)
 class ReviewDialogRevieweeInfo extends StatelessWidget {
@@ -54,8 +55,8 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
         const SizedBox(height: 12),
 
         // Nome
-        Text(
-          displayName,
+        ReactiveUserNameWithBadge(
+          userId: controller.currentRevieweeId,
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
             fontSize: 16,

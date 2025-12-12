@@ -10,6 +10,7 @@ import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card/user_card_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
 import 'package:partiu/shared/widgets/star_badge.dart';
+import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 
 /// Card horizontal de usuário
 /// 
@@ -222,16 +223,14 @@ class _UserCardState extends State<UserCard> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          fullName,
+                        child: ReactiveUserNameWithBadge(
+                          userId: widget.userId,
                           style: GoogleFonts.getFont(
                             FONT_PLUS_JAKARTA_SANS,
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: GlimpseColors.primaryColorLight,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (overallRating != null && overallRating > 0) ...[

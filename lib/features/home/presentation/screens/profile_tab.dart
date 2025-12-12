@@ -16,6 +16,7 @@ import 'package:partiu/shared/widgets/skeletons/profile_header_skeleton.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/verification_card.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/profile_info_chips.dart';
 import 'package:partiu/features/profile/presentation/widgets/app_section_card.dart';
@@ -290,10 +291,26 @@ class _ProfileHeaderContent extends StatelessWidget {
           const ProfileInfoChips(),
           const SizedBox(height: 16),
           
-          // Verification Card
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: GlimpseStyles.horizontalMargin),
-            child: const VerificationCard(),
+          // Verification Card (só exibe se NÃO estiver verificado)
+          ValueListenableBuilder<User?>(
+            valueListenable: AppState.currentUser,
+            builder: (context, user, _) {
+              if (user == null) return const SizedBox.shrink();
+              
+              return ValueListenableBuilder<bool>(
+                valueListenable: UserStore.instance.getVerifiedNotifier(user.userId),
+                builder: (context, isVerified, _) {
+                  if (isVerified) {
+                    return const SizedBox.shrink();
+                  }
+                  
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: GlimpseStyles.horizontalMargin),
+                    child: VerificationCard(),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),

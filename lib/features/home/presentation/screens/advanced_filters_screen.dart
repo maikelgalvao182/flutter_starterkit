@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/filters/radius_filter_widget.dart';
 import 'package:partiu/shared/widgets/filters/age_range_filter_widget.dart';
@@ -111,46 +110,50 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
     
-    return HeroMode(
-      enabled: false,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(i18n),
-        body: Column(
-          children: [
-            Expanded(
-              child: _buildBody(i18n),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
             ),
-            _buildApplyButton(i18n),
-          ],
-        ),
+          ),
+          _buildHeader(i18n),
+          Flexible(
+            child: _buildBody(i18n),
+          ),
+          _buildApplyButton(i18n),
+        ],
       ),
     );
   }
 
-  AppBar _buildAppBar(AppLocalizations i18n) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
-      automaticallyImplyLeading: false,
-      title: Text(
-        i18n.translate('advanced_filters'),
-        style: GoogleFonts.getFont(
-          FONT_PLUS_JAKARTA_SANS,
-          fontWeight: FontWeight.w700,
-          color: GlimpseColors.primaryColorLight,
-          fontSize: 18,
-        ),
-      ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: GlimpseCloseButton(
-            color: GlimpseColors.primaryColorLight,
+  Widget _buildHeader(AppLocalizations i18n) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            i18n.translate('advanced_filters'),
+            style: GoogleFonts.getFont(
+              FONT_PLUS_JAKARTA_SANS,
+              fontWeight: FontWeight.w700,
+              color: GlimpseColors.primaryColorLight,
+              fontSize: 18,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -229,7 +232,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             Expanded(
               child: GlimpseButton(
                 text: 'Limpar',
-                height: 55,
                 backgroundColor: GlimpseColors.primaryLight,
                 textColor: GlimpseColors.primary,
                 onTap: _clearFilters,
@@ -240,7 +242,6 @@ class _AdvancedFiltersScreenState extends State<AdvancedFiltersScreen> {
             Expanded(
               child: GlimpseButton(
                 text: i18n.translate('apply_filters'),
-                height: 55,
                 onTap: _applyFilters,
               ),
             ),

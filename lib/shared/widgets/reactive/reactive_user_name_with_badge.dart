@@ -9,7 +9,7 @@ class ReactiveUserNameWithBadge extends StatelessWidget {
     super.key,
     required this.userId,
     this.style,
-    this.iconSize = 16.0,
+    this.iconSize = 13.0,
     this.spacing = 4.0,
     this.textAlign = TextAlign.start,
   });
@@ -59,10 +59,13 @@ class ReactiveUserNameWithBadge extends StatelessWidget {
                 ),
                 if (isVerified) ...[
                   SizedBox(width: spacing),
-                  Icon(
-                    Icons.verified,
-                    size: iconSize,
-                    color: Colors.blue,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Icon(
+                      Icons.verified,
+                      size: iconSize,
+                      color: Colors.blue,
+                    ),
                   ),
                 ],
               ],

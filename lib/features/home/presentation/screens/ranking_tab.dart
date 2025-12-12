@@ -280,7 +280,6 @@ class _RankingTabState extends State<RankingTab> {
                   totalComments: ranking.totalComments,
                 );
               },
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
               onLoadMore: _peopleState.loadMore,
               isLoadingMore: false, // Dados já em memória
               exhausted: !_peopleState.hasMore,

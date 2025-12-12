@@ -456,8 +456,8 @@ class GoogleMapViewState extends State<GoogleMapView> {
         zoom: 12.0,
       ),
       
-      // Aumentar zoom máximo para mostrar mais detalhes das ruas
-      minMaxZoomPreference: const MinMaxZoomPreference(9.0, 40.0),
+      // Permitir zoom de 3.0 (visão continental) até 20.0 (visão de rua detalhada)
+      minMaxZoomPreference: const MinMaxZoomPreference(3.0, 20.0),
 
       // Markers customizados gerados pelo GoogleEventMarkerService
       markers: _markers,

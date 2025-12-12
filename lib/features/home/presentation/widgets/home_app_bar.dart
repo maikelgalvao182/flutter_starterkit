@@ -11,6 +11,7 @@ import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/common/services/notifications_counter_service.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_profile_completeness_ring.dart';
+import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 import 'package:partiu/features/home/presentation/widgets/auto_updating_badge.dart';
 import 'package:partiu/features/home/presentation/widgets/home_app_bar_controller.dart';
 
@@ -143,16 +144,14 @@ class _UserAppBarContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Oi, $fullName 👋',
+              ReactiveUserNameWithBadge(
+                userId: user.userId,
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: GlimpseColors.primaryColorLight,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(

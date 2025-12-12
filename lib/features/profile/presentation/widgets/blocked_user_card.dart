@@ -4,6 +4,7 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/app/services/localization_service.dart';
+import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 
 /// Card para exibir usuário bloqueado
 /// 
@@ -59,16 +60,14 @@ class BlockedUserCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Nome completo
-                Text(
-                  fullName,
+                ReactiveUserNameWithBadge(
+                  userId: userId,
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: GlimpseColors.primaryColorLight,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 
                 // Localização

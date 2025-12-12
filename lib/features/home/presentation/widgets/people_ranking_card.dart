@@ -9,6 +9,7 @@ import 'package:partiu/shared/widgets/animated_expandable.dart';
 import 'package:partiu/shared/widgets/badge_chip.dart';
 import 'package:partiu/shared/widgets/criteria_bars.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
+import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 
 /// Card de ranking de pessoa
 /// 
@@ -123,16 +124,14 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
                   // Nome
                   Padding(
                     padding: const EdgeInsets.only(right: 48),
-                    child: Text(
-                      widget.ranking.fullName,
+                    child: ReactiveUserNameWithBadge(
+                      userId: widget.ranking.userId,
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: GlimpseColors.primaryColorLight,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   
