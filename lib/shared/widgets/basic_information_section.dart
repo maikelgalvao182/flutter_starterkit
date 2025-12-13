@@ -66,7 +66,8 @@ class BasicInformationSection extends StatelessWidget {
               padding: EdgeInsets.only(bottom: isLastItem ? 0 : 12),
               child: Row(
                 children: [
-                  Expanded(
+                  SizedBox(
+                    width: 80, // Fixed width for labels (reduced from Expanded)
                     child: Text(
                       item.label,
                       style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 

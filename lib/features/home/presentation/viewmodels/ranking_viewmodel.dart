@@ -4,6 +4,14 @@ import 'package:partiu/features/home/data/services/locations_ranking_service.dar
 import 'package:partiu/features/home/data/services/user_location_service.dart';
 import 'package:partiu/core/services/global_cache_service.dart';
 
+/// Estados de carregamento
+enum LoadState {
+  idle,        // nunca carregou
+  loading,     // carregando (inclusive pull-to-refresh)
+  loaded,      // carregou com sucesso
+  error,       // erro no carregamento
+}
+
 /// ViewModel para gerenciar estado do ranking
 /// 
 /// Responsabilidades:
@@ -17,9 +25,12 @@ class RankingViewModel extends ChangeNotifier {
   final GlobalCacheService _cache = GlobalCacheService.instance;
 
   // Estado
-  bool _isLoadingLocations = false;
+  LoadState _loadState = LoadState.idle;
   String? _error;
   bool _refreshing = false;
+  int _requestId = 0; // 🔒 Serialização de requests para evitar concorrência
+  bool _isRefreshing = false; // 🔄 Flag para refresh explícito (pull-to-refresh)
+  bool _initialized = false; // 🔒 Garantir que initialize() só rode uma vez
 
   // Dados
   List<LocationRankingModel> _locationRankings = [];
@@ -37,8 +48,13 @@ class RankingViewModel extends ChangeNotifier {
         _locationService = locationService ?? UserLocationService();
 
   // Getters - Estado
-  bool get isLoadingLocations => _isLoadingLocations;
-  bool get isLoading => _isLoadingLocations;
+  LoadState get loadState => _loadState;
+  bool get isLoadingLocations => _loadState == LoadState.loading;
+  bool get isLoading => _loadState == LoadState.loading;
+  bool get isInitialLoading => _loadState == LoadState.loading && _locationRankings.isEmpty;
+  bool get hasLoadedOnce => _loadState == LoadState.loaded || _loadState == LoadState.error;
+  bool get isRefreshing => _isRefreshing;
+  bool get shouldShowEmptyState => _loadState == LoadState.loaded && _locationRankings.isEmpty && !_isRefreshing;
   String? get error => _error;
 
   // Getters - Dados
@@ -70,11 +86,27 @@ class RankingViewModel extends ChangeNotifier {
   bool get useRadiusFilter => _useRadiusFilter;
   bool get hasLocation => _userLat != null && _userLng != null;
 
-  /// Inicializa o ViewModel carregando localização e rankings
   /// Inicializa o ViewModel carregando localização e ranking de locais
   Future<void> initialize() async {
+    // 🔒 REGRA 1: initialize() só pode rodar UMA VEZ
+    if (_initialized) {
+      debugPrint('🚫 [RankingViewModel] initialize() já executado - ignorando');
+      return;
+    }
+    
+    // 🔒 REGRA 1: Nunca rodar initialize durante refresh
+    if (_isRefreshing) {
+      debugPrint('🚫 [RankingViewModel] initialize() bloqueado durante refresh');
+      return;
+    }
+    
+    _initialized = true;
+    debugPrint('🚀 [RankingViewModel] Inicializando (primeira vez)...');
+    
     await _loadUserLocation();
     await loadLocationsRanking();
+    
+    debugPrint('✅ [RankingViewModel] Inicialização completa');
   }
 
   /// Carrega localização do usuário
@@ -94,33 +126,67 @@ class RankingViewModel extends ChangeNotifier {
 
   /// Carrega ranking de locais com cache global
   Future<void> loadLocationsRanking() async {
+    // 🔒 Incrementa RequestId para detectar respostas antigas
+    final requestId = ++_requestId;
+    
     // 🔵 STEP 1: Tentar buscar do cache global primeiro
     final cacheKey = _buildLocationsCacheKey();
     final cached = _cache.get<List<LocationRankingModel>>(cacheKey);
     
-    if (cached != null && cached.isNotEmpty) {
+    // 🔒 REGRA 2: refresh() NÃO pode usar cache - sempre forçar network
+    if (cached != null && cached.isNotEmpty && !_isRefreshing) {
       debugPrint('🗂️ [LocationsRanking] Cache HIT - ${cached.length} locais');
       _locationRankings = cached;
-      _isLoadingLocations = false;
-      notifyListeners();
+      
+      // 🔒 REGRA 3: loadState NÃO pode voltar para idle durante operação
+      if (_loadState == LoadState.idle) {
+        debugPrint('🟢 [LoadState] idle → loaded (cache hit)');
+        _loadState = LoadState.loaded;
+      }
+      
+      // 🔒 REGRA 4: Cache não notifica durante refresh
+      if (!_isRefreshing) {
+        notifyListeners();
+      }
       
       // Atualização silenciosa em background
       _silentRefreshLocationsRanking();
       return;
     }
     
+    if (_isRefreshing && cached != null) {
+      debugPrint('🔄 [LocationsRanking] Refresh - ignorando cache, forçando network');
+    }
+    
     debugPrint('🗂️ [LocationsRanking] Cache MISS - carregando do Firestore');
     
-    _isLoadingLocations = true;
+    // 🚀 IMPORTANTE: Não limpar _locationRankings aqui para evitar flicker
+    
+    // 🔒 REGRA 3: loadState NÃO pode ser alterado durante refresh
+    if (!_isRefreshing) {
+      debugPrint('🔵 [LoadState] $_loadState → loading (iniciando fetch)');
+      _loadState = LoadState.loading;
+    } else {
+      debugPrint('🔄 [Refresh] Mantendo loadState atual durante refresh: $_loadState');
+    }
+    
     _error = null;
     notifyListeners();
 
     try {
-      _locationRankings = await _rankingService.getLocationsRanking(
+      final result = await _rankingService.getLocationsRanking(
         userLat: _useRadiusFilter ? _userLat : null,
         userLng: _useRadiusFilter ? _userLng : null,
         radiusKm: _useRadiusFilter ? _radiusKm : null,
       );
+      
+      // 🔒 Verificar se este request ainda é válido
+      if (requestId != _requestId) {
+        debugPrint('⚠️ [LocationsRanking] Request $requestId descartado (atual: $_requestId)');
+        return; // Resposta antiga, ignora
+      }
+      
+      _locationRankings = result;
       
       // 🔵 STEP 2: Salvar no cache global (TTL: 10 minutos)
       if (_locationRankings.isNotEmpty) {
@@ -133,10 +199,25 @@ class RankingViewModel extends ChangeNotifier {
       }
     } catch (error) {
       _error = 'Erro ao carregar ranking de locais';
+      debugPrint('🔴 [LoadState] loading → error');
+      _loadState = LoadState.error;
       debugPrint('❌ $_error: $error');
     } finally {
-      _isLoadingLocations = false;
+      // 🔒 REGRA 3: loadState NÃO pode ser alterado durante refresh
+      if (_error == null && !_isRefreshing) {
+        debugPrint('🟢 [LoadState] loading → loaded (fetch completo)');
+        _loadState = LoadState.loaded;
+      } else if (_error != null && !_isRefreshing) {
+        debugPrint('🔴 [LoadState] loading → error (fetch falhou)');
+        _loadState = LoadState.error;
+      } else if (_isRefreshing) {
+        debugPrint('🔄 [Refresh] LoadState preservado durante refresh: $_loadState');
+      }
+      
       notifyListeners();
+      debugPrint('   - loadState FINAL: $_loadState');
+      debugPrint('   - error: $_error');
+      debugPrint('   - _locationRankings.length: ${_locationRankings.length}');
     }
   }
 
@@ -225,8 +306,33 @@ class RankingViewModel extends ChangeNotifier {
     }
   }
 
-  /// Recarrega todos os rankings
+  /// Recarrega rankings forçando busca na network (nunca usa cache)
+  /// 🔒 REGRA 2: refresh() = forçar network, sempre
   Future<void> refresh() async {
-    await initialize();
+    debugPrint('🔄 [RankingViewModel] refresh() chamado');
+    debugPrint('   - ANTES: loadState = $_loadState');
+    debugPrint('   - ANTES: _locationRankings.length = ${_locationRankings.length}');
+    debugPrint('   - ANTES: _isRefreshing = $_isRefreshing');
+    
+    _isRefreshing = true;
+    notifyListeners();
+    
+    try {
+      // 🚀 REFRESH = apenas recarregar dados, nunca initialize()
+      await loadLocationsRanking(); // Força network devido ao _isRefreshing = true
+      
+      debugPrint('✅ [RankingViewModel] refresh() dados atualizados');
+    } catch (error) {
+      debugPrint('❌ [RankingViewModel] refresh() erro: $error');
+      _error = 'Erro ao atualizar ranking';
+    } finally {
+      _isRefreshing = false;
+      notifyListeners();
+    }
+    
+    debugPrint('🔄 [RankingViewModel] refresh() completo');
+    debugPrint('   - DEPOIS: loadState = $_loadState');
+    debugPrint('   - DEPOIS: _locationRankings.length = ${_locationRankings.length}');
+    debugPrint('   - DEPOIS: _isRefreshing = $_isRefreshing');
   }
 }

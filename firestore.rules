@@ -28,6 +28,39 @@ match /AppInfo/{configName} {
   allow read: if true; // Leitura pública necessária para inicialização do app
   allow write: if false; // Apenas leitura para usuários
 }
+
+/// 📱 Coleção de tokens FCM dos dispositivos
+/// Path usado no app:
+/// - DeviceTokens/{userId}_{deviceId}
+///   - userId: string
+///   - deviceId: string
+///   - token: string (FCM token)
+///   - deviceName: string
+///   - platform: string ("ios" | "android")
+///   - createdAt: timestamp
+///   - updatedAt: timestamp
+///   - lastUsedAt: timestamp
+
+match /DeviceTokens/{docId} {
+  /// 📖 LEITURA:
+  /// - Apenas o próprio usuário pode ler seus tokens
+  /// - Backend pode ler via Admin SDK
+  allow read: if isSignedIn() && 
+    docId.matches('^' + request.auth.uid + '_.*');
+  
+  /// ✍️ CRIAR/ATUALIZAR token:
+  /// - Usuário autenticado
+  /// - Document ID deve começar com o UID do usuário
+  /// - userId deve corresponder ao usuário autenticado
+  allow create, update: if isSignedIn() && 
+    docId.matches('^' + request.auth.uid + '_.*') &&
+    request.resource.data.userId == request.auth.uid;
+  
+  /// 🗑️ DELETAR token:
+  /// - Apenas o próprio usuário pode deletar seus tokens
+  allow delete: if isSignedIn() && 
+    docId.matches('^' + request.auth.uid + '_.*');
+}
 /// 🎫 Coleção de aplicações para eventos
 /// Path usado no app:
 /// - EventApplications/{applicationId}
@@ -191,8 +224,15 @@ match /DeviceTokens/{tokenId} {
   // Permite leitura apenas se for o dono do token
   allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
   
-  // Permite criação/atualização apenas se o userId no documento for o próprio usuário
-  allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+  // Permite criação apenas se o userId no documento for o próprio usuário
+  allow create: if isSignedIn() && 
+    request.resource.data.userId == request.auth.uid &&
+    request.resource.data.keys().hasAll(['userId', 'token', 'deviceId', 'platform']);
+  
+  // Permite atualização apenas se for o dono do token
+  allow update: if isSignedIn() && 
+    resource.data.userId == request.auth.uid &&
+    request.resource.data.userId == request.auth.uid;
   
   // Permite exclusão apenas se for o dono do token
   allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
@@ -650,6 +690,56 @@ match /Users/{userId} {
     .hasOnly(['isVerified', 'verifiedAt', 'facialId', 'verificationType']));
   
   /// 👁️ Subcoleção de visitas ao perfil (legacy - deprecada)
+  /// Path: Users/{userId}/visits/{visitId}
+  match /visits/{visitId} {
+    allow read: if isOwner(userId);
+    allow create, update: if isSignedIn();
+    allow delete: if isOwner(userId);
+  }
+}
+
+/// 👥 Coleção principal de usuários (com U maiúsculo)
+/// Path usado no app:
+/// - Users/{userId}
+///   - fullname: string
+///   - latitude: number
+///   - longitude: number
+///   - createdAt: timestamp
+///   - user_is_vip: bool
+///   - user_is_verified: bool
+///   - vipExpiresAt: timestamp
+///   - etc...
+
+match /Users/{userId} {
+  /// 📖 LEITURA:
+  /// - Qualquer usuário autenticado pode ler perfis públicos
+  /// - Necessário para descoberta de pessoas próximas, ranking, etc.
+  allow read: if isSignedIn();
+  
+  /// ✍️ CRIAR/ATUALIZAR:
+  /// - Apenas o próprio usuário pode criar/atualizar seu perfil
+  allow create, update: if isOwner(userId);
+  
+  /// ✏️ ATUALIZAR campos específicos:
+  /// - Cloud Functions podem atualizar campos de VIP e rating
+  allow update: if request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly([
+      'user_is_vip', 
+      'user_is_verified', 
+      'user_level',
+      'vipExpiresAt', 
+      'vipProductId', 
+      'vipUpdatedAt',
+      'overallRating', 
+      'totalReviews', 
+      'lastRatingUpdate'
+    ]);
+  
+  /// 🗑️ DELETAR:
+  /// - Apenas o próprio usuário pode deletar seu perfil
+  allow delete: if isOwner(userId);
+  
+  /// 👁️ Subcoleção de visitas ao perfil
   /// Path: Users/{userId}/visits/{visitId}
   match /visits/{visitId} {
     allow read: if isOwner(userId);

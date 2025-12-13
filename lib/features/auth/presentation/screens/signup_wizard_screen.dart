@@ -186,6 +186,8 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return model.jobTitle.trim().isNotEmpty;
       case SignupWizardStep.gender:
         return model.selectedGender.trim().isNotEmpty;
+      case SignupWizardStep.sexualOrientation:
+        return model.sexualOrientation.trim().isNotEmpty;
       case SignupWizardStep.bio:
         return true; // Bio é opcional
       case SignupWizardStep.country:
@@ -212,6 +214,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
     final onboardingData = <String, dynamic>{
       'fullName': model.fullName.trim(),
       'gender': model.selectedGender,
+      'sexualOrientation': model.sexualOrientation,
       'birthDay': model.userBirthDay,
       'birthMonth': model.userBirthMonth,
       'birthYear': model.userBirthYear,
@@ -290,6 +293,8 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return i18n.translate('job_title');
       case SignupWizardStep.gender:
         return i18n.translate('gender');
+      case SignupWizardStep.sexualOrientation:
+        return 'Orientação Sexual';
       case SignupWizardStep.bio:
         return i18n.translate('bio');
       case SignupWizardStep.country:
@@ -319,6 +324,8 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return i18n.translate('job_title_helper');
       case SignupWizardStep.gender:
         return i18n.translate('select_gender');
+      case SignupWizardStep.sexualOrientation:
+        return 'Selecione sua orientação sexual';
       case SignupWizardStep.bio:
         return i18n.translate('bio_placeholder');
       case SignupWizardStep.country:
@@ -495,6 +502,18 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
             child: GenderSelectorWidget(
               initialGender: _cadastroViewModel.selectedGender,
               onGenderChanged: (value) => _cadastroViewModel.setGender(value ?? ''),
+            ),
+          ),
+        );
+      
+      case SignupWizardStep.sexualOrientation:
+        return Container(
+          color: Colors.white,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SexualOrientationWidget(
+              initialOrientation: _cadastroViewModel.sexualOrientation,
+              onOrientationChanged: (value) => _cadastroViewModel.setSexualOrientation(value ?? ''),
             ),
           ),
         );

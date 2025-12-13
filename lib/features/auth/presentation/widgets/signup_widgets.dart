@@ -9,6 +9,7 @@ export 'birth_date_widget.dart';
 export 'instagram_widget.dart';
 export 'job_title_widget.dart';
 export 'gender_selector_widget.dart';
+export 'sexual_orientation_widget.dart';
 export 'bio_widget.dart';
 export 'origin_brazilian_city_selector.dart';
 export 'specialty_selector_widget.dart';

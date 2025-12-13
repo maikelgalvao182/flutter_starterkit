@@ -16,6 +16,7 @@ const String FONT_PLUS_JAKARTA_SANS = 'Plus Jakarta Sans';
 /// GENDER CONSTANTS
 const String GENDER_MAN = 'Male';
 const String GENDER_WOMAN = 'Female';
+const String GENDER_TRANS = 'Trans';
 const String GENDER_OTHER = 'Non-Binary';
 const String GENDER_ALL = 'All';
 
@@ -71,7 +72,7 @@ const String VIP_ACCOUNT_MAX_DISTANCE = 'vip_account_max_distance';
 // RevenueCat public API key field inside AppInfo (revenue_cat > public_api_key)
 const String REVENUE_CAT_PUBLIC_API_KEY = 'public_api_key';
 // Identifier for entitlement configured in RevenueCat Dashboard
-const String REVENUE_CAT_ENTITLEMENT_ID = 'assinaturas';
+const String REVENUE_CAT_ENTITLEMENT_ID = 'Bora Pro';
 // Package identifiers for RevenueCat products
 const String REVENUE_CAT_MONTHLY_PACKAGE = r'$rc_monthly';
 const String REVENUE_CAT_ANNUAL_PACKAGE = r'$rc_annual';

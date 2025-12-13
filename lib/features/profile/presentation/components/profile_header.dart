@@ -214,21 +214,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
               ),
             ),
             
-            // Vírgula + Idade
-            ValueListenableBuilder<int?>(
-              valueListenable: UserStore.instance.getAgeNotifier(widget.user.userId),
-              builder: (context, age, _) {
-                if (age == null) return const SizedBox.shrink();
-                return Text(
-                  ', $age',
-                  style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                );
-              },
-            ),
+            // Idade removida daqui e movida para AboutMeSection
           ],
         );
       },

@@ -63,6 +63,7 @@ class AboutMeSection extends StatelessWidget {
                 textAlign: TextAlign.left,
               ),
               const SizedBox(height: 8),
+
               Text(
                 trimmed,
                 style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 

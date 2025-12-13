@@ -47,6 +47,14 @@ class BasicInformationProfileSection extends StatelessWidget {
   }) {
     final entries = <BasicInfoEntry>[];
 
+    // Idade
+    if (user.age != null) {
+      entries.add(BasicInfoEntry(
+        label: 'Idade',
+        value: '${user.age} anos',
+      ));
+    }
+
     // Gênero
     if (user.gender != null && user.gender!.trim().isNotEmpty) {
       entries.add(BasicInfoEntry(

@@ -10,6 +10,7 @@ import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/common/services/notifications_counter_service.dart';
 import 'package:partiu/features/notifications/services/fcm_token_service.dart';
+import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
 
 /// Serviço de orquestração de autenticação que trabalha COM SessionManager.
 /// 
@@ -80,11 +81,24 @@ class AuthSyncService extends ChangeNotifier {
       if (user != null) {
         // Usuário logado - carregar dados completos do Firestore e salvar no SessionManager
         _log('✅ Usuário logado, carregando dados do Firestore: ${user.uid}');
+
+        // NOTA: RevenueCat login movido para dentro de _loadUserDataAndSaveToSession
+        // para garantir que só logamos se o usuário existir no Firestore
+
         await _loadUserDataAndSaveToSession(user.uid);
         // NOTA: NotificationsCounterService.initialize() agora é chamado dentro do snapshot listener
       } else {
         // Usuário deslogado - limpar SessionManager (que limpa AppState automaticamente)
         _log('🚪 Usuário deslogado, limpando SessionManager');
+        
+        // 🔐 REVENUECAT LOGOUT
+        try {
+          await SimpleRevenueCatService.logout();
+          _log('✅ RevenueCat logout realizado');
+        } catch (e, stack) {
+          _logError('❌ Erro ao fazer logout no RevenueCat', e, stack);
+        }
+
         await SessionManager.instance.logout();
         
         // Resetar contadores de notificações
@@ -156,6 +170,14 @@ class AuthSyncService extends ChangeNotifier {
           
           // CHAVE: Salvar no SessionManager - ele sincroniza automaticamente com AppState
           await SessionManager.instance.login(user);
+
+          // 🔐 REVENUECAT LOGIN (Agora seguro, pois sabemos que o usuário existe no Firestore)
+          try {
+            await SimpleRevenueCatService.login(user.userId);
+            _log('✅ RevenueCat login realizado para: ${user.userId}');
+          } catch (e, stack) {
+            _logError('❌ Erro ao fazer login no RevenueCat', e, stack);
+          }
           
           _log('✅ Usuário salvo no SessionManager - AppState.currentUserId: ${AppState.currentUserId}');
           _log('🔔 _notificationServiceInitialized: $_notificationServiceInitialized');

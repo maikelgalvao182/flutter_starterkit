@@ -8,6 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
+import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
 
 class SocialAuth {
   // Variables
@@ -136,6 +138,13 @@ class SocialAuth {
       if (finalName != null && finalName.isNotEmpty) {
         onNameReceived?.call(finalName);
       } else {
+      }
+
+      // 🔐 INTEGRAÇÃO REVENUECAT: Vincula user ID Firebase ao RevenueCat
+      try {
+        await SimpleRevenueCatService.login(userCredential.user!.uid);
+      } catch (e) {
+        // Ignora erros do RevenueCat para não bloquear o login
       }
 
       /// Check User Account in Database to take action
@@ -311,6 +320,13 @@ class SocialAuth {
       } else {
       }
 
+      // 🔐 INTEGRAÇÃO REVENUECAT: Vincula user ID Firebase ao RevenueCat
+      try {
+        await SimpleRevenueCatService.login(userCredential.user!.uid);
+      } catch (e) {
+        // Ignora erros do RevenueCat para não bloquear o login
+      }
+
       /// Check User Account in Database to take action
       checkUserAccount();
     } on FirebaseAuthException catch (error) {
@@ -350,10 +366,17 @@ class SocialAuth {
   }) async {
     try {
       // Sign in with email and password
-      await auth.signInWithEmailAndPassword(
+      final userCredential = await auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+
+      // 🔐 INTEGRAÇÃO REVENUECAT: Vincula user ID Firebase ao RevenueCat (Email)
+      try {
+        await SimpleRevenueCatService.login(userCredential.user!.uid);
+      } catch (e) {
+        // Ignora erros do RevenueCat para não bloquear o login
+      }
 
       /// Check User Account in Database to take action
       checkUserAccount();
@@ -377,10 +400,17 @@ class SocialAuth {
   }) async {
     try {
       // Create user with email and password
-      await auth.createUserWithEmailAndPassword(
+      final userCredential = await auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+
+      // 🔐 INTEGRAÇÃO REVENUECAT: Vincula user ID Firebase ao RevenueCat (Email)
+      try {
+        await SimpleRevenueCatService.login(userCredential.user!.uid);
+      } catch (e) {
+        // Ignora erros do RevenueCat para não bloquear o login
+      }
 
       /// Check User Account in Database to take action
       checkUserAccount();

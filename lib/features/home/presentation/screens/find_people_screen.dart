@@ -10,6 +10,7 @@ import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
+import 'package:partiu/shared/widgets/pull_to_refresh.dart';
 import 'package:partiu/features/home/presentation/screens/advanced_filters_screen.dart';
 import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
@@ -33,12 +34,15 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
   @override
   void initState() {
     super.initState();
+    // Obtém instância singleton (não cria nova)
     _controller = FindPeopleController();
+    debugPrint('🎯 [FindPeopleScreen] Usando controller singleton');
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    // NÃO faz dispose do controller singleton
+    // Ele deve persistir entre navegações para manter o estado
     super.dispose();
   }
 
@@ -54,17 +58,20 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context, AppLocalizations i18n) {
-    final count = _controller.userIds.length;
-    final title = count > 0 
-        ? '$count ${count == 1 ? 'pessoa' : 'pessoas'} na região'
-        : 'Pessoas na região';
-    
     return AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-          title: Text(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      automaticallyImplyLeading: false,
+      title: ValueListenableBuilder<List<User>>(
+        valueListenable: _controller.users,
+        builder: (context, usersList, _) {
+          final count = usersList.length;
+          final title = count > 0 
+              ? '$count ${count == 1 ? 'pessoa' : 'pessoas'} na região'
+              : 'Pessoas na região';
+          
+          return Text(
             title,
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
@@ -72,7 +79,9 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
               fontWeight: FontWeight.w700,
               color: GlimpseColors.primaryColorLight,
             ),
-          ),
+          );
+        },
+      ),
           leading: GlimpseBackButton.iconButton(
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -81,26 +90,6 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
           ),
           leadingWidth: 56,
           actions: [
-            // Botão de refresh
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: SizedBox(
-                width: 28,
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(
-                    IconsaxPlusLinear.refresh,
-                    size: 22,
-                    color: GlimpseColors.textSubTitle,
-                  ),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    _controller.refresh();
-                  },
-                ),
-              ),
-            ),
             // Botão de filtros
             Padding(
               padding: const EdgeInsets.only(right: 20),
@@ -201,22 +190,28 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                   );
                 }
 
-                // Success state - Lista de usuários
-                return ListView.separated(
+                // Success state - Lista de usuários com Pull to Refresh
+                return PlatformPullToRefresh(
+                  onRefresh: _controller.refresh,
                   padding: const EdgeInsets.all(20),
                   itemCount: usersList.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final user = usersList[index];
                     
-                    return UserCard(
-                      key: ValueKey(user.userId),
-                      userId: user.userId,
-                      user: user,
-                      overallRating: user.overallRating,
-                      onTap: () {
-                        // TODO: Navegar para perfil do usuário
-                      },
+                    // Adiciona separador entre itens
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index < usersList.length - 1 ? 12 : 0,
+                      ),
+                      child: UserCard(
+                        key: ValueKey(user.userId),
+                        userId: user.userId,
+                        user: user,
+                        overallRating: user.overallRating,
+                        onTap: () {
+                          // TODO: Navegar para perfil do usuário
+                        },
+                      ),
                     );
                   },
                 );

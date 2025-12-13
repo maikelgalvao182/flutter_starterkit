@@ -38,8 +38,16 @@ import 'package:partiu/core/services/global_cache_service.dart';
 /// 
 /// ✅ Performance: ~650ms → ~80ms com cache quente
 /// ✅ UX: Sensação de velocidade instantânea
+/// 
+/// 🔒 SINGLETON: Uma única instância compartilhada para manter estado entre navegações
 class FindPeopleController {
-  FindPeopleController() {
+  // Singleton pattern
+  static final FindPeopleController _instance = FindPeopleController._internal();
+  
+  factory FindPeopleController() => _instance;
+  
+  FindPeopleController._internal() {
+    debugPrint('🎯 [FindPeopleController] Criando instância singleton');
     _initializeStream();
   }
 
@@ -80,6 +88,9 @@ class FindPeopleController {
   final ValueNotifier<bool> isLoading = ValueNotifier(true);
   final ValueNotifier<String?> error = ValueNotifier(null);
   final ValueNotifier<List<User>> users = ValueNotifier([]);
+  
+  // Flag para evitar reload desnecessário
+  bool _isInitialized = false;
 
   // Getters
   List<String> get userIds => users.value.map((u) => u.userId).toList();
@@ -87,7 +98,13 @@ class FindPeopleController {
 
   /// Inicializa stream de usuários próximos
   void _initializeStream() {
-    debugPrint('🔍 FindPeopleController: Inicializando stream de usuários');
+    // Evita reinicialização se já foi inicializado
+    if (_isInitialized) {
+      debugPrint('✅ [FindPeopleController] Já inicializado, pulando setup');
+      return;
+    }
+    
+    debugPrint('🔍 [FindPeopleController] Inicializando stream de usuários');
     
     // Escutar stream de atualizações automáticas
     _usersSubscription = _locationService.usersStream.listen(
@@ -97,6 +114,8 @@ class FindPeopleController {
     
     // Carregar usuários inicialmente (após setup do stream)
     _loadInitialUsers();
+    
+    _isInitialized = true;
   }
 
   /// Busca usuários dentro do raio com debounce (reduz queries redundantes)
@@ -697,7 +716,7 @@ class FindPeopleController {
 
   /// Recarrega a lista forçando invalidação do cache
   Future<void> refresh() async {
-    debugPrint('🔄 FindPeopleController: Refresh solicitado');
+    debugPrint('🔄 [FindPeopleController] Refresh solicitado');
     
     // Limpar cache global antes de recarregar
     final currentRadius = _currentFilters.radiusKm ?? await _getUserRadius();
@@ -718,11 +737,17 @@ class FindPeopleController {
     _locationService.forceReload();
   }
 
+  /// ⚠️ NÃO chamar dispose() em controller singleton
+  /// Este método existe apenas para compatibilidade, mas não deve ser usado
+  /// pois o singleton deve persistir durante toda a vida do app
+  @Deprecated('Não use dispose() em singleton. O controller persiste durante toda a sessão.')
   void dispose() {
-    _usersSubscription?.cancel();
-    isLoading.dispose();
-    error.dispose();
-    users.dispose();
+    debugPrint('⚠️ [FindPeopleController] dispose() chamado em singleton - IGNORADO');
+    // Não faz dispose dos recursos pois o singleton deve persistir
+    // _usersSubscription?.cancel();
+    // isLoading.dispose();
+    // error.dispose();
+    // users.dispose();
   }
 }
 

@@ -19,6 +19,7 @@ import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
 import 'package:partiu/shared/widgets/outline_horizontal_filter.dart';
 import 'package:partiu/shared/widgets/infinite_list_view.dart';
+import 'package:partiu/shared/widgets/pull_to_refresh.dart';
 
 /// Tela de ranking (Tab 2)
 /// 
@@ -82,7 +83,11 @@ class _RankingTabState extends State<RankingTab> {
 
   void _onLocationsViewModelChanged() {
     // Atualizar master list no state quando ViewModel recarregar
-    _locationState.updateMaster(_locationsViewModel.locationRankings);
+    // 🔥 CORREÇÃO: Passar flag isRefreshing para evitar limpeza indevida
+    _locationState.updateMaster(
+      _locationsViewModel.locationRankings,
+      isRefreshing: _locationsViewModel.isRefreshing,
+    );
     if (mounted) {
       setState(() {});
     }
@@ -90,7 +95,11 @@ class _RankingTabState extends State<RankingTab> {
 
   void _onPeopleViewModelChanged() {
     // Atualizar master list no state quando ViewModel recarregar
-    _peopleState.updateMaster(_peopleViewModel.peopleRankings);
+    // 🔥 CORREÇÃO: Passar flag isRefreshing para evitar limpeza indevida
+    _peopleState.updateMaster(
+      _peopleViewModel.peopleRankings,
+      isRefreshing: _peopleViewModel.isRefreshing,
+    );
     if (mounted) {
       setState(() {});
     }
@@ -153,11 +162,11 @@ class _RankingTabState extends State<RankingTab> {
 
   Widget _buildContent() {
     // Selecionar ViewModel baseado na tab
-    final isLoadingPeople = _selectedTabIndex == 0 && _peopleViewModel.isLoading;
-    final isLoadingLocations = _selectedTabIndex == 1 && _locationsViewModel.isLoading;
+    final isInitialLoadingPeople = _selectedTabIndex == 0 && _peopleViewModel.isInitialLoading;
+    final isInitialLoadingLocations = _selectedTabIndex == 1 && _locationsViewModel.isInitialLoading;
     
-    // Loading state com shimmer
-    if (isLoadingPeople) {
+    // Loading state com shimmer (apenas no carregamento inicial)
+    if (isInitialLoadingPeople) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -181,7 +190,7 @@ class _RankingTabState extends State<RankingTab> {
       );
     }
     
-    if (isLoadingLocations) {
+    if (isInitialLoadingLocations) {
       return const Center(
         child: CupertinoActivityIndicator(radius: 16),
       );
@@ -218,15 +227,11 @@ class _RankingTabState extends State<RankingTab> {
     debugPrint('   - visibleIds.length: ${visibleIds.length}');
     debugPrint('   - states.length: ${states.length}');
     debugPrint('   - cities.length: ${cities.length}');
-    
-    if (master.isEmpty) {
-      debugPrint('   ⚠️ Master vazio, mostrando empty state');
-      return Center(
-        child: GlimpseEmptyState.standard(
-          text: 'Nenhuma pessoa no ranking ainda',
-        ),
-      );
-    }
+    debugPrint('   - loadState: ${_peopleViewModel.loadState}');
+    debugPrint('   - isLoading: ${_peopleViewModel.isLoading}');
+    debugPrint('   - isInitialLoading: ${_peopleViewModel.isInitialLoading}');
+    debugPrint('   - shouldShowEmptyState: ${_peopleViewModel.shouldShowEmptyState}');
+    debugPrint('   - displayedRankings.length: ${_peopleState.displayedRankings.length}');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,36 +260,60 @@ class _RankingTabState extends State<RankingTab> {
         
         const SizedBox(height: 12),
         
-        // Lista de pessoas - 🚀 USANDO InfiniteListView com paginação
+        // Lista de pessoas - 🚀 Sempre mantém Scrollable (com empty state dentro se necessário)
         Expanded(
-          child: RefreshIndicator(
+          child: PlatformPullToRefresh(
             onRefresh: () async {
+              debugPrint('🔄 [RankingTab] Pull-to-refresh INICIADO (pessoas)');
+              debugPrint('   - ANTES: displayedRankings.length = ${_peopleState.displayedRankings.length}');
+              debugPrint('   - ANTES: loadState = ${_peopleViewModel.loadState}');
+              debugPrint('   - ANTES: shouldShowEmptyState = ${_peopleViewModel.shouldShowEmptyState}');
+              
               await _peopleViewModel.refresh();
+              
+              debugPrint('🔄 [RankingTab] Pull-to-refresh COMPLETO (pessoas)');
+              debugPrint('   - DEPOIS: displayedRankings.length = ${_peopleState.displayedRankings.length}');
+              debugPrint('   - DEPOIS: loadState = ${_peopleViewModel.loadState}');
+              debugPrint('   - DEPOIS: shouldShowEmptyState = ${_peopleViewModel.shouldShowEmptyState}');
             },
-            child: InfiniteListView(
-              controller: ScrollController(),
-              itemCount: _peopleState.displayedRankings.length,
-              itemBuilder: (context, index) {
-                final ranking = _peopleState.displayedRankings[index];
-                
-                // Calcular posição real no ranking (considerando filtros)
-                final allFiltered = _peopleState.filteredItems;
-                final position = allFiltered.indexOf(ranking) + 1;
-
-                return PeopleRankingCard(
-                  key: ValueKey(ranking.userId),
-                  ranking: ranking,
-                  position: position,
-                  badgesCount: ranking.badgesCount,
-                  criteriaRatings: ranking.criteriaRatings,
-                  totalComments: ranking.totalComments,
+            itemCount: _peopleState.displayedRankings.isEmpty && _peopleViewModel.shouldShowEmptyState
+                ? 1 // Empty state como item único
+                : _peopleState.displayedRankings.length,
+            itemBuilder: (context, index) {
+              debugPrint('🏗️ [RankingTab] itemBuilder chamado - index: $index');
+              debugPrint('   - displayedRankings.isEmpty: ${_peopleState.displayedRankings.isEmpty}');
+              debugPrint('   - shouldShowEmptyState: ${_peopleViewModel.shouldShowEmptyState}');
+              
+              // Mostrar empty state quando vazio E já carregou
+              if (_peopleState.displayedRankings.isEmpty && _peopleViewModel.shouldShowEmptyState) {
+                debugPrint('   ⚠️ Renderizando EMPTY STATE');
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Center(
+                    child: GlimpseEmptyState.standard(
+                      text: 'Nenhuma pessoa no ranking ainda',
+                    ),
+                  ),
                 );
-              },
-              onLoadMore: _peopleState.loadMore,
-              isLoadingMore: false, // Dados já em memória
-              exhausted: !_peopleState.hasMore,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
+              }
+              
+              debugPrint('   ✅ Renderizando PeopleRankingCard - index: $index');
+              final ranking = _peopleState.displayedRankings[index];
+              
+              // Calcular posição real no ranking (considerando filtros)
+              final allFiltered = _peopleState.filteredItems;
+              final position = allFiltered.indexOf(ranking) + 1;
+
+              return PeopleRankingCard(
+                key: ValueKey(ranking.userId),
+                ranking: ranking,
+                position: position,
+                badgesCount: ranking.badgesCount,
+                criteriaRatings: ranking.criteriaRatings,
+                totalComments: ranking.totalComments,
+              );
+            },
+            padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
         ),
       ],
@@ -351,15 +380,11 @@ class _RankingTabState extends State<RankingTab> {
     debugPrint('   - visibleIds.length: ${visibleIds.length}');
     debugPrint('   - states.length: ${states.length}');
     debugPrint('   - cities.length: ${cities.length}');
-    
-    if (master.isEmpty) {
-      debugPrint('   ⚠️ Master vazio, mostrando empty state');
-      return Center(
-        child: GlimpseEmptyState.standard(
-          text: 'Nenhum local no ranking ainda',
-        ),
-      );
-    }
+    debugPrint('   - loadState: ${_locationsViewModel.loadState}');
+    debugPrint('   - isLoading: ${_locationsViewModel.isLoading}');
+    debugPrint('   - isInitialLoading: ${_locationsViewModel.isInitialLoading}');
+    debugPrint('   - shouldShowEmptyState: ${_locationsViewModel.shouldShowEmptyState}');
+    debugPrint('   - displayedRankings.length: ${_locationState.displayedRankings.length}');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,75 +413,99 @@ class _RankingTabState extends State<RankingTab> {
         
         const SizedBox(height: 12),
         
-        // Lista de locais - 🚀 USANDO InfiniteListView com paginação
+        // Lista de locais - 🚀 Sempre mantém Scrollable (com empty state dentro se necessário)
         Expanded(
-          child: RefreshIndicator(
+          child: PlatformPullToRefresh(
             onRefresh: () async {
+              debugPrint('🔄 [RankingTab] Pull-to-refresh INICIADO (locais)');
+              debugPrint('   - ANTES: displayedRankings.length = ${_locationState.displayedRankings.length}');
+              debugPrint('   - ANTES: loadState = ${_locationsViewModel.loadState}');
+              debugPrint('   - ANTES: shouldShowEmptyState = ${_locationsViewModel.shouldShowEmptyState}');
+              
               await _locationsViewModel.refresh();
+              
+              debugPrint('🔄 [RankingTab] Pull-to-refresh COMPLETO (locais)');
+              debugPrint('   - DEPOIS: displayedRankings.length = ${_locationState.displayedRankings.length}');
+              debugPrint('   - DEPOIS: loadState = ${_locationsViewModel.loadState}');
+              debugPrint('   - DEPOIS: shouldShowEmptyState = ${_locationsViewModel.shouldShowEmptyState}');
             },
-            child: InfiniteListView(
-              controller: ScrollController(),
-              itemCount: _locationState.displayedRankings.length,
-              itemBuilder: (context, index) {
-                final ranking = _locationState.displayedRankings[index];
-                
-                // Calcular posição real no ranking (considerando filtros)
-                final allFiltered = _locationState.filteredItems;
-                final position = allFiltered.indexOf(ranking) + 1;
+            itemCount: _locationState.displayedRankings.isEmpty && _locationsViewModel.shouldShowEmptyState
+                ? 1 // Empty state como item único
+                : _locationState.displayedRankings.length,
+            itemBuilder: (context, index) {
+              debugPrint('🏗️ [RankingTab] itemBuilder chamado - index: $index');
+              debugPrint('   - displayedRankings.isEmpty: ${_locationState.displayedRankings.isEmpty}');
+              debugPrint('   - shouldShowEmptyState: ${_locationsViewModel.shouldShowEmptyState}');
+              
+              // Mostrar empty state quando vazio E já carregou
+              if (_locationState.displayedRankings.isEmpty && _locationsViewModel.shouldShowEmptyState) {
+                debugPrint('   ⚠️ Renderizando EMPTY STATE');
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Center(
+                    child: GlimpseEmptyState.standard(
+                      text: 'Nenhum local no ranking ainda',
+                    ),
+                  ),
+                );
+              }
+              
+              debugPrint('   ✅ Renderizando PlaceCard - index: $index');
+              final ranking = _locationState.displayedRankings[index];
+              
+              // Calcular posição real no ranking (considerando filtros)
+              final allFiltered = _locationState.filteredItems;
+              final position = allFiltered.indexOf(ranking) + 1;
 
-                // Criar controller com dados do ranking
-                final controller = PlaceCardController(
-                  eventId: 'ranking_${ranking.placeId}',
-                  preloadedData: {
-                    'locationName': ranking.locationName,
-                    'formattedAddress': ranking.formattedAddress,
-                    'placeId': ranking.placeId,
-                    'photoReferences': ranking.photoReferences,
-                    'visitors': ranking.visitors,
-                    'totalVisitorsCount': ranking.totalVisitors,
+              // Criar controller com dados do ranking
+              final controller = PlaceCardController(
+                eventId: 'ranking_${ranking.placeId}',
+                preloadedData: {
+                  'locationName': ranking.locationName,
+                  'formattedAddress': ranking.formattedAddress,
+                  'placeId': ranking.placeId,
+                  'photoReferences': ranking.photoReferences,
+                  'visitors': ranking.visitors,
+                  'totalVisitorsCount': ranking.totalVisitors,
+                },
+              );
+
+              return Container(
+                key: ValueKey(ranking.placeId),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: GlimpseColors.borderColorLight,
+                    width: 1,
+                  ),
+                ),
+                child: PlaceCard(
+                  controller: controller,
+                  customTagWidget: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: GlimpseColors.primaryLight,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Text(
+                      '${ranking.totalEventsHosted} eventos',
+                      style: GoogleFonts.getFont(
+                        FONT_PLUS_JAKARTA_SANS,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: GlimpseColors.primaryDarker,
+                      ),
+                    ),
+                  ),
+                  onTap: () {
+                    debugPrint('🏆 Local clicado: ${ranking.placeId}');
                   },
-                );
-
-                return Container(
-                  key: ValueKey(ranking.placeId),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: GlimpseColors.borderColorLight,
-                      width: 1,
-                    ),
-                  ),
-                  child: PlaceCard(
-                    controller: controller,
-                    customTagWidget: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: GlimpseColors.primaryLight,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      child: Text(
-                        '${ranking.totalEventsHosted} eventos',
-                        style: GoogleFonts.getFont(
-                          FONT_PLUS_JAKARTA_SANS,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: GlimpseColors.primaryDarker,
-                        ),
-                      ),
-                    ),
-                    onTap: () {
-                      debugPrint('🏆 Local clicado: ${ranking.placeId}');
-                    },
-                  ),
-                );
-              },
-              onLoadMore: _locationState.loadMore,
-              isLoadingMore: false, // Dados já em memória
-              exhausted: !_locationState.hasMore,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-            ),
+                ),
+              );
+            },
+            padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
         ),
       ],

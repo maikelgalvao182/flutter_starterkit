@@ -103,8 +103,8 @@ class GlimpseTabHeader extends StatelessWidget {
   Widget _buildSimpleHeader() {
     return Padding(
       padding: hasTabs 
-          ? const EdgeInsets.fromLTRB(20, 8, 20, 0)
-          : const EdgeInsets.fromLTRB(20, 30, 20, 0),
+          ? const EdgeInsets.fromLTRB(18, 8, 18, 0)
+          : const EdgeInsets.fromLTRB(18, 30, 18, 0),
       child: Row(
         children: [
           Expanded(

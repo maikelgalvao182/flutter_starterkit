@@ -5,6 +5,14 @@ import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:partiu/common/state/app_state.dart';
 
+/// Estados de carregamento
+enum LoadState {
+  idle,        // nunca carregou
+  loading,     // carregando (inclusive pull-to-refresh)
+  loaded,      // carregou com sucesso
+  error,       // erro no carregamento
+}
+
 /// ViewModel para gerenciar estado do ranking de pessoas
 /// 
 /// Responsabilidades:
@@ -22,8 +30,11 @@ class PeopleRankingViewModel extends ChangeNotifier {
   static set instance(PeopleRankingViewModel? value) => _instance = value;
 
   // Estado
-  bool _isLoading = true; // Começa como true para mostrar shimmer imediatamente
+  LoadState _loadState = LoadState.idle;
   String? _error;
+  int _requestId = 0; // 🔒 Serialização de requests para evitar concorrência
+  bool _isRefreshing = false; // 🔄 Flag para refresh explícito (pull-to-refresh)
+  bool _initialized = false; // 🔒 Garantir que initialize() só rode uma vez
 
   // Dados
   List<UserRankingModel> _peopleRankings = [];
@@ -42,7 +53,12 @@ class PeopleRankingViewModel extends ChangeNotifier {
   }) : _peopleRankingService = peopleRankingService ?? PeopleRankingService();
 
   // Getters - Estado
-  bool get isLoading => _isLoading;
+  LoadState get loadState => _loadState;
+  bool get isLoading => _loadState == LoadState.loading;
+  bool get isInitialLoading => _loadState == LoadState.loading && _peopleRankings.isEmpty;
+  bool get hasLoadedOnce => _loadState == LoadState.loaded || _loadState == LoadState.error;
+  bool get isRefreshing => _isRefreshing;
+  bool get shouldShowEmptyState => _loadState == LoadState.loaded && _peopleRankings.isEmpty && !_isRefreshing;
   String? get error => _error;
 
   // Getters - Dados
@@ -56,7 +72,20 @@ class PeopleRankingViewModel extends ChangeNotifier {
 
   /// Inicializa o ViewModel carregando rankings e filtros disponíveis
   Future<void> initialize() async {
-    debugPrint('🚀 [PeopleRankingViewModel] Inicializando...');
+    // 🔒 REGRA 1: initialize() só pode rodar UMA VEZ
+    if (_initialized) {
+      debugPrint('🚫 [PeopleRankingViewModel] initialize() já executado - ignorando');
+      return;
+    }
+    
+    // 🔒 REGRA 1: Nunca rodar initialize durante refresh
+    if (_isRefreshing) {
+      debugPrint('🚫 [PeopleRankingViewModel] initialize() bloqueado durante refresh');
+      return;
+    }
+    
+    _initialized = true;
+    debugPrint('🚀 [PeopleRankingViewModel] Inicializando (primeira vez)...');
     
     // ⬅️ ESCUTA BlockService via ChangeNotifier (REATIVO INSTANTÂNEO)
     BlockService.instance.addListener(_onBlockedUsersChanged);
@@ -102,34 +131,68 @@ class PeopleRankingViewModel extends ChangeNotifier {
     debugPrint('   - selectedState: $_selectedState');
     debugPrint('   - selectedCity: $_selectedCity');
     
+    // 🔒 Incrementa RequestId para detectar respostas antigas
+    final requestId = ++_requestId;
+    
     // 🔵 STEP 1: Tentar buscar do cache global primeiro
     final cacheKey = _buildCacheKey();
     final cached = _cache.get<List<UserRankingModel>>(cacheKey);
     
-    if (cached != null && cached.isNotEmpty) {
+    // 🔒 REGRA 2: refresh() NÃO pode usar cache - sempre forçar network
+    if (cached != null && cached.isNotEmpty && !_isRefreshing) {
       debugPrint('🗂️ [PeopleRanking] Cache HIT - ${cached.length} pessoas');
       _peopleRankings = cached;
-      _isLoading = false;
-      notifyListeners();
+      
+      // 🔒 REGRA 3: loadState NÃO pode voltar para idle durante operação
+      if (_loadState == LoadState.idle) {
+        debugPrint('🟢 [LoadState] idle → loaded (cache hit)');
+        _loadState = LoadState.loaded;
+      }
+      
+      // 🔒 REGRA 4: Cache não notifica durante refresh
+      if (!_isRefreshing) {
+        notifyListeners();
+      }
       
       // Atualização silenciosa em background
       _silentRefreshPeopleRanking();
       return;
     }
     
+    if (_isRefreshing && cached != null) {
+      debugPrint('🔄 [PeopleRanking] Refresh - ignorando cache, forçando network');
+    }
+    
     debugPrint('🗂️ [PeopleRanking] Cache MISS - carregando do Firestore');
     
-    _isLoading = true;
+    // 🚀 IMPORTANTE: Não limpar _peopleRankings aqui para evitar flicker
+    
+    // 🔒 REGRA 3: loadState NÃO pode ser alterado durante refresh
+    if (!_isRefreshing) {
+      debugPrint('🔵 [LoadState] $_loadState → loading (iniciando fetch)');
+      _loadState = LoadState.loading;
+    } else {
+      debugPrint('🔄 [Refresh] Mantendo loadState atual durante refresh: $_loadState');
+    }
+    
     _error = null;
     notifyListeners();
 
     try {
       debugPrint('   - Chamando service.getPeopleRanking...');
-      _peopleRankings = await _peopleRankingService.getPeopleRanking(
+      final result = await _peopleRankingService.getPeopleRanking(
         selectedState: _selectedState,
         selectedLocality: _selectedCity,
         limit: 50,
       );
+      
+      // 🔒 Verificar se este request ainda é válido
+      if (requestId != _requestId) {
+        debugPrint('⚠️ [PeopleRanking] Request $requestId descartado (atual: $_requestId)');
+        return; // Resposta antiga, ignora
+      }
+      
+      _peopleRankings = result;
       debugPrint('✅ Ranking de pessoas carregado: ${_peopleRankings.length} pessoas');
       
       // Filtra usuários bloqueados imediatamente
@@ -163,14 +226,27 @@ class PeopleRankingViewModel extends ChangeNotifier {
       }
     } catch (error, stackTrace) {
       _error = 'Erro ao carregar ranking de pessoas';
+      debugPrint('🔴 [LoadState] loading → error');
+      _loadState = LoadState.error;
       debugPrint('❌ [PeopleRankingViewModel] $_error');
       debugPrint('   Error: $error');
       debugPrint('   StackTrace: $stackTrace');
     } finally {
-      _isLoading = false;
+      // 🔒 REGRA 3: loadState NÃO pode ser alterado durante refresh
+      if (_error == null && !_isRefreshing) {
+        debugPrint('🟢 [LoadState] loading → loaded (fetch completo)');
+        _loadState = LoadState.loaded;
+      } else if (_error != null && !_isRefreshing) {
+        debugPrint('🔴 [LoadState] loading → error (fetch falhou)');
+        _loadState = LoadState.error;
+      } else if (_isRefreshing) {
+        debugPrint('🔄 [Refresh] LoadState preservado durante refresh: $_loadState');
+      }
+      
       notifyListeners();
-      debugPrint('   - isLoading: $_isLoading');
+      debugPrint('   - loadState FINAL: $_loadState');
       debugPrint('   - error: $_error');
+      debugPrint('   - _peopleRankings.length: ${_peopleRankings.length}');
     }
   }
 
@@ -379,9 +455,38 @@ class PeopleRankingViewModel extends ChangeNotifier {
     await selectCity(null);
   }
 
-  /// Recarrega ranking
+  /// Recarrega ranking forçando busca na network (nunca usa cache)
+  /// 🔒 REGRA 2: refresh() = forçar network, sempre
   Future<void> refresh() async {
-    await initialize();
+    debugPrint('🔄 [PeopleRankingViewModel] refresh() chamado');
+    debugPrint('   - ANTES: loadState = $_loadState');
+    debugPrint('   - ANTES: _peopleRankings.length = ${_peopleRankings.length}');
+    debugPrint('   - ANTES: _isRefreshing = $_isRefreshing');
+    
+    _isRefreshing = true;
+    notifyListeners();
+    
+    try {
+      // 🚀 REFRESH = apenas recarregar dados, nunca initialize()
+      await Future.wait([
+        loadPeopleRanking(), // Força network devido ao _isRefreshing = true
+        _loadAvailableStates(),
+        _loadAvailableCities(),
+      ]);
+      
+      debugPrint('✅ [PeopleRankingViewModel] refresh() dados atualizados');
+    } catch (error) {
+      debugPrint('❌ [PeopleRankingViewModel] refresh() erro: $error');
+      _error = 'Erro ao atualizar ranking';
+    } finally {
+      _isRefreshing = false;
+      notifyListeners();
+    }
+    
+    debugPrint('🔄 [PeopleRankingViewModel] refresh() completo');
+    debugPrint('   - DEPOIS: loadState = $_loadState');
+    debugPrint('   - DEPOIS: _peopleRankings.length = ${_peopleRankings.length}');
+    debugPrint('   - DEPOIS: _isRefreshing = $_isRefreshing');
   }
   
   @override

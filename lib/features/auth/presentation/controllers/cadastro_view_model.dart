@@ -22,6 +22,7 @@ class CadastroViewModel extends ChangeNotifier {
   
   // Additional info
   String selectedGender = '';
+  String sexualOrientation = '';
   String interests = ''; // Categorias de atividades selecionadas
   String bio = '';
   String instagram = '';
@@ -40,6 +41,7 @@ class CadastroViewModel extends ChangeNotifier {
     birthDate = null;
     age = null;
     selectedGender = '';
+    sexualOrientation = '';
     interests = '';
     bio = '';
     instagram = '';
@@ -110,6 +112,11 @@ class CadastroViewModel extends ChangeNotifier {
   
   void setGender(String gender) {
     selectedGender = gender;
+    notifyListeners();
+  }
+  
+  void setSexualOrientation(String orientation) {
+    sexualOrientation = orientation;
     notifyListeners();
   }
   

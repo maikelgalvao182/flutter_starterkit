@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/text_styles.dart';
 import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
@@ -67,379 +69,330 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
 
     const systemUiStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light, // Android white icons
-      statusBarBrightness: Brightness.dark, // iOS white icons
-      systemNavigationBarColor: Colors.black,
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.light, // Android light icons (white)
+      statusBarBrightness: Brightness.dark, // iOS light icons (white)
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
+      // Configura o estilo da barra de status
       value: systemUiStyle,
       child: Scaffold(
         key: _scaffoldKey,
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            const Image(
-              image: AssetImage('assets/images/background_image.jpg'),
+        body: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/capa.jpg'),
               fit: BoxFit.cover,
             ),
-            Container(
-              color: Colors.black.withValues(alpha: 0.6),
-            ),
-            SafeArea(
-              child: Column(
-                children: <Widget>[
-                  /// Close button (top-right) for guest mode navigation with background
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8, right: 16),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: <Widget>[
+                const Spacer(),
+              
+                // Buttons fixed at bottom
+                Column(
+                  children: [
+                    // Title and subtitle
+                    Padding(
+                      padding: const EdgeInsets.only(left: 25, right: 25, bottom: 12),
+                      child: Text(
+                        _i18n.translate('auth_title').isNotEmpty 
+                          ? _i18n.translate('auth_title')
+                          : 'Where Wedding Dreams\nMeet Reality',
+                        style: TextStyles.authTitle.copyWith(
+                          fontFamily: FONT_PLUS_JAKARTA_SANS,
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                          shadows: [
+                            const Shadow(
+                              offset: Offset(0, 2),
+                              blurRadius: 4,
+                              color: Colors.black45,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20, right: 20, top: 5, bottom: 30),
+                      child: Text(
+                        _i18n.translate('auth_subtitle').isNotEmpty
+                          ? _i18n.translate('auth_subtitle')
+                          : 'We connect brides and grooms with nearby vendors through transparent, budget-conscious matchmaking.',
+                        style: TextStyles.authSubtitle.copyWith(
+                          fontFamily: FONT_PLUS_JAKARTA_SANS,
+                          color: Colors.white,
+                          fontSize: 16,
+                          shadows: [
+                            const Shadow(
+                              offset: Offset(0, 1),
+                              blurRadius: 3,
+                              color: Colors.black45,
+                            ),
+                          ],
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    /// Sign in with Apple (iOS only)
+                    if (Platform.isIOS) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                        child: GestureDetector(
+                          onTap: () async {
+                            // Prevenir cliques duplicados
+                            if (_isAppleSignInProcessing || _viewModel.isLoading) {
+                              return;
+                            }
+                            
+                            setState(() {
+                              _isAppleSignInProcessing = true;
+                            });
+                            
+                            try {
+                              // Login with Apple usando o ViewModel
+                              await _viewModel.signInWithApple(
+                              checkUserAccount: _checkUserAccount,
+                              onNameReceived: (name) async {
+                                await UserModel(userId: "temp").setOAuthDisplayName(name);
+                              },
+                              onNotAvailable: () {
+                                // Show user-friendly message for Apple Sign-In not available
+                                ToastService.showError(
+                                  message: ToastMessages.appleSignInNotAvailable,
+                                );
+                              },
+                              onError: (error) {
+                                // Handle specific Apple Sign-In errors
+                                if (error.message?.contains('canceled') == true || 
+                                    error.message?.contains('cancelled') == true ||
+                                    error.code == 'sign_in_canceled') {
+                                  // User canceled sign-in
+                                  ToastService.showError(
+                                    message: ToastMessages.signInCanceledMessage,
+                                  );
+                                } else {
+                                  // Other Apple Sign-In errors
+                                  ToastService.showError(
+                                    message: (error.message as String?) ?? ToastMessages.anErrorOccurred,
+                                  );
+                                }
+                                // Debug
+                              },
+                              );
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isAppleSignInProcessing = false;
+                                });
+                              }
+                            }
+                          },
+                          child: Container(
+                            width: double.maxFinite,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: _isAppleSignInProcessing || _viewModel.isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                    ),
+                                  )
+                                : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const CachedSvgIcon(
+                                    'assets/icons/apple_icon.svg',
+                                    width: 18,
+                                    height: 18,
+                                    color: Colors.black,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _i18n.translate('sign_in_with_apple').isNotEmpty
+                                        ? _i18n.translate('sign_in_with_apple')
+                                        : 'Continue with Apple',
+                                    style: const TextStyle(
+                                      fontFamily: FONT_PLUS_JAKARTA_SANS,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    /// Sign in with Facebook (hidden)
+                    const SizedBox.shrink(),
+                    const SizedBox(height: 0),
+                    /// Sign in with Google
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
                       child: GestureDetector(
-                        onTap: () {
-                          // Navega para Home usando go_router
-                          context.go(AppRoutes.home);
+                        onTap: () async {
+                          // Prevenir cliques duplicados
+                          if (_isGoogleSignInProcessing || _viewModel.isLoading) {
+                            return;
+                          }
+                          
+                          setState(() {
+                            _isGoogleSignInProcessing = true;
+                          });
+                          
+                          try {
+                            // Login with Google usando o ViewModel
+                            await _viewModel.signInWithGoogle(
+                            checkUserAccount: _checkUserAccount,
+                            onNameReceived: (name) async {
+                              await UserModel(userId: "temp").setOAuthDisplayName(name);
+                            },
+                            onError: (error) {
+                              // Handle specific Google Sign-In errors
+                              if (error.message?.contains('canceled') == true || 
+                                  error.message?.contains('cancelled') == true ||
+                                  error.code == 'sign_in_canceled' ||
+                                  error.code == 'network_error') {
+                                // User canceled sign-in or network issues
+                                ToastService.showError(
+                                  message: ToastMessages.signInCanceledMessage,
+                                );
+                              } else {
+                                // Other Google Sign-In errors
+                                ToastService.showError(
+                                  message: (error.message as String?) ?? ToastMessages.anErrorOccurred,
+                                );
+                              }
+                            },
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isGoogleSignInProcessing = false;
+                              });
+                            }
+                          }
                         },
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          width: double.maxFinite,
+                          height: 52,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 22,
+                          child: Center(
+                            child: _isGoogleSignInProcessing || _viewModel.isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                  ),
+                                )
+                              : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const CachedSvgIcon(
+                                  'assets/icons/google_icon.svg',
+                                  width: 18,
+                                  height: 18,
+                                  color: Colors.black,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _i18n.translate('sign_in_with_google').isNotEmpty
+                                      ? _i18n.translate('sign_in_with_google')
+                                      : 'Continue with Google',
+                                  style: const TextStyle(
+                                    fontFamily: FONT_PLUS_JAKARTA_SANS,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  /// Top section with logo and texts
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        /// App logo white version above main logo (46px)
-                        const SizedBox(
-                          width: 46,
-                          height: 46,
-                          child: CachedSvgIcon(
-                            'assets/svg/app_logo_branca.svg',
-                          ),
-                        ),
-                        const SizedBox(height: 0),
-                        /// App logo (constrained to ~50% of screen width)
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final maxW = constraints.maxWidth.isFinite
-                                ? constraints.maxWidth
-                                : MediaQuery.of(context).size.width;
-                            final logoW = maxW * 0.5; // 50% of available width
-                            return Transform.translate(
-                              offset: const Offset(0, -16), // reduce vertical gap between logos
-                              child: SizedBox(
-                                width: logoW,
-                                child: const CachedSvgIcon(
-                                  'assets/svg/logo_branca.svg',
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 0),
-                        // Texts moved to bottom section to match Glimpse position/style
-                        const SizedBox.shrink(),
-                      ],
-                    ),
-                  ),
-                  /// Bottom section with buttons and terms
-                  Expanded(
-                    flex: 2,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          // Glimpse-like title and subtitle above the buttons
-                          Padding(
-                            padding: const EdgeInsets.only(left: 25, right: 25, bottom: 5),
-                            child: Text(
-                              _i18n.translate('auth_title').isNotEmpty 
-                                ? _i18n.translate('auth_title')
-                                : 'Where Wedding Dreams\nMeet Reality',
-                              style: TextStyles.authTitle,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
-                          child: Text(
-                            _i18n.translate('auth_subtitle').isNotEmpty
-                              ? _i18n.translate('auth_subtitle')
-                              : 'We connect brides and grooms with nearby vendors through transparent, budget-conscious matchmaking.',
-                            style: TextStyles.authSubtitle,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        /// Sign in with Apple (iOS only)
-                        if (Platform.isIOS) ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
-                            child: GestureDetector(
-                              onTap: () async {
-                                // Prevenir cliques duplicados
-                                if (_isAppleSignInProcessing || _viewModel.isLoading) {
-                                  return;
-                                }
-                                
-                                setState(() {
-                                  _isAppleSignInProcessing = true;
-                                });
-                                
-                                try {
-                                  // Login with Apple usando o ViewModel
-                                  await _viewModel.signInWithApple(
-                                  checkUserAccount: _checkUserAccount,
-                                  onNameReceived: (name) async {
-                                    await UserModel(userId: "temp").setOAuthDisplayName(name);
-                                  },
-                                  onNotAvailable: () {
-                                    // Show user-friendly message for Apple Sign-In not available
-                                    ToastService.showError(
-                                      message: ToastMessages.appleSignInNotAvailable,
-                                    );
-                                  },
-                                  onError: (error) {
-                                    // Handle specific Apple Sign-In errors
-                                    if (error.message?.contains('canceled') == true || 
-                                        error.message?.contains('cancelled') == true ||
-                                        error.code == 'sign_in_canceled') {
-                                      // User canceled sign-in
-                                      ToastService.showError(
-                                        message: ToastMessages.signInCanceledMessage,
-                                      );
-                                    } else {
-                                      // Other Apple Sign-In errors
-                                      ToastService.showError(
-                                        message: (error.message as String?) ?? ToastMessages.anErrorOccurred,
-                                      );
-                                    }
-                                    // Debug
-                                  },
-                                  );
-                                } finally {
-                                  if (mounted) {
-                                    setState(() {
-                                      _isAppleSignInProcessing = false;
-                                    });
-                                  }
-                                }
-                              },
-                              child: Container(
-                                width: double.maxFinite,
-                                height: 55,
-                                decoration: BoxDecoration(
-                                  color: (_isAppleSignInProcessing || _viewModel.isLoading)
-                                      ? Colors.white.withValues(alpha: 0.5)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CachedSvgIcon(
-                                        'assets/icons/apple_icon.svg',
-                                        width: 22,
-                                        height: 22,
-                                        color: (_isAppleSignInProcessing || _viewModel.isLoading)
-                                            ? Colors.black.withValues(alpha: 0.5)
-                                            : Colors.black,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _i18n.translate('sign_in_with_apple').isNotEmpty
-                                            ? _i18n.translate('sign_in_with_apple')
-                                            : 'Continue with Apple',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: (_isAppleSignInProcessing || _viewModel.isLoading)
-                                              ? Colors.black.withValues(alpha: 0.5)
-                                              : Colors.black,
-                                          fontSize: 16,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        /// Sign in with Facebook (hidden)
-                        const SizedBox.shrink(),
-                        const SizedBox(height: 10),
-                        /// Sign in with Google
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
-                          child: GestureDetector(
-                            onTap: () async {
-                              // Prevenir cliques duplicados
-                              if (_isGoogleSignInProcessing || _viewModel.isLoading) {
-                                return;
-                              }
-                              
-                              setState(() {
-                                _isGoogleSignInProcessing = true;
-                              });
-                              
-                              try {
-                                // Login with Google usando o ViewModel
-                                await _viewModel.signInWithGoogle(
-                                checkUserAccount: _checkUserAccount,
-                                onNameReceived: (name) async {
-                                  await UserModel(userId: "temp").setOAuthDisplayName(name);
-                                },
-                                onError: (error) {
-                                  // Handle specific Google Sign-In errors
-                                  if (error.message?.contains('canceled') == true || 
-                                      error.message?.contains('cancelled') == true ||
-                                      error.code == 'sign_in_canceled' ||
-                                      error.code == 'network_error') {
-                                    // User canceled sign-in or network issues
-                                    ToastService.showError(
-                                      message: ToastMessages.signInCanceledMessage,
-                                    );
-                                  } else {
-                                    // Other Google Sign-In errors
-                                    ToastService.showError(
-                                      message: (error.message as String?) ?? ToastMessages.anErrorOccurred,
-                                    );
-                                  }
-                                },
-                                );
-                              } finally {
-                                if (mounted) {
-                                  setState(() {
-                                    _isGoogleSignInProcessing = false;
-                                  });
-                                }
-                              }
+                    const SizedBox(height: 0),
+                    
+                    /// Sign in with Email
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                      child: SizedBox(
+                        height: 52,
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              // Navegar para tela de email/senha usando go_router
+                              context.push(AppRoutes.emailAuth);
                             },
                             child: Container(
-                              width: double.maxFinite,
-                              height: 55,
                               decoration: BoxDecoration(
-                                color: (_isGoogleSignInProcessing || _viewModel.isLoading)
-                                    ? Colors.white.withValues(alpha: 0.5)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CachedSvgIcon(
-                                      'assets/icons/google_icon.svg',
-                                      width: 22,
-                                      height: 22,
-                                      color: (_isGoogleSignInProcessing || _viewModel.isLoading)
-                                          ? Colors.black.withValues(alpha: 0.5)
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _i18n.translate('sign_in_with_google').isNotEmpty
-                                          ? _i18n.translate('sign_in_with_google')
-                                          : 'Continue with Google',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: (_isGoogleSignInProcessing || _viewModel.isLoading)
-                                            ? Colors.black.withValues(alpha: 0.5)
-                                            : Colors.black,
-                                        fontSize: 16,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
+                                border: Border.all(
+                                  color: Colors.white,
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        
-                        /// Sign in with Email
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
-                          child: SizedBox(
-                            height: 55,
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  // Navegar para tela de email/senha usando go_router
-                                  context.push(AppRoutes.emailAuth);
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.email_outlined,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _i18n.translate('sign_in_with_email').isNotEmpty
+                                        ? _i18n.translate('sign_in_with_email')
+                                        : 'Continue with Email',
+                                    style: const TextStyle(
+                                      fontFamily: FONT_PLUS_JAKARTA_SANS,
+                                      fontWeight: FontWeight.w700,
                                       color: Colors.white,
+                                      fontSize: 14,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.email_outlined,
-                                        color: Colors.white,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _i18n.translate('sign_in_with_email').isNotEmpty
-                                            ? _i18n.translate('sign_in_with_email')
-                                            : 'Continue with Email',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        
-                        /// Sign in with Phone Number (disabled / hidden)
-                        const SizedBox.shrink(),
-                        const SizedBox(height: 16),
-                        /// Terms of Service section (hidden)
-                        const SizedBox.shrink(),
+                      ),
+                    ),
                       ],
                     ),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

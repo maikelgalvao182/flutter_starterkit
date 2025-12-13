@@ -33,6 +33,7 @@ class SimpleRevenueCatService {
   // --------------------------------------------------------------------------
   static bool _initialized = false;
   static CustomerInfo? _lastInfo;
+  static String? _currentRcUserId;
 
   static String? _entitlementId;
   static String? _offeringId;
@@ -73,6 +74,18 @@ class SimpleRevenueCatService {
     Purchases.addCustomerInfoUpdateListener((info) {
       AppLogger.info('[RevenueCat] CustomerInfo listener acionado.');
 
+      // Log detalhado das mudanças
+      print('🔔 [RevenueCat] CustomerInfo atualizado via listener');
+      print('   Entitlements ativos: ${info.entitlements.active.keys.toList()}');
+      print('   Entitlements todos: ${info.entitlements.all.keys.toList()}');
+      print('   Active subscriptions: ${info.activeSubscriptions}');
+      print('   All purchased products: ${info.allPurchasedProductIdentifiers}');
+      
+      AppLogger.info('  - Entitlements ativos: ${info.entitlements.active.keys.toList()}');
+      AppLogger.info('  - Entitlements todos: ${info.entitlements.all.keys.toList()}');
+      AppLogger.info('  - Active subscriptions: ${info.activeSubscriptions}');
+      AppLogger.info('  - All purchased products: ${info.allPurchasedProductIdentifiers}');
+
       _lastInfo = info;
 
       // notifica listeners locais
@@ -83,6 +96,51 @@ class SimpleRevenueCatService {
 
     // 5. Carrega CustomerInfo inicial
     _lastInfo = await Purchases.getCustomerInfo();
+
+    // Log detalhado dos entitlements iniciais
+    print('🎫 [RevenueCat] CustomerInfo inicial carregado');
+    print('   Entitlements ativos: ${_lastInfo!.entitlements.active.keys.toList()}');
+    print('   Entitlements todos: ${_lastInfo!.entitlements.all.keys.toList()}');
+    print('   Active subscriptions: ${_lastInfo!.activeSubscriptions}');
+    print('   All purchased product IDs: ${_lastInfo!.allPurchasedProductIdentifiers}');
+    
+    AppLogger.info('RevenueCat: CustomerInfo inicial carregado');
+    AppLogger.info('  - Entitlements ativos: ${_lastInfo!.entitlements.active.keys.toList()}');
+    AppLogger.info('  - Entitlements todos: ${_lastInfo!.entitlements.all.keys.toList()}');
+    AppLogger.info('  - Active subscriptions: ${_lastInfo!.activeSubscriptions}');
+    AppLogger.info('  - All purchased products: ${_lastInfo!.allPurchasedProductIdentifiers}');
+
+    // 6. Carrega e loga Offerings disponíveis
+    try {
+      print('\n🎁 [RevenueCat] Verificando offerings disponíveis...');
+      final offerings = await Purchases.getOfferings();
+      
+      print('   📋 Offerings encontradas: ${offerings.all.keys.toList()}');
+      print('   ⭐ Current offering: ${offerings.current?.identifier ?? "null"}');
+      
+      if (offerings.current != null) {
+        print('   📦 Packages no current offering:');
+        for (final pkg in offerings.current!.availablePackages) {
+          print('      • ${pkg.identifier} (${pkg.packageType})');
+          print('        Product: ${pkg.storeProduct.identifier}');
+          print('        Price: ${pkg.storeProduct.priceString}');
+        }
+      } else {
+        print('   ⚠️  Nenhuma current offering configurada');
+      }
+      
+      if (offerings.all.isNotEmpty) {
+        print('   📚 Todas as offerings:');
+        for (final entry in offerings.all.entries) {
+          print('      • ${entry.key}: ${entry.value.availablePackages.length} packages');
+        }
+      }
+      
+      AppLogger.info('Offerings verificadas: ${offerings.all.keys.toList()}');
+    } catch (e) {
+      print('   ⚠️  Erro ao verificar offerings: $e');
+      AppLogger.warning('Erro ao verificar offerings na inicialização: $e');
+    }
 
     _initialized = true;
 
@@ -176,7 +234,28 @@ class SimpleRevenueCatService {
   static Future<CustomerInfo> getCustomerInfo() async {
     if (!_initialized) await initialize();
 
+    print('📥 [RevenueCat] Buscando CustomerInfo...');
     _lastInfo = await Purchases.getCustomerInfo();
+    
+    print('✅ [RevenueCat] CustomerInfo obtido com sucesso');
+    print('   Entitlements ativos: ${_lastInfo!.entitlements.active.keys.toList()}');
+    print('   Entitlements todos: ${_lastInfo!.entitlements.all.keys.toList()}');
+    print('   Active subscriptions: ${_lastInfo!.activeSubscriptions}');
+    print('   All purchased products: ${_lastInfo!.allPurchasedProductIdentifiers}');
+    
+    // Log detalhado de cada entitlement ativo
+    for (final entKey in _lastInfo!.entitlements.active.keys) {
+      final ent = _lastInfo!.entitlements.active[entKey]!;
+      print('   📋 Entitlement "$entKey":');
+      print('      - isActive: ${ent.isActive}');
+      print('      - willRenew: ${ent.willRenew}');
+      print('      - periodType: ${ent.periodType}');
+      print('      - productIdentifier: ${ent.productIdentifier}');
+      print('      - expirationDate: ${ent.expirationDate}');
+      print('      - billingIssue: ${ent.billingIssueDetectedAt != null}');
+    }
+    
+    AppLogger.info('CustomerInfo obtido: ${_lastInfo!.entitlements.active.keys.toList()}');
     return _lastInfo!;
   }
 
@@ -186,9 +265,22 @@ class SimpleRevenueCatService {
   static bool hasAccess(CustomerInfo info) {
     try {
       final entId = _entitlementId ?? REVENUE_CAT_ENTITLEMENT_ID;
+      print('🔍 [RevenueCat] Verificando acesso ao entitlement "$entId"');
+      print('   Entitlements disponíveis: ${info.entitlements.all.keys.toList()}');
+      print('   Entitlements ativos: ${info.entitlements.active.keys.toList()}');
+      
       final ent = info.entitlements.active[entId];
 
-      if (ent == null) return false;
+      if (ent == null) {
+        print('   ❌ Entitlement "$entId" NÃO encontrado nos ativos');
+        return false;
+      }
+      
+      print('   ✅ Entitlement "$entId" encontrado');
+      print('      - isActive: ${ent.isActive}');
+      print('      - willRenew: ${ent.willRenew}');
+      print('      - expirationDate: ${ent.expirationDate}');
+      print('      - billingIssue: ${ent.billingIssueDetectedAt != null}');
 
       // billing issue → sem acesso
       if (ent.billingIssueDetectedAt != null) return false;
@@ -204,8 +296,11 @@ class SimpleRevenueCatService {
       }
 
       // se isActive = true → acesso OK
-      return ent.isActive;
-    } catch (_) {
+      final hasAccess = ent.isActive;
+      print('   🎫 Resultado hasAccess: $hasAccess');
+      return hasAccess;
+    } catch (e) {
+      print('   ❌ Erro ao verificar acesso: $e');
       return false;
     }
   }
@@ -216,9 +311,20 @@ class SimpleRevenueCatService {
   static Future<CustomerInfo> purchasePackage(Package package) async {
     if (!_initialized) await initialize();
 
+    print('💳 [RevenueCat] Iniciando compra: ${package.storeProduct.identifier}');
     AppLogger.info('Iniciando compra: ${package.storeProduct.identifier}');
+    
     // ignore: deprecated_member_use
     final result = await Purchases.purchaseStoreProduct(package.storeProduct);
+
+    print('✅ [RevenueCat] Compra concluída com sucesso!');
+    print('   Entitlements ativos após compra: ${result.customerInfo.entitlements.active.keys.toList()}');
+    print('   Active subscriptions: ${result.customerInfo.activeSubscriptions}');
+    print('   All purchased products: ${result.customerInfo.allPurchasedProductIdentifiers}');
+    
+    AppLogger.success('Compra concluída!');
+    AppLogger.info('  - Entitlements ativos: ${result.customerInfo.entitlements.active.keys.toList()}');
+    AppLogger.info('  - Active subscriptions: ${result.customerInfo.activeSubscriptions}');
 
     _lastInfo = result.customerInfo;
 
@@ -231,7 +337,18 @@ class SimpleRevenueCatService {
   static Future<CustomerInfo> restorePurchases() async {
     if (!_initialized) await initialize();
 
+    print('🔄 [RevenueCat] Restaurando compras...');
     final info = await Purchases.restorePurchases();
+    
+    print('✅ [RevenueCat] Compras restauradas!');
+    print('   Entitlements ativos: ${info.entitlements.active.keys.toList()}');
+    print('   Active subscriptions: ${info.activeSubscriptions}');
+    print('   All purchased products: ${info.allPurchasedProductIdentifiers}');
+    
+    AppLogger.success('Compras restauradas!');
+    AppLogger.info('  - Entitlements ativos: ${info.entitlements.active.keys.toList()}');
+    AppLogger.info('  - Active subscriptions: ${info.activeSubscriptions}');
+    
     _lastInfo = info;
     return info;
   }
@@ -241,13 +358,22 @@ class SimpleRevenueCatService {
   // --------------------------------------------------------------------------
   static Future<void> login(String userId) async {
     if (!_initialized) await initialize();
+    
+    // Idempotency check: se já estamos logados com este ID, não faz nada
+    if (_currentRcUserId == userId) {
+      AppLogger.info('RevenueCat: Já logado como $userId. Ignorando login redundante.');
+      return;
+    }
+
     await Purchases.logIn(userId);
+    _currentRcUserId = userId;
     _lastInfo = await Purchases.getCustomerInfo();
   }
 
   static Future<void> logout() async {
     if (!_initialized) return;
     await Purchases.logOut();
+    _currentRcUserId = null;
     _lastInfo = null;
   }
 
@@ -310,6 +436,7 @@ class SimpleRevenueCatService {
 
   static Future<void> _loadConfiguration() async {
     try {
+      print('⚙️ [RevenueCat] Carregando configuração do Firestore...');
       AppLogger.info('RevenueCat: Carregando configuração...');
       
       final doc = await FirebaseFirestore.instance
@@ -319,13 +446,22 @@ class SimpleRevenueCatService {
 
       final data = doc.data();
       if (data == null) {
+        print('   ⚠️  Config data é null, usando defaults');
+        print('   📋 Default Entitlement ID: $REVENUE_CAT_ENTITLEMENT_ID');
+        print('   📋 Default Offering ID: $REVENUE_CAT_OFFERINGS_ID');
         AppLogger.warning('  - Config data é null, usando defaults');
         _entitlementId = REVENUE_CAT_ENTITLEMENT_ID;
         return;
       }
 
+      print('   📄 Documento revenue_cat encontrado');
+      print('   🔑 Keys disponíveis: ${data.keys.toList()}');
+
       final ent = data['REVENUE_CAT_ENTITLEMENT_ID'];
       final off = data['REVENUE_CAT_OFFERINGS_ID'];
+
+      print('   📋 Valor no Firestore - REVENUE_CAT_ENTITLEMENT_ID: $ent');
+      print('   📋 Valor no Firestore - REVENUE_CAT_OFFERINGS_ID: $off');
 
       _entitlementId = (ent is String && ent.isNotEmpty)
           ? ent
@@ -335,10 +471,14 @@ class SimpleRevenueCatService {
           ? off
           : REVENUE_CAT_OFFERINGS_ID;
 
+      print('   ✅ Entitlement ID final: $_entitlementId');
+      print('   ✅ Offering ID final: $_offeringId');
+
       AppLogger.info('  - Entitlement ID: $_entitlementId');
       AppLogger.info('  - Offering ID: $_offeringId');
 
     } catch (e) {
+      print('   ❌ ERRO ao carregar configuração: $e');
       AppLogger.error('Erro ao carregar configuração: $e');
       _entitlementId = REVENUE_CAT_ENTITLEMENT_ID;
     }
