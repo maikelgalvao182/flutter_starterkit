@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:partiu/core/services/app_initializer_service.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
@@ -18,61 +19,35 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  // ViewModels instanciados aqui e passados para frente
-  final MapViewModel mapViewModel = MapViewModel();
-  final PeopleRankingViewModel peopleRankingViewModel = PeopleRankingViewModel();
-  final RankingViewModel locationsRankingViewModel = RankingViewModel();
-  final ConversationsViewModel conversationsViewModel = ConversationsViewModel();
-  bool _isReady = false;
-
   @override
   void initState() {
     super.initState();
-    _bootstrap();
+    
+    // Precache IMEDIATO - Fire and Forget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheImages();
+    });
   }
 
-  Future<void> _bootstrap() async {
-    // Serviço de inicialização
-    final initializer = AppInitializerService(
-      mapViewModel,
-      peopleRankingViewModel,
-      locationsRankingViewModel,
-      conversationsViewModel,
-    );
-    
-    // Definir instância global para acesso compartilhado
-    PeopleRankingViewModel.instance = peopleRankingViewModel;
-
-    // Aguarda tudo ficar pronto (localização, eventos, markers, rankings)
-    await initializer.initialize();
-
-    if (!mounted) return;
-
-    // Marca como pronto para exibir a Home
-    setState(() {
-      _isReady = true;
-    });
+  void _precacheImages() {
+    try {
+      precacheImage(const AssetImage('assets/images/capa.jpg'), context);
+      precacheImage(const AssetImage('assets/images/logo.png'), context);
+    } catch (e) {
+      debugPrint('Erro no precache: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Se já estiver pronto, exibe a Home diretamente
-    if (_isReady) {
-      return HomeScreenRefactored(
-        mapViewModel: mapViewModel,
-        peopleRankingViewModel: peopleRankingViewModel,
-        locationsRankingViewModel: locationsRankingViewModel,
-        conversationsViewModel: conversationsViewModel,
-      );
-    }
-
-    // Caso contrário, exibe loading
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: CupertinoActivityIndicator(
-          radius: 16,
-          color: CupertinoColors.activeBlue,
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: 80,
+          height: 80,
+          gaplessPlayback: true,
         ),
       ),
     );

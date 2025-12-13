@@ -19,6 +19,8 @@
   "next": "Próximo",
   "finish": "Finalizar",
   "save": "Salvar",
+  "profile_updated_successfully": "Perfil atualizado com sucesso!",
+  "no_changes_to_save": "Nenhuma alteração para salvar",
   "delete": "Excluir",
   "edit": "Editar",
   "edit_profile": "Editar perfil",
@@ -77,7 +79,7 @@
   "update_location_message": "Precisamos da sua localização para mostrar eventos próximos",
   "allow_location": "Permitir localização",
   "skip": "Pular",
-  "auth_title": "E aí, Bora Fazer Alguma Coisa?",
+  "auth_title": "E aí, bora fazer alguma coisa?",
   "auth_subtitle": "Crie atividades no mapa, veja quem topa ir com você e faça novos amigos.",
   "create_account": "Criar conta",
   "enter_your_credentials_to_continue": "Digite suas credenciais para continuar",
@@ -436,7 +438,7 @@
   "choose_meeting_point": "Escolha seu local de encontro",
   "exact_location_visible": "O local exato ficará visível para todos (você pode controlar quem pode ver a atividade depois)",
   "set_activity_location": "Confirmar localização",
-  "create_activity_title": "E aí, Partiu?",
+  "create_activity_title": "E aí, Bora?",
   "see_suggestions": "Ver sugestões",
   "activity_placeholder": "Correr no parque, tomar um chop...",
   "when_activity_title": "Quando vai rolar?",
@@ -656,6 +658,8 @@
   "no_previous_purchase_found": "Nenhuma compra anterior encontrada",
   "vip_subscription_restored": "Assinatura VIP restaurada com sucesso!",
   "payment_cancelled": "Pagamento cancelado",
-  "payment_cancelled_by_user": "Pagamento cancelado pelo usuário"
+  "payment_cancelled_by_user": "Pagamento cancelado pelo usuário",
+  "profile_visits": "Visitas recebidas"
+
 }
 

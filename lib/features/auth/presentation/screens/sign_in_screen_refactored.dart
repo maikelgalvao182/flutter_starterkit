@@ -11,6 +11,7 @@ import 'package:partiu/features/auth/presentation/controllers/sign_in_view_model
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/shared/widgets/cached_svg_icon.dart';
 import 'package:partiu/core/services/toast_service.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -80,21 +81,37 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
       value: systemUiStyle,
       child: Scaffold(
         key: _scaffoldKey,
-        body: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/images/capa.jpg'),
-              fit: BoxFit.cover,
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // Background Image
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/capa.jpg',
+                fit: BoxFit.cover,
+                gaplessPlayback: true, // Evita piscar ao recarregar
+                // Placeholder suave enquanto carrega (se ainda não estiver em cache)
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded) return child;
+                  return AnimatedOpacity(
+                    opacity: frame == null ? 0 : 1,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    child: child,
+                  );
+                },
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: <Widget>[
-                const Spacer(),
-              
-                // Buttons fixed at bottom
-                Column(
-                  children: [
+            
+            // Content
+            SafeArea(
+              child: Column(
+                children: <Widget>[
+                  const Spacer(),
+                
+                  // Buttons fixed at bottom
+                  Column(
+                    children: [
                     // Title and subtitle
                     Padding(
                       padding: const EdgeInsets.only(left: 25, right: 25, bottom: 12),
@@ -102,14 +119,15 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                         _i18n.translate('auth_title').isNotEmpty 
                           ? _i18n.translate('auth_title')
                           : 'Where Wedding Dreams\nMeet Reality',
-                        style: TextStyles.authTitle.copyWith(
-                          fontFamily: FONT_PLUS_JAKARTA_SANS,
+                        style: const TextStyle(
+                          fontFamily: 'Glitz',
                           color: Colors.white,
-                          fontSize: 32,
+                          fontSize: 34,
                           fontWeight: FontWeight.w700,
                           height: 1.1,
+                          letterSpacing: 1.5,
                           shadows: [
-                            const Shadow(
+                            Shadow(
                               offset: Offset(0, 2),
                               blurRadius: 4,
                               color: Colors.black45,
@@ -204,13 +222,12 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Center(
-                              child: _isAppleSignInProcessing || _viewModel.isLoading
+                              child: _isAppleSignInProcessing
                                 ? const SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                    child: CupertinoActivityIndicator(
+                                      color: Colors.black,
                                     ),
                                   )
                                 : Row(
@@ -231,7 +248,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                       fontFamily: FONT_PLUS_JAKARTA_SANS,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.black,
-                                      fontSize: 14,
+                                      fontSize: 16,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -300,13 +317,12 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
-                            child: _isGoogleSignInProcessing || _viewModel.isLoading
+                            child: _isGoogleSignInProcessing
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                  child: CupertinoActivityIndicator(
+                                    color: Colors.black,
                                   ),
                                 )
                               : Row(
@@ -327,7 +343,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                     fontFamily: FONT_PLUS_JAKARTA_SANS,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.black,
-                                    fontSize: 14,
+                                    fontSize: 16,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -337,62 +353,13 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 0),
-                    
-                    /// Sign in with Email
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
-                      child: SizedBox(
-                        height: 52,
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              // Navegar para tela de email/senha usando go_router
-                              context.push(AppRoutes.emailAuth);
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.white,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.email_outlined,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _i18n.translate('sign_in_with_email').isNotEmpty
-                                        ? _i18n.translate('sign_in_with_email')
-                                        : 'Continue with Email',
-                                    style: const TextStyle(
-                                      fontFamily: FONT_PLUS_JAKARTA_SANS,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+
                       ],
                     ),
               ],
             ),
           ),
+          ],
         ),
       ),
     );

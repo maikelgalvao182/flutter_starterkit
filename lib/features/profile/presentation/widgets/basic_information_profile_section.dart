@@ -63,6 +63,14 @@ class BasicInformationProfileSection extends StatelessWidget {
       ));
     }
 
+    // Orientação Sexual
+    if (user.sexualOrientation != null && user.sexualOrientation!.trim().isNotEmpty) {
+      entries.add(BasicInfoEntry(
+        label: 'Orientação',
+        value: user.sexualOrientation!,
+      ));
+    }
+
     // Profissão/Job Title
     if (user.jobTitle != null && user.jobTitle!.trim().isNotEmpty) {
       entries.add(BasicInfoEntry(

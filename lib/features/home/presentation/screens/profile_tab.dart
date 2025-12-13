@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/services/toast_service.dart';
@@ -285,6 +286,10 @@ class _ProfileHeaderContent extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 0),
+          
+          // Localização como texto
+          _LocationText(user: user),
           const SizedBox(height: 16),
           
           // Localização + Visits
@@ -313,6 +318,50 @@ class _ProfileHeaderContent extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Widget para mostrar localização como texto simples
+class _LocationText extends StatelessWidget {
+  const _LocationText({required this.user});
+  
+  final User user;
+
+  @override
+  Widget build(BuildContext context) {
+    final city = user.userLocality;
+    final state = user.userState;
+    
+    // Se não tem localização, não mostra nada
+    if ((city == null || city.isEmpty) && (state == null || state.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+    
+    // Constrói o texto da localização
+    final locationText = city?.isNotEmpty == true
+        ? ((state?.isNotEmpty == true) ? "$city, $state" : city!)
+        : ((state?.isNotEmpty == true) ? state! : '');
+    
+    if (locationText.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Text(
+          locationText,
+          style: GoogleFonts.getFont(
+            FONT_PLUS_JAKARTA_SANS,
+            color: GlimpseColors.textSubTitle,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

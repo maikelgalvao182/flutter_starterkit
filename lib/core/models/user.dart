@@ -76,6 +76,7 @@ class User {
     required this.photoUrl,
     required this.userFullname,
     required this.userGender,
+    this.userSexualOrientation = '',
     required this.userBirthDay,
     required this.userBirthMonth,
     required this.userBirthYear,
@@ -116,6 +117,7 @@ class User {
       photoUrl: '',
       userFullname: '',
       userGender: '',
+      userSexualOrientation: '',
       userBirthDay: 1,
       userBirthMonth: 1,
       userBirthYear: 2000,
@@ -197,6 +199,7 @@ class User {
       photoUrl: doc['photoUrl'] ?? '',
       userFullname: doc['fullName'] ?? '',
       userGender: doc['gender'] ?? '',
+      userSexualOrientation: doc['sexualOrientation'] ?? '',
       userBirthDay: doc['birthDay'] ?? 1,
       userBirthMonth: doc['birthMonth'] ?? 1,
       userBirthYear: doc['birthYear'] ?? 2000,
@@ -236,6 +239,7 @@ class User {
   final String photoUrl;
   final String userFullname;
   final String userGender;
+  final String userSexualOrientation;
   final int userBirthDay;
   final int userBirthMonth;
   final int userBirthYear;
@@ -284,6 +288,7 @@ class User {
     String? photoUrl,
     String? userFullname,
     String? userGender,
+    String? userSexualOrientation,
     int? userBirthDay,
     int? userBirthMonth,
     int? userBirthYear,
@@ -321,6 +326,7 @@ class User {
       photoUrl: photoUrl ?? this.photoUrl,
       userFullname: userFullname ?? this.userFullname,
       userGender: userGender ?? this.userGender,
+      userSexualOrientation: userSexualOrientation ?? this.userSexualOrientation,
       userBirthDay: userBirthDay ?? this.userBirthDay,
       userBirthMonth: userBirthMonth ?? this.userBirthMonth,
       userBirthYear: userBirthYear ?? this.userBirthYear,
@@ -361,6 +367,7 @@ class User {
   String? get bio => userBio.isNotEmpty ? userBio : null;
   String? get jobTitle => userJobTitle.isNotEmpty ? userJobTitle : null;
   String? get gender => userGender.isNotEmpty ? userGender : null;
+  String? get sexualOrientation => userSexualOrientation.isNotEmpty ? userSexualOrientation : null;
   int? get birthDay => userBirthDay > 0 ? userBirthDay : null;
   int? get birthMonth => userBirthMonth > 0 ? userBirthMonth : null;
   int? get birthYear => userBirthYear > 0 ? userBirthYear : null;

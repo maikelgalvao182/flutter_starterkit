@@ -156,6 +156,8 @@ class EditProfileViewModel extends ChangeNotifier {
         updatedData = _currentData!.copyWith(jobTitle: value as String?);
       case 'gender':
         updatedData = _currentData!.copyWith(gender: value as String?);
+      case 'sexualOrientation':
+        updatedData = _currentData!.copyWith(sexualOrientation: value as String?);
       case 'locality':
         updatedData = _currentData!.copyWith(locality: value as String?);
       case 'instagram':
@@ -225,7 +227,7 @@ class EditProfileViewModel extends ChangeNotifier {
         hasUnsavedChanges: false,
       ));
       
-      _emitCommand(SaveProfileSuccessCommand('Perfil atualizado com sucesso'));
+      _emitCommand(SaveProfileSuccessCommand('Perfil atualizado com sucesso!'));
       AppLogger.info('Profile saved successfully', tag: _tag);
     } catch (e, stackTrace) {
       AppLogger.error(

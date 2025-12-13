@@ -104,11 +104,7 @@ exports.diditWebhook = functions.https.onRequest(async (req: any, res: any) => {
       status,
       webhook_type,
       vendor_data,
-      workflow_id,
-      metadata,
       decision,
-      created_at,
-      timestamp: webhookTimestamp,
     } = webhookData;
 
     console.log("Webhook recebido:", {
@@ -118,87 +114,25 @@ exports.diditWebhook = functions.https.onRequest(async (req: any, res: any) => {
       vendor_data,
     });
 
-    // Verificar duplicidade (Idempotência)
-    if (webhookTimestamp) {
-      const existingWebhook = await db.collection("DiditWebhooks")
-        .where("session_id", "==", session_id)
-        .where("timestamp", "==", webhookTimestamp)
-        .limit(1)
-        .get();
+    // ✅ REMOVIDO: DiditWebhooks - idempotência natural via FaceVerifications + Users
+    // Firestore já garante consistência com merge: true
 
-      if (!existingWebhook.empty) {
-        console.log("Webhook duplicado ignorado:", session_id, webhookTimestamp);
-        return res.status(200).json({
-          message: "Webhook already processed (duplicate)",
-          session_id: session_id,
-        });
-      }
-    }
+    // ✅ REMOVIDO: DiditWebhooks - coleção desnecessária que gerava lixo
+    console.log(`Webhook recebido - ${status} para sessão: ${session_id}`);
 
-    // 7. Salvar webhook no histórico (apenas se for status relevante)
-    // Ignora status intermediários para evitar poluição do banco
-    const relevantStatuses = ["Approved", "Rejected", "Failed", "In Review"];
-    let docRef: any = null;
+    // ✅ REMOVIDO: DiditSessions - apenas temporária, não essencial
+    // O Flutter pode gerenciar estado local durante verificação
 
-    if (relevantStatuses.includes(status)) {
-      const webhookRecord: any = {
-        session_id,
-        status,
-        webhook_type,
-        vendor_data,
-        received_at: admin.firestore.FieldValue.serverTimestamp(),
-        processed: false,
-      };
-
-      // Adiciona apenas campos que não são undefined
-      if (workflow_id !== undefined) webhookRecord.workflow_id = workflow_id;
-      if (metadata !== undefined) webhookRecord.metadata = metadata;
-      if (decision !== undefined) webhookRecord.decision = decision;
-      if (created_at !== undefined) webhookRecord.created_at = created_at;
-      if (webhookTimestamp !== undefined) webhookRecord.timestamp = webhookTimestamp;
-
-      docRef = await db.collection("DiditWebhooks").add(webhookRecord);
-    } else {
-      console.log(`Webhook com status '${status}' não salvo em DiditWebhooks (ignorado)`);
-    }
-
-    // 8. Atualizar sessão no Firestore
-    const sessionRef = db.collection("DiditSessions").doc(session_id);
-    const sessionDoc = await sessionRef.get();
-
-    if (!sessionDoc.exists) {
-      console.warn("Sessão não encontrada:", session_id);
-      // Não retorna erro, webhook é válido mesmo se sessão não existir
-    } else {
-      const updateData: any = {
-        status: status,
-        lastWebhookType: webhook_type,
-        lastWebhookAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
-
-      // Apenas marca como completedAt se for status final
-      if (status === "Approved" || status === "Rejected" || status === "Failed") {
-        updateData.completedAt = admin.firestore.FieldValue.serverTimestamp();
-      }
-
-      // Adiciona decision se existir
-      if (decision !== undefined) {
-        updateData.result = decision;
-      }
-
-      await sessionRef.update(updateData);
-
-      console.log("Sessão atualizada:", session_id, "status:", status);
-    }
-
-    // 9. Se aprovado, salvar verificação
+    // ✅ PROCESSAMENTO SIMPLIFICADO: Apenas salvar resultado final
     if (status === "Approved" && decision && decision.id_verification) {
       const idVerification = decision.id_verification;
       const userId = vendor_data; // vendor_data é o userId
 
       if (userId && idVerification.status === "Approved") {
         try {
-          // Salvar em FaceVerifications
+          console.log(`✅ Verificação aprovada para usuário: ${userId}`);
+
+          // 🎯 Salvar APENAS em FaceVerifications (dados detalhados)
           await db.collection("FaceVerifications").doc(userId).set({
             userId: userId,
             facialId: session_id,
@@ -239,10 +173,7 @@ exports.diditWebhook = functions.https.onRequest(async (req: any, res: any) => {
       }
     }
 
-    // 10. Marcar webhook como processado (se foi salvo)
-    if (docRef) {
-      await docRef.update({processed: true});
-    }
+    // ✅ REMOVIDO: docRef não existe mais após simplificação
 
     // 11. Retornar sucesso
     return res.status(200).json({

@@ -3,16 +3,11 @@ import 'package:flutter/material.dart';
 
 /// Enum para cada step do wizard de cadastro
 /// NOTA: Removido fluxo bride - apenas vendor
+/// OTIMIZADO: Apenas 3 steps essenciais para reduzir friction
 enum SignupWizardStep {
   profilePhoto,
-  personalInfo,
-  gender,
-  sexualOrientation,
-  jobTitle,
-  bio,
-  country,
+  personalInfo, 
   interests,
-  instagram,
   origin,
   evaluation,
 }
@@ -28,17 +23,11 @@ class SignupWizardViewModel extends ChangeNotifier {
   
   int _currentStepIndex = 0;
   
-  // Lista fixa de steps (apenas vendor)
+  // Lista otimizada de steps (apenas essenciais)
   final List<SignupWizardStep> _steps = [
     SignupWizardStep.profilePhoto,
     SignupWizardStep.personalInfo,
-    SignupWizardStep.gender,
-    SignupWizardStep.sexualOrientation,
-    SignupWizardStep.jobTitle,
-    SignupWizardStep.bio,
-    SignupWizardStep.country,
     SignupWizardStep.interests,
-    SignupWizardStep.instagram,
     SignupWizardStep.origin,
     SignupWizardStep.evaluation,
   ];

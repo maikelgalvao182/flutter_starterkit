@@ -18,6 +18,9 @@ import 'package:partiu/features/conversations/state/conversations_viewmodel.dart
 import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
 import 'package:brazilian_locations/brazilian_locations.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
+import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +77,18 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => AuthSyncService(),
         ),
+        // MapViewModel
+        ChangeNotifierProvider(
+          create: (_) => MapViewModel(),
+        ),
+        // PeopleRankingViewModel
+        ChangeNotifierProvider(
+          create: (_) => PeopleRankingViewModel(),
+        ),
+        // RankingViewModel (Locations)
+        ChangeNotifierProvider(
+          create: (_) => RankingViewModel(),
+        ),
         // ConversationsViewModel - gerencia estado das conversas
         ChangeNotifierProvider(
           create: (_) => ConversationsViewModel(),
@@ -89,76 +104,27 @@ void main() async {
       ],
       child: DependencyProvider(
         serviceLocator: serviceLocator,
-        child: const AuthInitializationGate(),
+        child: const AppRoot(),
       ),
     ),
   );
 }
 
-/// Widget que aguarda o AuthSyncService ser inicializado antes de mostrar a UI principal.
-/// Isso evita mostrar telas incorretas durante o boot do app.
-class AuthInitializationGate extends StatelessWidget {
-  const AuthInitializationGate({super.key});
+class AppRoot extends StatelessWidget {
+  const AppRoot({super.key});
 
   @override
   Widget build(BuildContext context) {
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('🚪 AuthInitializationGate.build() CHAMADO');
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    return Consumer<AuthSyncService>(
-      builder: (context, authSync, child) {
-        debugPrint('📊 [Gate] Consumer builder - initialized: ${authSync.initialized}');
-        
-        // Aguarda inicialização do AuthSyncService
-        if (!authSync.initialized) {
-          debugPrint('⏳ [Gate] Aguardando AuthSyncService inicializar...');
-          return const MaterialApp(
-            home: Scaffold(
-              backgroundColor: Colors.white,
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Verificando autenticação...',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        // AuthSyncService inicializado - pode mostrar app principal
-        debugPrint('✅ [Gate] AuthSyncService inicializado - mostrando MyApp');
-        return const MyApp();
-      },
-    );
-  }
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('🏗️ MyApp.build() CHAMADO - Construindo MaterialApp');
+    debugPrint('🏗️ AppRoot.build() CHAMADO - Construindo MaterialApp');
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // Cria goRouter com acesso ao AuthSyncService via context
-    debugPrint('📊 [MyApp] Criando router...');
+    debugPrint('📊 [AppRoot] Criando router...');
     final router = createAppRouter(context);
-    debugPrint('✅ [MyApp] Router criado');
+    debugPrint('✅ [AppRoot] Router criado');
     
-    debugPrint('📊 [MyApp] Construindo MaterialApp.router...');
+    debugPrint('📊 [AppRoot] Construindo MaterialApp.router...');
     return MaterialApp.router(
       title: 'Partiu',
       debugShowCheckedModeBanner: false,

@@ -59,11 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyD9DcPOLt4FggQqmHPJd7JRlWdhR0XV4gQ',
-    appId: '1:13564294004:ios:5c6f246862e8cb3cc0f221',
+    appId: '1:13564294004:ios:0658c8691dc9dbbac0f221',
     messagingSenderId: '13564294004',
     projectId: 'partiu-479902',
     storageBucket: 'partiu-479902.firebasestorage.app',
-    iosBundleId: 'com.example.partiu',
+    iosBundleId: 'com.maikelgalvao.partiu',
   );
 
 }

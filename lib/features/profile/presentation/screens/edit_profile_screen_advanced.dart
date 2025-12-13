@@ -88,6 +88,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   
   // Controllers adicionais para outros campos (read-only ou selecionáveis)
   late final TextEditingController _genderController;
+  late final TextEditingController _sexualOrientationController;
   late final TextEditingController _birthDayController;
   late final TextEditingController _birthMonthController;
   late final TextEditingController _birthYearController;
@@ -107,6 +108,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     // Inicializa controllers adicionais
     _genderController = TextEditingController();
+    _sexualOrientationController = TextEditingController();
     _birthDayController = TextEditingController();
     _birthMonthController = TextEditingController();
     _birthYearController = TextEditingController();
@@ -136,6 +138,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     // Dispose dos controllers adicionais
     _genderController.dispose();
+    _sexualOrientationController.dispose();
     _birthDayController.dispose();
     _birthMonthController.dispose();
     _birthYearController.dispose();
@@ -209,6 +212,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     // Inicializa controllers adicionais
     _genderController.text = formData.gender ?? '';
+    _sexualOrientationController.text = formData.sexualOrientation ?? '';
     _birthDayController.text = formData.birthDay?.toString() ?? '';
     _birthMonthController.text = formData.birthMonth?.toString() ?? '';
     _birthYearController.text = formData.birthYear?.toString() ?? '';
@@ -405,6 +409,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       bio: _bioController.text.trim(),
       jobTitle: _jobController.text.trim(),
       gender: _genderController.text.trim().isEmpty ? null : _genderController.text.trim(),
+      sexualOrientation: _sexualOrientationController.text.trim().isEmpty ? null : _sexualOrientationController.text.trim(),
       birthDay: birthDay,
       birthMonth: birthMonth,
       birthYear: birthYear,
@@ -531,6 +536,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       jobController: _jobController,
       bioController: _bioController,
       genderController: _genderController,
+      sexualOrientationController: _sexualOrientationController,
       birthDayController: _birthDayController,
       birthMonthController: _birthMonthController,
       birthYearController: _birthYearController,

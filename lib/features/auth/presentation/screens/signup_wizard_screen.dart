@@ -24,17 +24,10 @@ import 'package:partiu/features/auth/presentation/widgets/origin_brazilian_city_
 /// 🎯 Progress bar dinâmico
 /// 🎯 Reutiliza editores existentes
 /// 
-/// FLUXO VENDOR: 10 steps
+/// FLUXO VENDOR OTIMIZADO: 3 steps essenciais
 /// 1. Foto de perfil
 /// 2. Informações pessoais (nome + data nascimento)
-/// 3. Gênero
-/// 4. Profissão
-/// 5. Bio
-/// 6. País
-/// 7. Interesses (categorias de atividades)
-/// 8. Instagram
-/// 9. Origem
-/// 10. Avaliação
+/// 3. Interesses (categorias de atividades)
 class SignupWizardScreen extends StatefulWidget {
   const SignupWizardScreen({super.key});
 
@@ -180,24 +173,12 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return model.imageFile != null;
       case SignupWizardStep.personalInfo:
         return model.fullName.trim().isNotEmpty && model.isUserOldEnough();
-      case SignupWizardStep.instagram:
-        return model.instagram.trim().isNotEmpty;
-      case SignupWizardStep.jobTitle:
-        return model.jobTitle.trim().isNotEmpty;
-      case SignupWizardStep.gender:
-        return model.selectedGender.trim().isNotEmpty;
-      case SignupWizardStep.sexualOrientation:
-        return model.sexualOrientation.trim().isNotEmpty;
-      case SignupWizardStep.bio:
-        return true; // Bio é opcional
-      case SignupWizardStep.country:
-        return model.country != null && model.country!.isNotEmpty;
       case SignupWizardStep.interests:
         return model.interests.trim().isNotEmpty;
       case SignupWizardStep.origin:
-        return true; // Origem é opcional
+        return model.originSource != null && model.originSource!.isNotEmpty;
       case SignupWizardStep.evaluation:
-        return true; // Campo informativo
+        return true; // Opcional/Informativo
     }
   }
 
@@ -213,18 +194,18 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
     // Dados de onboarding consolidados
     final onboardingData = <String, dynamic>{
       'fullName': model.fullName.trim(),
-      'gender': model.selectedGender,
-      'sexualOrientation': model.sexualOrientation,
+      'gender': '', // Será preenchido posteriormente
+      'sexualOrientation': '', // Será preenchido posteriormente
       'birthDay': model.userBirthDay,
       'birthMonth': model.userBirthMonth,
       'birthYear': model.userBirthYear,
       'age': model.age, // Idade calculada automaticamente
       'interests': model.interests.trim(),
-      'instagram': model.instagram.trim(),
-      'jobTitle': model.jobTitle.trim(),
-      'bio': model.bio.trim(),
-      'from': model.country,
-      'originSource': model.originSource,
+      'instagram': '', // Será preenchido posteriormente
+      'jobTitle': '', // Será preenchido posteriormente
+      'bio': '', // Será preenchido posteriormente
+      'from': '', // Será preenchido posteriormente
+      'originSource': model.originSource ?? '',
       'agreeTerms': model.agreeTerms,
     };
 
@@ -287,24 +268,12 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return i18n.translate('add_a_profile_photo');
       case SignupWizardStep.personalInfo:
         return i18n.translate('basic_information_title');
-      case SignupWizardStep.instagram:
-        return i18n.translate('instagram_username');
-      case SignupWizardStep.jobTitle:
-        return i18n.translate('job_title');
-      case SignupWizardStep.gender:
-        return i18n.translate('gender');
-      case SignupWizardStep.sexualOrientation:
-        return 'Orientação Sexual';
-      case SignupWizardStep.bio:
-        return i18n.translate('bio');
-      case SignupWizardStep.country:
-        return 'Onde você nasceu?';
       case SignupWizardStep.interests:
         return i18n.translate('select_interests');
       case SignupWizardStep.origin:
-        return i18n.translate('where_did_you_hear_about_us');
+        return i18n.translate('how_did_you_hear_about_us');
       case SignupWizardStep.evaluation:
-        return i18n.translate('rate_your_experience');
+        return i18n.translate('what_people_are_saying');
     }
   }
   
@@ -318,24 +287,12 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return i18n.translate('people_like_to_see_you');
       case SignupWizardStep.personalInfo:
         return i18n.translate('this_data_cannot_be_changed_later');
-      case SignupWizardStep.instagram:
-        return i18n.translate('instagram_helper');
-      case SignupWizardStep.jobTitle:
-        return i18n.translate('job_title_helper');
-      case SignupWizardStep.gender:
-        return i18n.translate('select_gender');
-      case SignupWizardStep.sexualOrientation:
-        return 'Selecione sua orientação sexual';
-      case SignupWizardStep.bio:
-        return i18n.translate('bio_placeholder');
-      case SignupWizardStep.country:
-        return 'Selecione sua cidade e estado de nascimento';
       case SignupWizardStep.interests:
         return i18n.translate('select_activity_categories');
       case SignupWizardStep.origin:
-        return i18n.translate('help_us_understand_how_you_found_us');
+        return i18n.translate('we_would_love_to_know');
       case SignupWizardStep.evaluation:
-        return i18n.translate('your_feedback_helps_us_improve');
+        return i18n.translate('see_what_our_community_thinks');
     }
   }
 
@@ -470,78 +427,6 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
           ),
         );
       
-      case SignupWizardStep.instagram:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: InstagramWidget(
-              initialInstagram: _cadastroViewModel.instagram,
-              onInstagramChanged: _cadastroViewModel.setInstagram,
-            ),
-          ),
-        );
-      
-      case SignupWizardStep.jobTitle:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: JobTitleWidget(
-              initialJobTitle: _cadastroViewModel.jobTitle,
-              onJobTitleChanged: _cadastroViewModel.setJobTitle,
-            ),
-          ),
-        );
-      
-      case SignupWizardStep.gender:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: GenderSelectorWidget(
-              initialGender: _cadastroViewModel.selectedGender,
-              onGenderChanged: (value) => _cadastroViewModel.setGender(value ?? ''),
-            ),
-          ),
-        );
-      
-      case SignupWizardStep.sexualOrientation:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: SexualOrientationWidget(
-              initialOrientation: _cadastroViewModel.sexualOrientation,
-              onOrientationChanged: (value) => _cadastroViewModel.setSexualOrientation(value ?? ''),
-            ),
-          ),
-        );
-      
-      case SignupWizardStep.bio:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: BioWidget(
-              initialBio: _cadastroViewModel.bio,
-              onBioChanged: _cadastroViewModel.setBio,
-            ),
-          ),
-        );
-      
-      case SignupWizardStep.country:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: OriginBrazilianCitySelector(
-              initialValue: _cadastroViewModel.country,
-              onChanged: _cadastroViewModel.setCountry,
-            ),
-          ),
-        );
-      
       case SignupWizardStep.interests:
         return Container(
           color: Colors.white,
@@ -561,19 +446,22 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: OriginSelectorWidget(
               initialOrigin: _cadastroViewModel.originSource,
-              onOriginChanged: (value) => _cadastroViewModel.setOriginSource(value ?? ''),
+              onOriginChanged: (value) {
+                _cadastroViewModel.originSource = value;
+                _onCadastroChanged(); // Força update do botão
+              },
             ),
           ),
         );
-      
+
       case SignupWizardStep.evaluation:
         return Container(
           color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: const SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: AppEvaluationWidget(
-              isBride: false, // Sempre vendor
-              shouldAutoRequestReview: false,
+              isBride: false, // Vendor flow
+              shouldAutoRequestReview: true,
             ),
           ),
         );

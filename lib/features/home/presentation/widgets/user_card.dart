@@ -172,7 +172,7 @@ class _UserCardState extends State<UserCard> {
         : null;
 
     // Process common interests
-    String commonInterestsText = '';
+    String commonInterestsText = '0 matchs';
     if (commonInterests.isNotEmpty) {
       final count = commonInterests.length;
       final emojis = commonInterests
@@ -183,6 +183,8 @@ class _UserCardState extends State<UserCard> {
       
       if (emojis.isNotEmpty) {
         commonInterestsText = '$count matchs: $emojis';
+      } else {
+        commonInterestsText = '$count matchs';
       }
     }
 

@@ -212,7 +212,7 @@ class AuthRepository implements IAuthRepository {
           onNotAvailable();
         },
         onError: (FirebaseAuthException error) {
-          AppLogger.error('Apple Sign In error: ${error.code}', tag: 'AUTH_REPOSITORY');
+          AppLogger.error('Apple Sign In error: ${error.code} - ${error.message}', tag: 'AUTH_REPOSITORY');
           onError(error);
         },
         onNameReceived: onNameReceived,

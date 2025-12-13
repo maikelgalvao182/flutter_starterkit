@@ -8,6 +8,7 @@ enum PersonalFieldType {
   jobTitle,
   school,
   gender,
+  sexualOrientation,
   birthDate,
   locality,
   state,
@@ -31,6 +32,8 @@ extension PersonalFieldTypeExtension on PersonalFieldType {
         return i18n.translate('field_school');
       case PersonalFieldType.gender:
         return i18n.translate('field_gender');
+      case PersonalFieldType.sexualOrientation:
+        return 'Orientação Sexual';
       case PersonalFieldType.birthDate:
         return i18n.translate('field_birth_date');
       case PersonalFieldType.locality:
@@ -60,6 +63,8 @@ extension PersonalFieldTypeExtension on PersonalFieldType {
         return i18n.translate('placeholder_school');
       case PersonalFieldType.gender:
         return i18n.translate('placeholder_gender');
+      case PersonalFieldType.sexualOrientation:
+        return 'Selecione sua orientação sexual';
       case PersonalFieldType.birthDate:
         return i18n.translate('placeholder_birth_date');
       case PersonalFieldType.locality:
@@ -89,6 +94,8 @@ extension PersonalFieldTypeExtension on PersonalFieldType {
         return i18n.translate('add_school');
       case PersonalFieldType.gender:
         return i18n.translate('add_gender');
+      case PersonalFieldType.sexualOrientation:
+        return 'Adicionar orientação sexual';
       case PersonalFieldType.birthDate:
         return i18n.translate('add_birth_date');
       case PersonalFieldType.locality:
@@ -113,6 +120,7 @@ extension PersonalFieldTypeExtension on PersonalFieldType {
       case PersonalFieldType.jobTitle:
       case PersonalFieldType.school:
       case PersonalFieldType.gender:
+      case PersonalFieldType.sexualOrientation:
       case PersonalFieldType.birthDate:
       case PersonalFieldType.locality:
       case PersonalFieldType.state:

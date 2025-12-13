@@ -121,3 +121,8 @@ flutter:
     - assets/images/avatar/
     - assets/images/background_image.jpg
     - assets/map_styles/
+
+  fonts:
+    - family: Glitz
+      fonts:
+        - asset: assets/fonts/Glitz.woff2

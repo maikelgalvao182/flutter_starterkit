@@ -116,6 +116,16 @@ export const revenueCatWebhook = functions.https.onRequest(
       }
       console.log("✅ [RevenueCat Webhook] Authorization validated");
 
+      // 🔍 Debug: Log request details to detect duplicates
+      const requestId = req.headers["x-request-id"] || "unknown";
+      const userAgent = req.headers["user-agent"] || "unknown";
+      console.log("🔍 [RevenueCat Webhook] Request metadata:", {
+        requestId,
+        userAgent,
+        contentLength: req.headers["content-length"],
+        timestamp: new Date().toISOString(),
+      });
+
       // 2. Validate Webhook Signature (if shared secret is configured)
       // Note: In Partiu we are using Bearer token validation above,
       // but we can add signature check if needed.
@@ -224,24 +234,9 @@ async function processRevenueCatEvent(event: RevenueCatEvent): Promise<void> {
   const userId = event.app_user_id;
   const eventType = event.type;
 
-  // 🛑 Idempotency Check (Evita processamento duplicado)
-  const eventId =
-    `${eventType}_${event.transaction_id}_${event.purchased_at_ms}`;
-  const eventRef = firestore.collection("ProcessedWebhookEvents").doc(eventId);
-
-  const doc = await eventRef.get();
-  if (doc.exists) {
-    console.log(`⏭️ [RevenueCat Webhook] Event already processed: ${eventId}`);
-    return;
-  }
-
-  // Mark as processed
-  await eventRef.set({
-    processed_at: admin.firestore.FieldValue.serverTimestamp(),
-    event_type: eventType,
-    user_id: userId,
-    transaction_id: event.transaction_id,
-  });
+  // ✅ REMOVIDO: ProcessedWebhookEvents - desnecessária
+  // 🎯 Idempotência natural via Firestore merge: true
+  // 💡 userId como doc ID + merge: true = sem duplicação
 
   console.log(
     `📝 [RevenueCat Webhook] Processing ${eventType} for user ${userId}`
@@ -703,30 +698,31 @@ async function processSubscriptionEvent(event: RevenueCatEvent): Promise<void> {
   }
 
   // 📚 Store event in history for auditing
-  // (optional - can be removed if not needed)
+  // 🔥 FIX: Sempre usar o MESMO documento, apenas atualizar
   try {
+    // Usar userId como ID do documento - um registro por usuário
     const eventHistoryRef = firestore
       .collection("SubscriptionEvents")
-      .doc();
+      .doc(userId); // ← 🔥 FIX: Sempre mesmo documento por usuário
 
     const eventHistoryDataRaw = {
       ...subscriptionData,
       userId: userId,
-      event_id: eventHistoryRef.id,
       // Only store raw_event in SANDBOX to save space
       raw_event: event.environment === "SANDBOX" ? event : undefined,
-      processed_at: admin.firestore.FieldValue.serverTimestamp(),
+      last_processed_at: admin.firestore.FieldValue.serverTimestamp(),
+      webhook_received_count: admin.firestore.FieldValue.increment(1),
     };
 
     // Remove undefined fields before saving
     const eventHistoryData = removeUndefinedFields(eventHistoryDataRaw);
 
-    await eventHistoryRef.set(eventHistoryData);
+    // 🔥 SEMPRE fazer merge - atualiza o mesmo documento
+    await eventHistoryRef.set(eventHistoryData, {merge: true});
 
     console.log(
-      `📚 [RevenueCat Webhook] Stored subscription event history for user ${
-        userId
-      }`
+      "📚 [RevenueCat Webhook] Updated SubscriptionEvents " +
+      `for user ${userId} (merge mode)`
     );
   } catch (error) {
     console.warn(
@@ -878,7 +874,7 @@ async function sendUserNotification(
       title = "Subscription Cancelled";
       body =
         "Your subscription has been cancelled. " +
-        "You can still use VIP features until it expires.';";
+        "You can still use VIP features until it expires.";
       break;
     default:
       return; // Don't send notification for other events

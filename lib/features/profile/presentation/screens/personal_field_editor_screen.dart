@@ -7,6 +7,7 @@ import 'package:partiu/features/profile/presentation/editors/job_title_editor.da
 import 'package:partiu/features/profile/presentation/editors/birth_date_widget.dart';
 import 'package:partiu/features/profile/presentation/editors/languages_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/social/instagram_editor.dart';
+import 'package:partiu/features/profile/presentation/editors/sexual_orientation_editor.dart';
 import 'package:partiu/features/profile/presentation/models/personal_field_type.dart';
 import 'package:partiu/features/auth/presentation/widgets/origin_brazilian_city_selector.dart';
 import 'package:flutter/material.dart';
@@ -78,6 +79,8 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
         widget.controllers['bio']!.addListener(_validateField);
       case PersonalFieldType.gender:
         widget.controllers['gender']!.addListener(_validateField);
+      case PersonalFieldType.sexualOrientation:
+        widget.controllers['sexualOrientation']!.addListener(_validateField);
       case PersonalFieldType.birthDate:
         // BirthDateEditor usa callback direto, não precisa de listeners
       case PersonalFieldType.locality:
@@ -103,6 +106,8 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
         widget.controllers['bio']!.removeListener(_validateField);
       case PersonalFieldType.gender:
         widget.controllers['gender']!.removeListener(_validateField);
+      case PersonalFieldType.sexualOrientation:
+        widget.controllers['sexualOrientation']!.removeListener(_validateField);
       case PersonalFieldType.birthDate:
         // BirthDateEditor usa callback direto, não precisa remover listeners
       case PersonalFieldType.locality:
@@ -126,6 +131,8 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
         isValid = widget.controllers['bio']!.text.trim().isNotEmpty;
       case PersonalFieldType.gender:
         isValid = widget.controllers['gender']!.text.trim().isNotEmpty;
+      case PersonalFieldType.sexualOrientation:
+        isValid = widget.controllers['sexualOrientation']!.text.trim().isNotEmpty;
       case PersonalFieldType.birthDate:
         isValid = _selectedBirthDate != null;
       // Campos não obrigatórios sempre válidos
@@ -212,6 +219,11 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
       case PersonalFieldType.gender:
         return GenderEditor(
           controller: widget.controllers['gender']!,
+        );
+
+      case PersonalFieldType.sexualOrientation:
+        return SexualOrientationEditor(
+          controller: widget.controllers['sexualOrientation']!,
         );
 
       case PersonalFieldType.birthDate:

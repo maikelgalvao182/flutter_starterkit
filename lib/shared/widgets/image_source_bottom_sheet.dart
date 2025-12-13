@@ -82,12 +82,10 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
                     label: i18n.translate('camera'),
                     onTap: () async {
                       if (_processing) return;
-                      context.pop();
-                      await Future.delayed(const Duration(milliseconds: 80));
-                      if (!mounted) return;
                       setState(() => _processing = true);
                       try {
                         await _getImageFromCamera();
+                        if (mounted) context.pop();
                       } finally {
                         if (mounted) setState(() => _processing = false);
                       }
@@ -99,12 +97,10 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
                     label: i18n.translate('gallery'),
                     onTap: () async {
                       if (_processing) return;
-                      context.pop();
-                      await Future.delayed(const Duration(milliseconds: 80));
-                      if (!mounted) return;
                       setState(() => _processing = true);
                       try {
                         await _getImageFromGallery();
+                        if (mounted) context.pop();
                       } finally {
                         if (mounted) setState(() => _processing = false);
                       }

@@ -43,6 +43,7 @@ class AppRoutes {
   static const String advancedFilters = '/advanced-filters';
   static const String schedule = '/schedule';
   static const String groupInfo = '/group-info';
+  static const String splash = '/splash';
 }
 
 /// Cria o GoRouter com proteção baseada no AuthSyncService
@@ -51,14 +52,16 @@ GoRouter createAppRouter(BuildContext context) {
   debugPrint('🛣️ createAppRouter() CHAMADO');
   debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
+  final authSync = Provider.of<AuthSyncService>(context, listen: false);
+
   return GoRouter(
-    initialLocation: AppRoutes.signIn,
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    refreshListenable: authSync, // Ouve mudanças no AuthSyncService
     
     // Proteção de rotas baseada no AuthSyncService
     redirect: (context, state) {
       try {
-        final authSync = Provider.of<AuthSyncService>(context, listen: false);
         final currentPath = state.uri.path;
         
         debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -74,13 +77,22 @@ GoRouter createAppRouter(BuildContext context) {
           return null;
         }
         
-        // Se ainda não inicializou, não navegar (aguardar)
+        // Se ainda não inicializou, força splash
         if (!authSync.initialized) {
           debugPrint('⏳ [GoRouter] Aguardando inicialização do AuthSyncService');
-          return null; // Bloqueia navegação até inicializar
+          return AppRoutes.splash;
         }
         
         debugPrint('✅ [GoRouter] AuthSyncService inicializado, processando redirect...');
+
+        // Se está na splash e já inicializou, decide para onde ir
+        if (currentPath == AppRoutes.splash) {
+          if (authSync.isLoggedIn) {
+            return AppRoutes.home;
+          } else {
+            return AppRoutes.signIn;
+          }
+        }
         
         // Rotas públicas (não necessitam autenticação)
         final publicRoutes = [
@@ -89,6 +101,7 @@ GoRouter createAppRouter(BuildContext context) {
           AppRoutes.forgotPassword,
           AppRoutes.signupWizard,
           AppRoutes.signupSuccess,
+          AppRoutes.splash,
         ];
         
         final isLoggedIn = authSync.isLoggedIn;
@@ -161,6 +174,19 @@ GoRouter createAppRouter(BuildContext context) {
     GoRoute(
       path: AppRoutes.home,
       name: 'home',
+      builder: (context, state) {
+        // Suporte a deep linking para abas específicas: /home?tab=1
+        final tabParam = state.uri.queryParameters['tab'];
+        final initialIndex = tabParam != null ? int.tryParse(tabParam) ?? 0 : 0;
+        
+        return HomeScreenRefactored(initialIndex: initialIndex);
+      },
+    ),
+
+    // Splash Screen
+    GoRoute(
+      path: AppRoutes.splash,
+      name: 'splash',
       builder: (context, state) => const SplashScreen(),
     ),
     

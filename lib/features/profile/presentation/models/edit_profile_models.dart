@@ -30,6 +30,7 @@ class ProfileFormData {
     this.jobTitle = '',
     this.school = '',
     this.gender,
+    this.sexualOrientation,
     this.birthDay,
     this.birthMonth,
     this.birthYear,
@@ -58,6 +59,7 @@ class ProfileFormData {
   final String jobTitle;
   final String school;
   final String? gender;
+  final String? sexualOrientation;
   final int? birthDay;
   final int? birthMonth;
   final int? birthYear;
@@ -86,6 +88,7 @@ class ProfileFormData {
     String? jobTitle,
     String? school,
     String? gender,
+    String? sexualOrientation,
     int? birthDay,
     int? birthMonth,
     int? birthYear,
@@ -114,6 +117,7 @@ class ProfileFormData {
       jobTitle: jobTitle ?? this.jobTitle,
       school: school ?? this.school,
       gender: gender ?? this.gender,
+      sexualOrientation: sexualOrientation ?? this.sexualOrientation,
       birthDay: birthDay ?? this.birthDay,
       birthMonth: birthMonth ?? this.birthMonth,
       birthYear: birthYear ?? this.birthYear,

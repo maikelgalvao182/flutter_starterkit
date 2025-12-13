@@ -349,21 +349,9 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
         return;
       }
 
-      // Busca o status atualizado da sessão
-      final session = await DiditVerificationService.instance
-          .getSession(sessionId);
-
-      if (session == null) {
-        AppLogger.error('Sessão não encontrada: $sessionId', tag: _tag);
-        return;
-      }
-
-      // Processa resultado
-      if (session.status == 'completed') {
-        await _handleVerificationSuccess(session.result ?? {});
-      } else if (session.status == 'failed') {
-        _handleVerificationError(session.result);
-      }
+      // O status da sessão já é observado via watchSession
+      // Apenas loga o callback recebido
+      AppLogger.info('Callback processado para sessão: $sessionId', tag: _tag);
     } catch (e, stackTrace) {
       AppLogger.error(
         'Erro ao processar callback: $e',

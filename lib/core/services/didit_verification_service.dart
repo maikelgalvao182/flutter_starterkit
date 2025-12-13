@@ -191,12 +191,7 @@ class DiditVerificationService {
           vendorData: vendorData ?? userId,
         );
 
-        // Salva no Firestore
-        await _firestore
-            .collection('DiditSessions')
-            .doc(sessionId)
-            .set(session.toFirestore());
-
+        // ✅ REMOVIDO: Não salva em DiditSessions - usar estado local
         AppLogger.info('Sessão criada com sucesso: $sessionId', tag: _tag);
         return session;
       } else {
@@ -217,32 +212,12 @@ class DiditVerificationService {
     }
   }
   
-  /// Busca uma sessão existente
-  Future<DiditSession?> getSession(String sessionId) async {
-    try {
-      final doc = await _firestore
-          .collection('DiditSessions')
-          .doc(sessionId)
-          .get();
-      
-      if (!doc.exists) {
-        AppLogger.warning('Sessão não encontrada: $sessionId', tag: _tag);
-        return null;
-      }
-      
-      return DiditSession.fromFirestore(doc);
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        'Erro ao buscar sessão: $e',
-        tag: _tag,
-        error: e,
-        stackTrace: stackTrace,
-      );
-      return null;
-    }
-  }
+  // ✅ REMOVIDO: getSession - não precisamos mais consultar DiditSessions
   
-  /// Atualiza o status de uma sessão
+  // ✅ REMOVIDO: updateSessionStatus - webhook atualiza direto Users + FaceVerifications
+  
+  /// Método placeholder para compatibilidade (remover se não usado)
+  @deprecated
   Future<bool> updateSessionStatus({
     required String sessionId,
     required String status,
@@ -276,54 +251,27 @@ class DiditVerificationService {
     }
   }
   
-  /// Busca sessões de um usuário
-  Future<List<DiditSession>> getUserSessions(String userId) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('DiditSessions')
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .limit(10)
-          .get();
-      
-      return querySnapshot.docs
-          .map((doc) => DiditSession.fromFirestore(doc))
-          .toList();
-    } catch (e, stackTrace) {
-      AppLogger.error(
-        'Erro ao buscar sessões do usuário: $e',
-        tag: _tag,
-        error: e,
-        stackTrace: stackTrace,
-      );
-      return [];
-    }
-  }
+  // ✅ REMOVIDO: getUserSessions - histórico pode ser consultado via FaceVerifications
   
-  /// Verifica se o usuário tem uma sessão pendente
-  Future<DiditSession?> getPendingSession(String userId) async {
+  // ✅ REMOVIDO: getPendingSession - estado local no Flutter é suficiente
+  
+  /// Verifica se usuário já foi verificado (via FaceVerifications)
+  Future<bool> isAlreadyVerified(String userId) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('DiditSessions')
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: 'pending')
-          .orderBy('createdAt', descending: true)
-          .limit(1)
+      final doc = await _firestore
+          .collection('FaceVerifications')
+          .doc(userId)
           .get();
       
-      if (querySnapshot.docs.isEmpty) {
-        return null;
-      }
-      
-      return DiditSession.fromFirestore(querySnapshot.docs.first);
+      return doc.exists && doc.data()?['status'] == 'verified';
     } catch (e, stackTrace) {
       AppLogger.error(
-        'Erro ao buscar sessão pendente: $e',
+        'Erro ao verificar se usuário já foi verificado: $e',
         tag: _tag,
         error: e,
         stackTrace: stackTrace,
       );
-      return null;
+      return false;
     }
   }
   

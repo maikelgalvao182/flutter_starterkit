@@ -11,9 +11,6 @@ class ProfileInfoChips extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Location chip
-          ProfileLocationChip(),
-          SizedBox(width: 8),
           // Visits chip
           ProfileVisitsChip(),
         ],

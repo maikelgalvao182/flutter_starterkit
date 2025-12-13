@@ -12,6 +12,7 @@ class PersonalTab extends StatelessWidget {
     required this.jobController,
     required this.bioController,
     required this.genderController,
+    required this.sexualOrientationController,
     required this.birthDayController,
     required this.birthMonthController,
     required this.birthYearController,
@@ -33,6 +34,7 @@ class PersonalTab extends StatelessWidget {
   final TextEditingController jobController;
   final TextEditingController bioController;
   final TextEditingController genderController;
+  final TextEditingController sexualOrientationController;
   final TextEditingController birthDayController;
   final TextEditingController birthMonthController;
   final TextEditingController birthYearController;
@@ -60,6 +62,7 @@ class PersonalTab extends StatelessWidget {
       'job': jobController,
       'bio': bioController,
       'gender': genderController,
+      'sexualOrientation': sexualOrientationController,
       'birthDay': birthDayController,
       'birthMonth': birthMonthController,
       'birthYear': birthYearController,
@@ -115,6 +118,15 @@ class PersonalTab extends StatelessWidget {
           fieldType: PersonalFieldType.gender,
           preview: _formatGenderPreview(context),
           onTap: () => _openFieldEditor(context, PersonalFieldType.gender),
+        ),
+
+        // Sexual Orientation
+        FieldPreviewCard(
+          fieldType: PersonalFieldType.sexualOrientation,
+          preview: sexualOrientationController.text.isEmpty 
+              ? 'Não informado' 
+              : sexualOrientationController.text,
+          onTap: () => _openFieldEditor(context, PersonalFieldType.sexualOrientation),
         ),
 
         // Birth Date (Read-only - não pode ser alterado)

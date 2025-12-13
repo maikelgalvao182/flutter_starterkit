@@ -51,18 +51,13 @@ class ProfileVisitsChip extends StatelessWidget {
               color: Colors.black,
             ),
             const SizedBox(width: 6),
-            Builder(
-              builder: (context) {
-                final i18n = LocalizationService.of(context);
-                return Text(
-                  i18n.translate('profile_visits') ?? 'Visitas',
-                  style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                    color: Colors.black,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                );
-              }
+            Text(
+              'Visitas recebidas',
+              style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+                color: Colors.black,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
             const SizedBox(width: 4),
             StreamBuilder<int>(

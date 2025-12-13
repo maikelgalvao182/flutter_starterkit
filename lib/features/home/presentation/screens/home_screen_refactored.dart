@@ -14,22 +14,16 @@ import 'package:partiu/features/conversations/state/conversations_viewmodel.dart
 import 'package:provider/provider.dart';
 
 
+import 'package:partiu/core/services/app_initializer_service.dart';
+
 /// Tela principal do app com navegação por tabs
 class HomeScreenRefactored extends StatefulWidget {
   const HomeScreenRefactored({
     super.key, 
     this.initialIndex = 0,
-    required this.mapViewModel,
-    required this.peopleRankingViewModel,
-    required this.locationsRankingViewModel,
-    required this.conversationsViewModel,
   });
 
   final int initialIndex;
-  final MapViewModel mapViewModel;
-  final PeopleRankingViewModel peopleRankingViewModel;
-  final RankingViewModel locationsRankingViewModel;
-  final ConversationsViewModel conversationsViewModel;
 
   @override
   State<HomeScreenRefactored> createState() => _HomeScreenRefactoredState();
@@ -37,6 +31,7 @@ class HomeScreenRefactored extends StatefulWidget {
 
 class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   int _selectedIndex = 0;
+  bool _initialized = false;
 
   // Lazy loading das páginas - instancia apenas quando necessário
   final List<Widget?> _pages = List<Widget?>.filled(5, null);
@@ -45,16 +40,40 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    // Carregar página inicial
-    _ensurePage(_selectedIndex);
     
-    // ❌ DESATIVADO: Listener automático de pending reviews
-    // Agora os reviews aparecem na ActionsTab como cards
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   if (mounted) {
-    //     PendingReviewsListenerService.instance.startListening(context);
-    //   }
-    // });
+    // Inicializar dados em background
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+    });
+  }
+
+  Future<void> _initializeData() async {
+    if (_initialized) return;
+    
+    final mapViewModel = Provider.of<MapViewModel>(context, listen: false);
+    final peopleRankingViewModel = Provider.of<PeopleRankingViewModel>(context, listen: false);
+    final locationsRankingViewModel = Provider.of<RankingViewModel>(context, listen: false);
+    final conversationsViewModel = Provider.of<ConversationsViewModel>(context, listen: false);
+
+    // Definir instância global (legado)
+    PeopleRankingViewModel.instance = peopleRankingViewModel;
+
+    final initializer = AppInitializerService(
+      mapViewModel,
+      peopleRankingViewModel,
+      locationsRankingViewModel,
+      conversationsViewModel,
+    );
+    
+    initializer.initialize().catchError((e) {
+      debugPrint('Erro na inicialização em background: $e');
+    });
+
+    setState(() {
+      _initialized = true;
+      // Carregar página inicial após ter acesso aos providers
+      _ensurePage(_selectedIndex);
+    });
   }
 
   /// Garante que a página está instanciada
@@ -67,19 +86,20 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   Widget _buildPage(int index) {
     switch (index) {
       case 0:
-        return DiscoverTab(mapViewModel: widget.mapViewModel);
+        return Consumer<MapViewModel>(
+          builder: (context, mapViewModel, _) => DiscoverTab(mapViewModel: mapViewModel),
+        );
       case 1:
         return const ActionsTab();
       case 2:
-        return RankingTab(
-          peopleRankingViewModel: widget.peopleRankingViewModel,
-          locationsRankingViewModel: widget.locationsRankingViewModel,
+        return Consumer2<PeopleRankingViewModel, RankingViewModel>(
+          builder: (context, peopleRanking, locationsRanking, _) => RankingTab(
+            peopleRankingViewModel: peopleRanking,
+            locationsRankingViewModel: locationsRanking,
+          ),
         );
       case 3:
-        return ChangeNotifierProvider<ConversationsViewModel>.value(
-          value: widget.conversationsViewModel,
-          child: const ConversationsTab(),
-        );
+        return const ConversationsTab();
       case 4:
         return const ProfileTab();
       default:
@@ -118,7 +138,7 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   void dispose() {
     // ❌ DESATIVADO: Listener automático removido
     // PendingReviewsListenerService.instance.stopListening();
-    widget.mapViewModel.dispose();
+    // widget.mapViewModel.dispose(); // Agora gerenciado pelo Provider
     super.dispose();
   }
 

@@ -12,6 +12,7 @@ class ProfileFormData {
   final String? bio;
   final String? jobTitle;
   final String? gender;
+  final String? sexualOrientation;
   
   // Data de nascimento
   final int? birthDay;
@@ -61,6 +62,7 @@ class ProfileFormData {
     this.bio,
     this.jobTitle,
     this.gender,
+    this.sexualOrientation,
     this.birthDay,
     this.birthMonth,
     this.birthYear,
@@ -86,6 +88,7 @@ class ProfileFormData {
     String? bio,
     String? jobTitle,
     String? gender,
+    String? sexualOrientation,
     int? birthDay,
     int? birthMonth,
     int? birthYear,
@@ -109,6 +112,7 @@ class ProfileFormData {
       bio: bio ?? this.bio,
       jobTitle: jobTitle ?? this.jobTitle,
       gender: gender ?? this.gender,
+      sexualOrientation: sexualOrientation ?? this.sexualOrientation,
       birthDay: birthDay ?? this.birthDay,
       birthMonth: birthMonth ?? this.birthMonth,
       birthYear: birthYear ?? this.birthYear,
@@ -136,6 +140,7 @@ class ProfileFormData {
       bio: data['userBio'] as String?,
       jobTitle: data['userJobTitle'] as String?,
       gender: data['userGender'] as String?,
+      sexualOrientation: data['sexualOrientation'] as String?,
       birthDay: data['userBirthDay'] as int?,
       birthMonth: data['userBirthMonth'] as int?,
       birthYear: data['userBirthYear'] as int?,
@@ -164,6 +169,7 @@ class ProfileFormData {
     if (bio != null) map['userBio'] = bio;
     if (jobTitle != null) map['userJobTitle'] = jobTitle;
     if (gender != null) map['userGender'] = gender;
+    if (sexualOrientation != null) map['sexualOrientation'] = sexualOrientation;
     if (birthDay != null) map['userBirthDay'] = birthDay;
     if (birthMonth != null) map['userBirthMonth'] = birthMonth;
     if (birthYear != null) map['userBirthYear'] = birthYear;

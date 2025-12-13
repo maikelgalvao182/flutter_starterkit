@@ -109,6 +109,7 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
         bio: currentUser.bio ?? '',
         jobTitle: currentUser.jobTitle ?? '',
         gender: currentUser.gender,
+        sexualOrientation: currentUser.sexualOrientation,
         birthDay: currentUser.birthDay,
         birthMonth: currentUser.birthMonth,
         birthYear: currentUser.birthYear,
@@ -320,6 +321,9 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
       if (data.jobTitle.isNotEmpty) updateData['jobTitle'] = data.jobTitle.trim();
       if (data.school.isNotEmpty) updateData['school'] = data.school.trim();
       if (data.gender != null) updateData['gender'] = data.gender;
+      if (data.sexualOrientation != null && data.sexualOrientation!.isNotEmpty) {
+        updateData['sexualOrientation'] = data.sexualOrientation!.trim();
+      }
       if (data.birthDay != null) updateData['birthDay'] = data.birthDay;
       if (data.birthMonth != null) updateData['birthMonth'] = data.birthMonth;
       if (data.birthYear != null) updateData['birthYear'] = data.birthYear;
@@ -378,8 +382,8 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
       // Permitindo que ProfileTab recalcule a completude em tempo real
       await _authRepository.fetchCurrentUserFromFirestore();
       
-      // Sucesso
-      _lastCommand = SaveProfileSuccessCommand();
+      // Sucesso  
+      _lastCommand = SaveProfileSuccessCommand(messageKey: 'profile_updated_successfully');
       _state = EditProfileStateLoaded(
         formData: data,
         selectedTabIndex: selectedTabIndex,

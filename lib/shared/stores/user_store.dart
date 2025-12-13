@@ -15,6 +15,7 @@ class UserEntry {
     this.birthdate,
     this.age,
     this.gender,
+    this.sexualOrientation,
     this.bio,
     this.jobTitle,
     this.isVerified = false,
@@ -35,6 +36,7 @@ class UserEntry {
   DateTime? birthdate;
   int? age;
   String? gender;
+  String? sexualOrientation;
   String? bio;
   String? jobTitle;
   
@@ -435,6 +437,7 @@ class UserStore {
     final name = userData['fullName'] as String?;
     final bio = userData['bio'] as String?;
     final gender = userData['gender'] as String?;
+    final sexualOrientation = userData['sexualOrientation'] as String?;
     final jobTitle = userData['jobTitle'] as String?;
 
     // Verificação de booleano
@@ -506,6 +509,7 @@ class UserStore {
       name: name,
       age: age,
       gender: gender,
+      sexualOrientation: sexualOrientation,
       bio: bio,
       jobTitle: jobTitle,
       avatarUrl: newAvatarUrl ?? '',

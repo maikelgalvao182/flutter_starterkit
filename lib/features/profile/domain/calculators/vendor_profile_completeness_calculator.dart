@@ -5,7 +5,7 @@ import 'package:partiu/core/utils/app_logger.dart';
 /// Calculadora de completude específica para Fornecedores (Vendors)
 /// 
 /// Avalia completude baseado em:
-/// - Personal Tab: Avatar, Nome, Bio, Gênero, Data de Nascimento, Localização, País, Idiomas, Instagram, Job Title
+/// - Personal Tab: Avatar, Nome, Bio, Gênero, Orientação Sexual, Data de Nascimento, Localização, País, Idiomas, Instagram, Job Title
 /// - Interests Tab: Interesses selecionados
 /// - Gallery Tab: Fotos da galeria
 class VendorProfileCompletenessCalculator implements IProfileCompletenessCalculator {
@@ -17,10 +17,11 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
   static const int _nameW = 10;             // Obrigatório
   static const int _bioW = 10;              // Obrigatório
   static const int _genderW = 5;            // Obrigatório
+  static const int _sexualOrientationW = 3; // Opcional
   static const int _birthDateW = 5;         // Obrigatório
-  static const int _locationW = 5;          // Localização (locality)
-  static const int _countryW = 5;           // País
-  static const int _languagesW = 5;         // Idiomas
+  static const int _locationW = 4;          // Localização (locality) - reduzido
+  static const int _countryW = 4;           // País - reduzido
+  static const int _languagesW = 4;         // Idiomas - reduzido
   static const int _instagramW = 5;         // Instagram
   static const int _jobTitleW = 5;          // Profissão
   
@@ -63,14 +64,21 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
       AppLogger.debug('Missing Gender', tag: _tag);
     }
     
-    // 5. Data de Nascimento (5)
+    // 5. Orientação Sexual (3) - Opcional
+    if (user.userSexualOrientation.isNotEmpty) {
+      score += _sexualOrientationW;
+    } else {
+      AppLogger.debug('Missing Sexual Orientation (optional)', tag: _tag);
+    }
+    
+    // 6. Data de Nascimento (5)
     if (user.userBirthDay > 0 && user.userBirthMonth > 0 && user.userBirthYear > 0) {
       score += _birthDateW;
     } else {
       AppLogger.debug('Missing Birth Date', tag: _tag);
     }
     
-    // 6. Localização (5)
+    // 7. Localização (4)
     final hasLocation = user.userLocality.isNotEmpty || ((user.userState ?? '').isNotEmpty);
     if (hasLocation) {
       score += _locationW;
@@ -78,28 +86,28 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
       AppLogger.debug('Missing Location', tag: _tag);
     }
     
-    // 7. País (5)
+    // 8. País (4)
     if (user.userCountry.isNotEmpty) {
       score += _countryW;
     } else {
       AppLogger.debug('Missing Country', tag: _tag);
     }
     
-    // 8. Idiomas (5)
+    // 9. Idiomas (4)
     if (user.languages != null && user.languages!.isNotEmpty) {
       score += _languagesW;
     } else {
       AppLogger.debug('Missing Languages', tag: _tag);
     }
     
-    // 9. Instagram (5)
+    // 10. Instagram (5)
     if (user.userInstagram != null && user.userInstagram!.isNotEmpty) {
       score += _instagramW;
     } else {
       AppLogger.debug('Missing Instagram', tag: _tag);
     }
     
-    // 10. Job Title (5)
+    // 11. Job Title (5)
     if (user.userJobTitle.isNotEmpty) {
       score += _jobTitleW;
     } else {
@@ -107,11 +115,11 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
     }
     
     // === INTERESTS TAB ===
-    // 11. Interesses (Max 15) - Progressivo
+    // 12. Interesses (Max 15) - Progressivo
     score += _calculateInterestsScore(user);
     
     // === GALLERY TAB ===
-    // 12. Photos (Max 15) - Progressivo
+    // 13. Photos (Max 15) - Progressivo
     score += _calculatePhotosScore(user);
     
     AppLogger.info('Total Score: $score%', tag: _tag);
@@ -173,6 +181,7 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
       'name': user.userFullname.isNotEmpty ? _nameW : 0,
       'bio': user.userBio.isNotEmpty ? _bioW : 0,
       'gender': user.userGender.isNotEmpty ? _genderW : 0,
+      'sexualOrientation': user.userSexualOrientation.isNotEmpty ? _sexualOrientationW : 0,
       'birthDate': hasBirth ? _birthDateW : 0,
       'location': hasLocation ? _locationW : 0,
       'country': user.userCountry.isNotEmpty ? _countryW : 0,
