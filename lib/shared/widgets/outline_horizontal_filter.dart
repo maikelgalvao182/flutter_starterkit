@@ -24,7 +24,7 @@ class OutlineHorizontalFilter extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: padding,
       itemCount: values.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 10),
+      separatorBuilder: (_, __) => const SizedBox(width: 4),
       itemBuilder: (_, i) {
         final item = values[i];
         final isSelected = item == selected;
@@ -32,18 +32,21 @@ class OutlineHorizontalFilter extends StatelessWidget {
         return GestureDetector(
           onTap: () => onSelected(isSelected ? null : item),
           child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(100),
               border: Border.all(
-                color: isSelected ? GlimpseColors.primary : GlimpseColors.borderColorLight,
+                color: isSelected ? GlimpseColors.primaryColorLight : GlimpseColors.borderColorLight,
                 width: 1.5,
               ),
-              color: isSelected ? GlimpseColors.primary.withOpacity(0.08) : Colors.transparent,
+              color: isSelected ? GlimpseColors.lightTextField : Colors.transparent,
             ),
             child: Text(
               item,
-              style: isSelected ? TextStyles.filterSelected : TextStyles.filterDefault,
+              style: isSelected 
+                  ? TextStyles.filterSelected.copyWith(color: GlimpseColors.primaryColorLight)
+                  : TextStyles.filterDefault,
             ),
           ),
         );

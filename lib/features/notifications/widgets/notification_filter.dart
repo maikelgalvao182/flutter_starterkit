@@ -30,7 +30,7 @@ class NotificationFilter extends StatelessWidget {
         padding: padding,
         physics: const BouncingScrollPhysics(),
         itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, __) => const SizedBox(width: 4),
         itemBuilder: (_, i) => _NotificationChipButton(
           title: items[i],
           selected: selectedIndex == i,

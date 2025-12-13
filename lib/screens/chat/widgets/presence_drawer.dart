@@ -172,6 +172,7 @@ class _PresenceDrawerState extends State<PresenceDrawer> {
                         userId: userId,
                         presence: presence,
                         myInterests: _myInterests,
+                        index: index,
                       );
                     } catch (e, stack) {
                       debugPrint('❌ Erro ao renderizar item $index: $e');
@@ -197,11 +198,13 @@ class _PresenceUserCard extends StatefulWidget {
     required this.userId,
     required this.presence,
     required this.myInterests,
+    this.index,
   });
 
   final String userId;
   final String presence;
   final List<String> myInterests;
+  final int? index;
 
   @override
   State<_PresenceUserCard> createState() => _PresenceUserCardState();
@@ -256,6 +259,7 @@ class _PresenceUserCardState extends State<_PresenceUserCard> {
       userId: widget.userId,
       user: _user,
       trailingWidget: _PresenceBadge(presence: widget.presence),
+      index: widget.index,
     );
   }
 }

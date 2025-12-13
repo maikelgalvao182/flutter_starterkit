@@ -6,7 +6,7 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/home/data/models/user_ranking_model.dart';
 import 'package:partiu/shared/widgets/animated_expandable.dart';
-import 'package:partiu/shared/widgets/badge_chip.dart';
+import 'package:partiu/shared/widgets/badge_card.dart';
 import 'package:partiu/shared/widgets/criteria_bars.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
@@ -336,17 +336,19 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
         
         // Badges com scroll horizontal
         SizedBox(
-          height: 28,
+          height: 120,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: sortedBadges.length,
             separatorBuilder: (context, index) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final entry = sortedBadges[index];
-              return BadgeChip(
-                badgeKey: entry.key,
-                count: entry.value,
-                showCount: true,
+              return SizedBox(
+                width: 115,
+                child: BadgeCard(
+                  badgeKey: entry.key,
+                  count: entry.value,
+                ),
               );
             },
           ),

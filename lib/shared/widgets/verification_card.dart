@@ -147,8 +147,8 @@ class _BackgroundIcon extends StatelessWidget {
       bottom: 16,
       child: SvgPicture.asset(
         'assets/svg/face.svg',
-        width: 80,
-        height: 80,
+        width: 70,
+        height: 70,
         fit: BoxFit.contain,
         colorFilter: const ColorFilter.mode(
           Colors.white,

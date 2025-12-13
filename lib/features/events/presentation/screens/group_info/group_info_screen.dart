@@ -201,6 +201,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                       child: UserCard(
                         key: ValueKey(userId),
                         userId: userId,
+                        index: index,
                       ),
                     );
                   }
@@ -211,6 +212,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     child: SwipeableMemberCard(
                       key: ValueKey(userId),
                       userId: userId,
+                      index: index,
                       deleteLabel: i18n.translate('remove'),
                       onDelete: () {
                         // Exibe dialog de confirmação para remover
@@ -230,6 +232,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                   child: UserCard(
                     key: ValueKey(userId),
                     userId: userId,
+                    index: index,
                   ),
                 );
               },

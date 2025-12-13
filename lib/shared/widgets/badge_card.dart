@@ -21,7 +21,7 @@ class BadgeCard extends StatelessWidget {
     if (badge == null) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: badge.color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -32,6 +32,7 @@ class BadgeCard extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Emoji com contador sobreposto
           Stack(
@@ -64,20 +65,27 @@ class BadgeCard extends StatelessWidget {
             ],
           ),
           
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           
           // Título
-          Text(
-            badge.title,
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: GlimpseColors.primaryColorLight,
+          SizedBox(
+            height: 32,
+            child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                badge.title,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: GlimpseColors.primaryColorLight,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

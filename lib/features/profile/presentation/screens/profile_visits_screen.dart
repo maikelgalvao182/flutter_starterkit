@@ -95,6 +95,7 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
                   user: visitor,
                   userId: visitor.userId,
                   overallRating: visitor.overallRating,
+                  index: index,
                 );
               },
               separatorBuilder: (context, index) => const SizedBox(height: 16),

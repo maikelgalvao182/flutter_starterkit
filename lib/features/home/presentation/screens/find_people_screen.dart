@@ -208,6 +208,7 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                         userId: user.userId,
                         user: user,
                         overallRating: user.overallRating,
+                        index: index,
                         onTap: () {
                           // TODO: Navegar para perfil do usuário
                         },

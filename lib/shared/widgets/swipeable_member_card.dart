@@ -41,6 +41,7 @@ class SwipeableMemberCard extends StatelessWidget {
     this.deleteLabel = 'Remover',
     this.child,
     this.onTap,
+    this.index,
     super.key,
   });
 
@@ -49,6 +50,7 @@ class SwipeableMemberCard extends StatelessWidget {
   final String deleteLabel;
   final Widget? child;
   final VoidCallback? onTap;
+  final int? index;
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +116,7 @@ class SwipeableMemberCard extends StatelessWidget {
           child: child ?? UserCard(
             userId: userId,
             onTap: onTap,
+            index: index,
           ),
         ),
       ),
