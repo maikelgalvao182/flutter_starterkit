@@ -28,9 +28,17 @@ export const onReviewCreated = functions.firestore
         return;
       }
 
+      // Template: newReviewReceived
+      const ratingStr = overallRating.toFixed(1);
+      const body = `${reviewerName} te avaliou com ${ratingStr} estrelas!`;
+
       await sendPush({
         userId: revieweeId,
         event: "new_review_received",
+        notification: {
+          title: "Nova avaliação ⭐️",
+          body: body,
+        },
         data: {
           reviewId: reviewId,
           reviewerName: reviewerName,

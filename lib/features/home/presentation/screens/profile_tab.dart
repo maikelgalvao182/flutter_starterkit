@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,8 +18,11 @@ import 'package:partiu/shared/widgets/skeletons/profile_header_skeleton.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/verification_card.dart';
+import 'package:partiu/shared/widgets/image_source_bottom_sheet.dart';
 import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/profile_tab_view_model.dart';
+import 'package:partiu/features/profile/presentation/viewmodels/edit_profile_view_model_refactored.dart' as vm;
+import 'package:partiu/features/profile/presentation/models/edit_profile_models.dart';
 import 'package:partiu/features/profile/presentation/widgets/profile_info_chips.dart';
 import 'package:partiu/features/profile/presentation/widgets/app_section_card.dart';
 import 'package:partiu/features/profile/presentation/screens/profile_screen_router.dart';
@@ -230,6 +234,82 @@ class _ProfileHeaderContent extends StatelessWidget {
   final TextStyle nameTextStyle;
   final VoidCallback onEditProfile;
 
+  /// Handler para upload de foto de perfil
+  Future<void> _handlePhotoUpload(BuildContext context) async {
+    final i18n = AppLocalizations.of(context);
+    
+    try {
+      // Abre bottom sheet para seleção de foto
+      await showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (BuildContext context) {
+          return ImageSourceBottomSheet(
+            onImageSelected: (file) async {
+              // Upload da imagem
+              await _uploadProfilePhoto(context, file);
+            },
+            cropToSquare: true,
+            minWidth: 800,
+            minHeight: 800,
+            quality: 85,
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ Error selecting photo: $e');
+      if (context.mounted) {
+        ToastService.showError(
+          message: i18n.translate('error_selecting_photo') ?? 'Erro ao selecionar foto',
+        );
+      }
+    }
+  }
+
+  /// Faz upload da foto de perfil
+  Future<void> _uploadProfilePhoto(BuildContext context, File imageFile) async {
+    final i18n = AppLocalizations.of(context);
+    
+    try {
+      // Mostra loading
+      if (context.mounted) {
+        ToastService.showInfo(
+          message: i18n.translate('uploading_photo') ?? 'Enviando foto...',
+        );
+      }
+
+      // Faz upload usando EditProfileViewModel
+      final serviceLocator = DependencyProvider.of(context).serviceLocator;
+      final editViewModel = serviceLocator.get<vm.EditProfileViewModelRefactored>();
+      
+      final result = await editViewModel.handleUpdatePhoto(imageFile);
+      
+      if (result is PhotoUploadResultSuccess) {
+        if (context.mounted) {
+          ToastService.showSuccess(
+            message: i18n.translate('photo_updated_successfully') ?? 'Foto atualizada com sucesso!',
+          );
+        }
+      } else if (result is PhotoUploadResultFailure) {
+        if (context.mounted) {
+          ToastService.showError(
+            message: result.errorDetails ?? (i18n.translate('error_updating_photo') ?? 'Erro ao atualizar foto'),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error uploading photo: $e');
+      if (context.mounted) {
+        ToastService.showError(
+          message: i18n.translate('error_updating_photo') ?? 'Erro ao atualizar foto',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = viewModel.currentUser;
@@ -265,7 +345,8 @@ class _ProfileHeaderContent extends StatelessWidget {
                     size: 88,
                     borderRadius: const BorderRadius.all(Radius.circular(10)),
                     photoUrl: currentUser.photoUrl,
-                    enableNavigation: true,
+                    enableNavigation: false,
+                    onTap: () => _handlePhotoUpload(context),
                   ),
                 );
               },

@@ -9,10 +9,14 @@ import 'package:iconsax/iconsax.dart';
 class ProfilePhotoComponent extends StatelessWidget {
 
   const ProfilePhotoComponent({
-    required this.userId, required this.onTap, super.key,
+    required this.userId, 
+    required this.onTap, 
+    super.key,
+    this.photoUrl,
     this.isUploading = false,
   });
   final String userId;
+  final String? photoUrl;
   final VoidCallback onTap;
   final bool isUploading;
 
@@ -31,9 +35,10 @@ class ProfilePhotoComponent extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 // Circular avatar with stable base
+                // Key muda quando photoUrl muda para forçar rebuild
                 ClipOval(
                   child: StableAvatar(
-                    key: ValueKey('profile-$userId'),
+                    key: ValueKey('profile-$userId-${photoUrl ?? ""}'),
                     userId: userId,
                     size: EditProfileStyles.profilePhotoSize,
                     borderRadius: const BorderRadius.all(

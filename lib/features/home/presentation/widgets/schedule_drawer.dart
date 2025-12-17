@@ -17,9 +17,20 @@ import 'package:partiu/shared/widgets/animated_expandable.dart';
 
 /// Bottom sheet para seleção de data e horário da atividade
 class ScheduleDrawer extends StatefulWidget {
-  const ScheduleDrawer({super.key, this.coordinator});
+  const ScheduleDrawer({
+    super.key, 
+    this.coordinator,
+    this.initialDate,
+    this.initialTimeType,
+    this.initialTime,
+    this.editMode = false,
+  });
 
   final CreateFlowCoordinator? coordinator;
+  final DateTime? initialDate;
+  final TimeType? initialTimeType;
+  final DateTime? initialTime;
+  final bool editMode;
 
   @override
   State<ScheduleDrawer> createState() => _ScheduleDrawerState();
@@ -32,6 +43,20 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
   void initState() {
     super.initState();
     _controller = ScheduleDrawerController();
+    
+    // Inicializar com valores se estiver em modo de edição
+    if (widget.editMode) {
+      if (widget.initialDate != null) {
+        _controller.setDate(widget.initialDate!);
+      }
+      if (widget.initialTimeType != null) {
+        _controller.setTimeType(widget.initialTimeType!);
+      }
+      if (widget.initialTime != null) {
+        _controller.setTime(widget.initialTime!);
+      }
+    }
+    
     _controller.addListener(_onControllerChanged);
   }
 
@@ -50,6 +75,12 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
 
   void _handleContinue() async {
     if (!_controller.canContinue) return;
+
+    // Se estiver em modo de edição, apenas retornar os valores
+    if (widget.editMode) {
+      Navigator.of(context).pop(_controller.getScheduleData());
+      return;
+    }
 
     // Salvar dados no coordinator
     if (widget.coordinator != null) {
@@ -206,7 +237,7 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // Texto informativo
               Padding(
@@ -229,7 +260,9 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: GlimpseButton(
-                  text: AppLocalizations.of(context).translate('continue'),
+                  text: widget.editMode 
+                      ? AppLocalizations.of(context).translate('save')
+                      : AppLocalizations.of(context).translate('continue'),
                   onPressed: _controller.canContinue ? _handleContinue : null,
                 ),
               ),

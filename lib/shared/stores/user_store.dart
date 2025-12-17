@@ -119,6 +119,12 @@ class UserStore {
   
   // Subscriptions do Firestore
   final Map<String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>> _subscriptions = {};
+  
+  // ✅ Notifier para broadcast de invalidação de avatar (usado por markers do mapa)
+  final ValueNotifier<String?> _avatarInvalidationNotifier = ValueNotifier<String?>(null);
+  
+  /// Getter para escutar invalidações de avatar
+  ValueNotifier<String?> get avatarInvalidationNotifier => _avatarInvalidationNotifier;
 
   // Placeholder (empty real) e placeholder de loading (transparente)
   static const _emptyAvatar = AssetImage('assets/images/avatar/default_avatar.png');
@@ -357,6 +363,10 @@ class UserStore {
         AvatarState.loaded,
         newProvider,
       );
+      
+      // ✅ CRÍTICO: Notificar invalidação de avatar para listeners externos
+      // (ex: GoogleMapView para regenerar markers)
+      _avatarInvalidationNotifier.value = userId;
     }
   }
 

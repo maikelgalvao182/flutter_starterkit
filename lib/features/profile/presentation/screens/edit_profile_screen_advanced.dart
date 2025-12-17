@@ -9,6 +9,7 @@ import 'package:partiu/features/profile/presentation/tabs/personal_tab.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/edit_profile_view_model_refactored.dart' as vm;
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/shared/repositories/auth_repository.dart';
+import 'package:partiu/shared/widgets/image_source_bottom_sheet.dart';
 import 'package:partiu/features/auth/presentation/widgets/specialty_selector_widget.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -245,9 +246,10 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   /// Executa comando de sucesso ao salvar
   void _handleSaveSuccess(SaveProfileSuccessCommand command) {
     final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(command.messageKey);
     
     ToastService.showSuccess(
-      message: i18n.translate(command.messageKey) ?? 'Salvo com sucesso!',
+      message: translated.isNotEmpty ? translated : 'Salvo com sucesso!',
     );
     
     // Removido redirecionamento - usuário permanece na tela após salvar
@@ -257,9 +259,10 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   /// Executa comando de erro ao salvar
   void _handleSaveError(SaveProfileErrorCommand command) {
     final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(command.messageKey);
     
     ToastService.showError(
-      message: i18n.translate(command.messageKey) ?? 'Erro ao salvar',
+      message: translated.isNotEmpty ? translated : 'Erro ao salvar',
     );
   }
   
@@ -276,10 +279,10 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     
     // Fallback para valores padrão se tradução não funcionar
-    final displayTitle = title.isNotEmpty ? title : i18n.translate('photo_updated_successfully');
+    final displayTitle = title.isNotEmpty ? title : 'Foto atualizada com sucesso!';
     final displaySubtitle = subtitle.isNotEmpty && subtitle != subtitleKey 
         ? subtitle 
-        : i18n.translate('photo_updated_successfully_subtitle');
+        : '';
     
     
     // [OK] Invalida cache de markers do mapa para refletir nova foto
@@ -308,27 +311,29 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   /// Executa comando de erro ao atualizar foto
   void _handlePhotoUpdateError(UpdatePhotoErrorCommand command) {
     final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(command.messageKey);
     
     ToastService.showError(
-      message: i18n.translate(command.messageKey) ?? 'Erro ao atualizar foto',
+      message: translated.isNotEmpty ? translated : 'Erro ao atualizar foto',
     );
   }
   
   /// Executa comando de feedback genérico
   void _showFeedback(ShowFeedbackCommand command) {
     final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(command.messageKey);
     
     if (command.isError) {
       ToastService.showError(
-        message: i18n.translate(command.messageKey) ?? 'Erro',
+        message: translated.isNotEmpty ? translated : 'Erro',
       );
     } else if (command.isSuccess) {
       ToastService.showSuccess(
-        message: i18n.translate(command.messageKey) ?? 'Sucesso!',
+        message: translated.isNotEmpty ? translated : 'Sucesso!',
       );
     } else {
       ToastService.showInfo(
-        message: i18n.translate(command.messageKey) ?? 'Informação',
+        message: translated.isNotEmpty ? translated : 'Informação',
       );
     }
   }
@@ -336,10 +341,11 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   /// Executa comando de validação falhou
   void _handleValidationFailed(ValidationFailedCommand command) {
     final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(command.messageKey);
     
     // Mostra toast genérico
     ToastService.showError(
-      message: i18n.translate(command.messageKey) ?? 'Validação falhou',
+      message: translated.isNotEmpty ? translated : 'Validação falhou',
     );
     
     // Poderia destacar campos com erro na UI aqui
@@ -355,22 +361,42 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   /// Handler: Salvar perfil
   /// [OK] View constrói ProfileFormData a partir dos controllers locais
   Future<void> _handleSave() async {
+    debugPrint('🔵 [EditProfileScreen] _handleSave() iniciado');
+    
     final viewModel = context.read<vm.EditProfileViewModelRefactored>();
     
     // 1. Valida Form localmente
+    debugPrint('🔵 [EditProfileScreen] Validando form...');
     if (!_formKey.currentState!.validate()) {
+      debugPrint('❌ [EditProfileScreen] Validação do form falhou');
       final i18n = AppLocalizations.of(context);
+      final translated = i18n.translate('please_fill_required_fields');
       ToastService.showError(
-        message: i18n.translate('please_fill_required_fields') ?? 'Preencha os campos obrigatórios',
+        message: translated.isNotEmpty ? translated : 'Preencha os campos obrigatórios',
       );
       return;
     }
     
+    debugPrint('✅ [EditProfileScreen] Form validado com sucesso');
+    
     // 2. Constrói ProfileFormData dos controllers
+    debugPrint('🔵 [EditProfileScreen] Construindo ProfileFormData...');
     final formData = _buildFormDataFromControllers(viewModel);
+    debugPrint('✅ [EditProfileScreen] ProfileFormData construído:');
+    debugPrint('   - fullname: ${formData.fullname}');
+    debugPrint('   - bio: ${formData.bio}');
+    debugPrint('   - instagram: ${formData.instagram}');
+    debugPrint('   - jobTitle: ${formData.jobTitle}');
     
     // 3. Envia ao ViewModel para salvar (fluxo unidirecional)
-    await viewModel.handleSaveProfile(formData);
+    debugPrint('🔵 [EditProfileScreen] Chamando viewModel.handleSaveProfile()...');
+    try {
+      await viewModel.handleSaveProfile(formData);
+      debugPrint('✅ [EditProfileScreen] viewModel.handleSaveProfile() completado');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [EditProfileScreen] Erro ao chamar handleSaveProfile: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
     // Command será processado automaticamente via listener
   }
   
@@ -422,14 +448,35 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   }
   
   /// Handler: Atualizar foto de perfil
-  /// [OK] Apenas delega ao ViewModel - toda lógica foi abstraída
+  /// Abre bottom sheet para seleção com crop, depois faz upload
   Future<void> _handleUpdateProfilePhoto() async {
-    final viewModel = context.read<vm.EditProfileViewModelRefactored>();
-    
-    // ViewModel encapsula toda a lógica (ImagePicker, Crop, Upload)
-    await viewModel.handleUpdateProfilePhoto();
-    
-    // Command será processado automaticamente via listener
+    try {
+      // Abre bottom sheet para seleção de foto com crop
+      final viewModel = context.read<vm.EditProfileViewModelRefactored>();
+      
+      await showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (BuildContext context) {
+          return ImageSourceBottomSheet(
+            onImageSelected: (file) async {
+              // Upload da imagem já cropada
+              await viewModel.handleUpdatePhoto(file);
+              // Command será processado automaticamente via listener
+            },
+            cropToSquare: true,
+            minWidth: 800,
+            minHeight: 800,
+            quality: 85,
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ Error selecting photo: $e');
+    }
   }
 
   @override
@@ -609,9 +656,11 @@ class _ProfilePhotoSection extends StatelessWidget {
     return Consumer<vm.EditProfileViewModelRefactored>(
       builder: (context, viewModel, _) {
         final isUploading = viewModel.state is EditProfileStateUpdatingPhoto;
+        final photoUrl = viewModel.currentPhotoUrl;
         
         return ProfilePhotoComponent(
           userId: viewModel.userId,
+          photoUrl: photoUrl,
           onTap: onTap,
           isUploading: isUploading,
         );

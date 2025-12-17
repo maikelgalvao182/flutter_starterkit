@@ -113,6 +113,7 @@ class MapViewModel extends ChangeNotifier {
     _eventsSubscription = _eventRepository.getEventsStream().listen(
       (events) async {
         debugPrint('🔄 MapViewModel: Stream recebeu ${events.length} eventos');
+        debugPrint('📋 IDs dos eventos: ${events.map((e) => e.id).join(", ")}');
         
         // Obter localização atual
         if (_lastLocation == null) {
@@ -137,6 +138,8 @@ class MapViewModel extends ChangeNotifier {
           _events = events;
         }
         
+        debugPrint('📊 MapViewModel: ${_events.length} eventos após filtros');
+        
         // Enriquecer com distância e disponibilidade
         await _enrichEvents();
         
@@ -144,6 +147,7 @@ class MapViewModel extends ChangeNotifier {
         await _generateGoogleMarkers();
         
         debugPrint('✅ MapViewModel: Stream processado - ${_events.length} eventos, ${_googleMarkers.length} markers');
+        debugPrint('🔔 Chamando notifyListeners() para atualizar UI...');
         notifyListeners();
       },
       onError: (error) {

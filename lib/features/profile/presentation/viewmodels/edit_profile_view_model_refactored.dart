@@ -5,7 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:partiu/shared/repositories/auth_repository.dart';
 import 'package:partiu/features/profile/presentation/models/edit_profile_models.dart';
 import 'package:partiu/features/profile/presentation/models/edit_profile_commands.dart';
-import 'package:partiu/shared/stores/avatar_store.dart';
+import 'package:partiu/shared/stores/avatar_store.dart' as avatar_store;
+import 'package:partiu/shared/stores/user_store.dart';
 
 /// ViewModel para EditProfileScreen seguindo padrão MVVM com Command Pattern
 /// 
@@ -234,15 +235,11 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
   
   /// Valida formulário baseado nos requisitos do Partiu
   /// 
-  /// Campos obrigatórios:
-  /// - Bio obrigatório
+  /// Campos opcionais - validações apenas para formato
   ValidationResult validateForm(ProfileFormData data) {
     final errors = <String, String>{};
     
-    // Bio é obrigatório
-    if (data.bio.trim().isEmpty) {
-      errors['bio'] = 'bio_required';
-    }
+    // Bio é opcional - sem validação de obrigatoriedade
     
     // Validação de email se preenchido
     if (data.email != null && data.email!.isNotEmpty) {
@@ -259,11 +256,9 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
   
   /// Valida campo específico
   String? validateField(String fieldName, String? value) {
+    // Bio é opcional, não retorna erro se vazio
     if (value == null || value.trim().isEmpty) {
-      return switch (fieldName) {
-        'bio' => 'bio_required',
-        _ => null,
-      };
+      return null; // Todos os campos são opcionais
     }
     
     // Validações específicas por campo
@@ -286,13 +281,22 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
   /// Processa salvamento do perfil
   /// Retorna SaveResult para View processar
   Future<SaveResult> handleSaveProfile(ProfileFormData data) async {
+    debugPrint('🟢 [EditProfileViewModel] handleSaveProfile() iniciado');
+    
     if (isLoading) {
+      debugPrint('⚠️ [EditProfileViewModel] Já há operação em andamento');
       return const SaveResultFailure(messageKey: 'operation_in_progress');
     }
     
     // Validação dos dados
+    debugPrint('🟢 [EditProfileViewModel] Validando dados...');
     final validation = validateForm(data);
     if (validation is ValidationResultInvalid) {
+      debugPrint('❌ [EditProfileViewModel] Validação falhou:');
+      validation.fieldErrors.forEach((field, error) {
+        debugPrint('   - $field: $error');
+      });
+      
       _lastCommand = ValidationFailedCommand(
         fieldErrors: validation.fieldErrors,
       );
@@ -301,7 +305,10 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
       return const SaveResultFailure(messageKey: 'validation_failed');
     }
     
+    debugPrint('✅ [EditProfileViewModel] Dados validados com sucesso');
+    
     // Iniciar salvamento
+    debugPrint('🟢 [EditProfileViewModel] Mudando estado para Saving...');
     _state = EditProfileStateSaving(formData: data);
     _lastCommand = null;
     notifyListeners();
@@ -309,11 +316,15 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
     try {
       final userId = _authRepository.currentUser?.userId;
       
+      debugPrint('🟢 [EditProfileViewModel] userId: $userId');
+      
       if (userId == null || userId.isEmpty) {
+        debugPrint('❌ [EditProfileViewModel] userId não encontrado');
         throw Exception('user_id_not_found');
       }
       
       // Criar mapa com os dados atualizados usando os nomes de campo modernos
+      debugPrint('🟢 [EditProfileViewModel] Construindo updateData...');
       final updateData = <String, dynamic>{};
       
       if (data.fullname != null) updateData['fullName'] = data.fullname!.trim();
@@ -374,15 +385,25 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
         updateData['languages'] = data.languages!.trim();
       }
       
+      debugPrint('🟢 [EditProfileViewModel] updateData construído com ${updateData.length} campos');
+      updateData.forEach((key, value) {
+        debugPrint('   - $key: $value');
+      });
+      
       // Atualizar perfil via AuthRepository
+      debugPrint('🟢 [EditProfileViewModel] Chamando _authRepository.updateUserProfile()...');
       await _authRepository.updateUserProfile(updateData);
+      debugPrint('✅ [EditProfileViewModel] updateUserProfile() completado');
       
       // ✅ CRÍTICO: Recarregar dados atualizados do Firestore
       // Isso atualiza SessionManager e AppState.currentUser
       // Permitindo que ProfileTab recalcule a completude em tempo real
+      debugPrint('🟢 [EditProfileViewModel] Recarregando dados do Firestore...');
       await _authRepository.fetchCurrentUserFromFirestore();
+      debugPrint('✅ [EditProfileViewModel] Dados recarregados do Firestore');
       
       // Sucesso  
+      debugPrint('✅ [EditProfileViewModel] Salvamento concluído com sucesso!');
       _lastCommand = SaveProfileSuccessCommand(messageKey: 'profile_updated_successfully');
       _state = EditProfileStateLoaded(
         formData: data,
@@ -392,7 +413,10 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
       
       return const SaveResultSuccess();
       
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ [EditProfileViewModel] Erro ao salvar perfil: $e');
+      debugPrint('Stack trace: $stackTrace');
+      
       final errorCommand = SaveProfileErrorCommand(
         messageKey: 'save_profile_error',
         errorDetails: e.toString(),
@@ -415,7 +439,8 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
   // ==================== UPDATE PHOTO ====================
   
   /// Processa atualização de foto de perfil (avatar)
-  /// Com seleção de imagem, compressão e upload
+  /// DEPRECADO: Use handleUpdatePhoto(File) após seleção via ImageSourceBottomSheet
+  @Deprecated('Use handleUpdatePhoto(File) com ImageSourceBottomSheet na UI')
   Future<PhotoUploadResult> handleUpdateProfilePhoto() async {
     if (isLoading) {
       return const PhotoUploadResultFailure(messageKey: 'operation_in_progress');
@@ -438,39 +463,7 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
       
       final originalFile = File(picked.path);
       
-      // Validar tamanho da imagem (15MB)
-      final imageSize = await originalFile.length();
-      const maxImageSize = 15 * 1024 * 1024;
-      if (imageSize > maxImageSize) {
-        final sizeMB = (imageSize / (1024 * 1024)).toStringAsFixed(1);
-        return PhotoUploadResultFailure(
-          messageKey: 'image_too_large',
-          errorDetails: 'Imagem muito grande (${sizeMB}MB). Máximo permitido: 15MB.',
-        );
-      }
-      
-      // 2. Iniciar estado de upload (mostra spinner)
-      _state = EditProfileStateUpdatingPhoto(formData: currentData);
-      _lastCommand = null;
-      notifyListeners();
-      
-      // 3. Upload da foto via AuthRepository (que faz compressão automática)
-      final newPhotoUrl = await _authRepository.uploadProfilePhoto(originalFile);
-      
-      // 4. Recarregar dados atualizados do Firestore após upload de foto
-      await _authRepository.fetchCurrentUserFromFirestore();
-      
-      // ✅ CRÍTICO: Invalidar cache de avatar para forçar reload da imagem
-      final userId = _authRepository.currentUser?.userId;
-      if (userId != null && userId.isNotEmpty) {
-        AvatarStore.instance.invalidateAndReload(userId);
-      }
-      
-      _lastCommand = UpdatePhotoSuccessCommand(newPhotoUrl: newPhotoUrl);
-      _state = EditProfileStateLoaded(formData: currentData);
-      notifyListeners();
-      
-      return PhotoUploadResultSuccess(photoUrl: newPhotoUrl);
+      return await handleUpdatePhoto(originalFile);
       
     } catch (e) {
       final errorCommand = UpdatePhotoErrorCommand(
@@ -492,36 +485,46 @@ class EditProfileViewModelRefactored extends ChangeNotifier {
     }
   }
   
-  /// Processa atualização de foto (método legacy mantido para compatibilidade)
-  /// Retorna PhotoUploadResult para View processar
-  /// Emite Commands via lastCommand
+  /// Processa upload de foto já selecionada e processada
+  /// Usado após seleção via ImageSourceBottomSheet (com crop)
   Future<PhotoUploadResult> handleUpdatePhoto(File imageFile) async {
     if (isLoading) {
       return const PhotoUploadResultFailure(messageKey: 'operation_in_progress');
     }
     
     final currentData = _getCurrentFormData();
-    _state = EditProfileStateUpdatingPhoto(formData: currentData);
-    _lastCommand = null;
-    notifyListeners();
     
     try {
-      if (!await imageFile.exists()) {
-        throw Exception('file_not_found');
+      // Validar tamanho da imagem (15MB)
+      final imageSize = await imageFile.length();
+      const maxImageSize = 15 * 1024 * 1024;
+      if (imageSize > maxImageSize) {
+        final sizeMB = (imageSize / (1024 * 1024)).toStringAsFixed(1);
+        return PhotoUploadResultFailure(
+          messageKey: 'image_too_large',
+          errorDetails: 'Imagem muito grande (${sizeMB}MB). Máximo permitido: 15MB.',
+        );
       }
       
-      // Upload da foto via AuthRepository
+      // 1. Iniciar estado de upload (mostra spinner)
+      _state = EditProfileStateUpdatingPhoto(formData: currentData);
+      _lastCommand = null;
+      notifyListeners();
+      
+      // 2. Upload da foto via AuthRepository (que faz compressão automática)
       final newPhotoUrl = await _authRepository.uploadProfilePhoto(imageFile);
       
-      // ✅ CRÍTICO: Recarregar dados atualizados do Firestore após upload de foto
-      // Isso atualiza SessionManager e AppState.currentUser com a nova foto
-      // Permitindo que ProfileTab e ProfileCompletenessRing atualizem em tempo real
+      // 3. Recarregar dados atualizados do Firestore após upload de foto
       await _authRepository.fetchCurrentUserFromFirestore();
       
       // ✅ CRÍTICO: Invalidar cache de avatar para forçar reload da imagem
       final userId = _authRepository.currentUser?.userId;
       if (userId != null && userId.isNotEmpty) {
-        AvatarStore.instance.invalidateAndReload(userId);
+        avatar_store.AvatarStore.instance.invalidateAndReload(userId);
+        
+        // ✅ CRÍTICO: Notificar UserStore para atualizar avatar em tempo real
+        // Isso garante que markers do mapa e event cards sejam atualizados
+        UserStore.instance.preloadAvatar(userId, newPhotoUrl);
       }
       
       _lastCommand = UpdatePhotoSuccessCommand(newPhotoUrl: newPhotoUrl);

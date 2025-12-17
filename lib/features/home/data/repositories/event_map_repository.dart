@@ -20,8 +20,22 @@ class EventMapRepository {
         .collection('events')
         .where('isActive', isEqualTo: true)
         .where('status', isEqualTo: 'active')
-        .snapshots()
+        .snapshots(includeMetadataChanges: true) // ⬅️ Incluir mudanças de metadata para detectar sync
         .map((snapshot) {
+      debugPrint('🔄 [EventMapRepository] Snapshot source: ${snapshot.metadata.isFromCache ? "CACHE" : "SERVER"}');
+      debugPrint('🔄 [EventMapRepository] Snapshot changes: ${snapshot.docChanges.length}');
+      
+      // Log das mudanças (added, modified, removed)
+      for (final change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.removed) {
+          debugPrint('🗑️ [EventMapRepository] Evento REMOVIDO: ${change.doc.id}');
+        } else if (change.type == DocumentChangeType.added) {
+          debugPrint('➕ [EventMapRepository] Evento ADICIONADO: ${change.doc.id}');
+        } else if (change.type == DocumentChangeType.modified) {
+          debugPrint('✏️ [EventMapRepository] Evento MODIFICADO: ${change.doc.id}');
+        }
+      }
+      
       final events = <EventModel>[];
       
       for (final doc in snapshot.docs) {

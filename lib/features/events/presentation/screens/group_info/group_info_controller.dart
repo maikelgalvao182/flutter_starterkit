@@ -8,12 +8,15 @@ import 'package:partiu/dialogs/common_dialogs.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
 import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
+import 'package:partiu/features/home/presentation/widgets/schedule_drawer.dart';
+import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/screens/chat/services/event_application_removal_service.dart';
 import 'package:partiu/screens/chat/services/event_deletion_service.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
@@ -391,6 +394,101 @@ class GroupInfoController extends ChangeNotifier {
     }
   }
 
+  void showEditScheduleDialog(BuildContext context) async {
+    if (!isCreator) return;
+
+    // Determine initial values from _eventData
+    final date = eventDate;
+    final timeStr = eventTime;
+    
+    TimeType initialTimeType = TimeType.flexible;
+    DateTime? initialTime;
+    
+    if (timeStr != null && timeStr.isNotEmpty) {
+      initialTimeType = TimeType.specific;
+      // Parse time string "HH:mm" to DateTime
+      final parts = timeStr.split(':');
+      if (parts.length == 2) {
+        final now = DateTime.now();
+        initialTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
+      }
+    }
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ScheduleDrawer(
+        coordinator: null,
+        initialDate: date,
+        initialTimeType: initialTimeType,
+        initialTime: initialTime,
+        editMode: true,
+      ),
+    );
+
+    if (result != null) {
+      final newDate = result['date'] as DateTime;
+      final newTimeType = result['timeType'] as TimeType;
+      final newTime = result['time'] as DateTime?;
+      
+      if (context.mounted) {
+        await _updateEventSchedule(context, newDate, newTimeType, newTime);
+      }
+    }
+  }
+
+  Future<void> _updateEventSchedule(BuildContext context, DateTime date, TimeType timeType, DateTime? time) async {
+    final i18n = AppLocalizations.of(context);
+    final progressDialog = ProgressDialog(context);
+
+    try {
+      progressDialog.show(i18n.translate('updating'));
+
+      final schedule = <String, dynamic>{
+        'date': Timestamp.fromDate(date),
+      };
+      
+      if (timeType == TimeType.specific && time != null) {
+        final hour = time.hour.toString().padLeft(2, '0');
+        final minute = time.minute.toString().padLeft(2, '0');
+        schedule['time'] = '$hour:$minute';
+      } else {
+        schedule['time'] = null;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('events')
+          .doc(eventId)
+          .update({'schedule': schedule});
+
+      // Update local data
+      if (_eventData != null) {
+        _eventData!['schedule'] = schedule;
+        // Convert Timestamp back to DateTime for local usage if needed, 
+        // but getters handle Timestamp/DateTime/Map correctly
+      }
+      notifyListeners();
+
+      await progressDialog.hide();
+
+      if (context.mounted) {
+        ToastService.showSuccess(
+          message: i18n.translate('event_schedule_updated') ?? 'Data atualizada com sucesso!',
+        );
+      }
+    } catch (e) {
+      await progressDialog.hide();
+      debugPrint('❌ Error updating event schedule: $e');
+
+      if (context.mounted) {
+        ToastService.showError(
+          message: i18n.translate('failed_to_update_event_schedule') ?? 'Erro ao atualizar data',
+        );
+      }
+    }
+  }
+
   void showRemoveParticipantDialog(
     BuildContext context,
     String userId,
@@ -418,30 +516,63 @@ class GroupInfoController extends ChangeNotifier {
     );
   }
 
-  void showDeleteEventDialog(BuildContext context) {
-    if (!isCreator) return;
+  Future<bool> deleteEvent(BuildContext context) async {
+    if (!isCreator) return false;
 
     final i18n = AppLocalizations.of(context);
+    
     final progressDialog = ProgressDialog(context);
     final deletionService = EventDeletionService();
 
-    deletionService.handleDeleteEvent(
-      context: context,
-      eventId: eventId,
-      i18n: i18n,
-      progressDialog: progressDialog,
-      onSuccess: () {
-        // Navega até a raiz (DiscoverTab/HomeScreen)
+    try {
+      progressDialog.show(i18n.translate('deleting_event'));
+      
+      final success = await deletionService.deleteEvent(eventId);
+      
+      await progressDialog.hide();
+      
+      if (success && context.mounted) {
+        ToastService.showSuccess(
+          message: i18n.translate('event_deleted_successfully'),
+        );
+        
+        // ⚠️ IMPORTANTE: Fechar TODAS as telas e ir para home
+        // Primeiro, pop até a raiz (remove Chat e GroupInfo da pilha)
+        debugPrint('🏠 Evento deletado! Navegando para home...');
+        
+        // Usar Navigator para pop até a raiz e depois go para home
         if (context.mounted) {
+          // Pop todas as rotas até a raiz
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          
+          // Agora navegar para home com tab 0
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
-              // Força a navegação para a tab 0 (Discover)
-              context.go(Uri(path: AppRoutes.home, queryParameters: {'tab': '0'}).toString());
+              debugPrint('🏠 Executando context.go para home...');
+              context.go('${AppRoutes.home}?tab=0');
             }
           });
         }
-      },
-    );
+        
+        return true;
+      } else if (context.mounted) {
+        ToastService.showError(
+          message: i18n.translate('failed_to_delete_event'),
+        );
+        return false;
+      }
+    } catch (e) {
+      await progressDialog.hide();
+      debugPrint('❌ Error deleting event: $e');
+      
+      if (context.mounted) {
+        ToastService.showError(
+          message: i18n.translate('failed_to_delete_event'),
+        );
+      }
+      return false;
+    }
+    return false;
   }
 
   void showLeaveEventDialog(BuildContext context) {

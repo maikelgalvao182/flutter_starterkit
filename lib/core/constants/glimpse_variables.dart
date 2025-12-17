@@ -394,7 +394,7 @@ const List<ActivitySuggestion> activitySuggestions = [
   ActivitySuggestion('🎳', 'Jogar boliche'),
   ActivitySuggestion('🎱', 'Jogar sinuca'),
   ActivitySuggestion('🏓', 'Jogar ping-pong'),
-  ActivitySuggestion('⛳', 'Mini-golfe'),
+  ActivitySuggestion('⛳', 'Jogar Mini-golfe'),
 
   // Passeios
   ActivitySuggestion('🚗', 'Dar uma volta pela cidade'),

@@ -69,7 +69,7 @@ class EditProfileStyles {
   );
   
   static BoxDecoration get cameraButtonDecoration => BoxDecoration(
-    color: GlimpseColors.primary,
+    color: GlimpseColors.primaryColorLight,
     borderRadius: BorderRadius.circular(cameraButtonRadius),
     border: Border.all(color: Colors.white, width: cameraButtonBorderWidth),
     boxShadow: [

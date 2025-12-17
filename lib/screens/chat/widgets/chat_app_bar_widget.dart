@@ -26,6 +26,8 @@ import 'package:partiu/screens/chat/widgets/user_presence_status_widget.dart';
 import 'package:partiu/shared/widgets/glimpse_action_menu_button.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_widgets.dart';
+import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
+import 'package:partiu/core/services/toast_service.dart';
 
 class ChatAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   const ChatAppBarWidget({
@@ -103,22 +105,71 @@ class ChatAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   }
 
   /// Handler para deletar evento (apenas criador)
-  void _handleDeleteEvent(BuildContext context, ChatAppBarController controller) {
+  Future<void> _handleDeleteEvent(BuildContext context, ChatAppBarController controller) async {
     if (!controller.isEvent) return;
     
+    final i18n = AppLocalizations.of(context);
+    
+    // Buscar nome do evento
+    String eventName = i18n.translate('this_event');
+    try {
+      final eventDoc = await FirebaseFirestore.instance
+          .collection('events')
+          .doc(controller.eventId)
+          .get();
+      
+      if (eventDoc.exists) {
+        eventName = eventDoc.data()?['activityText'] as String? ?? eventName;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erro ao buscar nome do evento: $e');
+    }
+    
+    if (!context.mounted) return;
+    
+    // Mostrar dialog de confirmação
+    final confirmed = await GlimpseCupertinoDialog.showDestructive(
+      context: context,
+      title: i18n.translate('delete_event'),
+      message: i18n.translate('delete_event_confirmation')
+          .replaceAll('{event}', eventName),
+      destructiveText: i18n.translate('delete'),
+      cancelText: i18n.translate('cancel'),
+    );
+    
+    if (confirmed != true || !context.mounted) return;
+    
+    final progressDialog = ProgressDialog(context);
     final eventDeletionService = EventDeletionService();
     
-    eventDeletionService.handleDeleteEvent(
-      context: context,
-      eventId: controller.eventId,
-      i18n: AppLocalizations.of(context),
-      progressDialog: ProgressDialog(context),
-      onSuccess: () {
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
-    );
+    try {
+      progressDialog.show(i18n.translate('deleting_event'));
+      
+      final success = await eventDeletionService.deleteEvent(controller.eventId);
+      
+      await progressDialog.hide();
+      
+      if (!context.mounted) return;
+      
+      if (success) {
+        ToastService.showSuccess(
+          message: i18n.translate('event_deleted_successfully'),
+        );
+        Navigator.of(context).pop();
+      } else {
+        ToastService.showError(
+          message: i18n.translate('failed_to_delete_event'),
+        );
+      }
+    } catch (e) {
+      await progressDialog.hide();
+      
+      if (!context.mounted) return;
+      
+      ToastService.showError(
+        message: i18n.translate('failed_to_delete_event'),
+      );
+    }
   }
 
   /// Handler para remover aplicação do usuário no evento

@@ -731,9 +731,40 @@ async function sendUserNotification(
       return;
     }
 
+    // Template: systemAlert - mapear eventos RevenueCat para mensagens
+    let alertTitle = "Partiu";
+    let alertBody = "Você tem uma nova atualização";
+
+    switch (eventType) {
+    case "INITIAL_PURCHASE":
+      alertTitle = "Bem-vindo ao Premium! 🎉";
+      alertBody = "Sua assinatura foi ativada com sucesso";
+      break;
+    case "RENEWAL":
+      alertTitle = "Assinatura renovada ✅";
+      alertBody = "Sua assinatura foi renovada com sucesso";
+      break;
+    case "BILLING_ISSUE":
+      alertTitle = "Problema com pagamento ⚠️";
+      alertBody = "Verifique seus dados de pagamento";
+      break;
+    case "EXPIRATION":
+      alertTitle = "Assinatura expirada";
+      alertBody = "Sua assinatura Premium expirou";
+      break;
+    case "CANCELLATION":
+      alertTitle = "Assinatura cancelada";
+      alertBody = "Sua assinatura Premium foi cancelada";
+      break;
+    }
+
     await sendPush({
       userId: userId,
       event: "system_alert",
+      notification: {
+        title: alertTitle,
+        body: alertBody,
+      },
       data: {
         event_type: eventType,
         is_active: isActive.toString(),

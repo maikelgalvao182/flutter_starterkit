@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
@@ -12,6 +14,7 @@ import 'package:partiu/features/events/presentation/screens/group_info/widgets/m
 import 'package:partiu/features/events/presentation/screens/group_info/widgets/settings_widgets.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/core/services/toast_service.dart';
+import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/swipeable_member_card.dart';
@@ -91,6 +94,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                   participantCount: _controller.participantCount,
                   isCreator: _controller.isCreator,
                   onEditName: () => _controller.showEditNameDialog(context),
+                  onEditDate: () => _controller.showEditScheduleDialog(context),
                 ),
                 const SizedBox(height: 32),
                 _buildSettings(i18n),
@@ -244,7 +248,21 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
       text: i18n.translate('delete_activity'),
       backgroundColor: GlimpseColors.primary,
       textColor: Colors.white,
-      onTap: () => _controller.showDeleteEventDialog(context),
+      onTap: () async {
+        final confirmed = await GlimpseCupertinoDialog.showDestructive(
+          context: context,
+          title: i18n.translate('delete_event'),
+          message: i18n.translate('delete_event_confirmation')
+              .replaceAll('{event}', _controller.eventName),
+          destructiveText: i18n.translate('delete'),
+          cancelText: i18n.translate('cancel'),
+        );
+
+        if (confirmed == true && mounted) {
+          // Controller agora cuida da navegação após deleção bem-sucedida
+          await _controller.deleteEvent(context);
+        }
+      },
       height: 55,
     );
   }

@@ -148,10 +148,80 @@ export const onActivityNotificationCreated = functions.firestore
         break;
       }
 
+      // Montar notification baseado no template NotificationTemplates.dart
+      const activityName = pushData.activityName as string || "Atividade";
+      const emoji = pushData.emoji as string || "🎉";
+      const creatorName = (pushData.creatorName as string) ||
+        (pushData.n_sender_name as string) || "Alguém";
+
+      let notificationTitle = `${activityName} ${emoji}`;
+      let notificationBody = "Você tem uma nova atualização";
+
+      switch (nType) {
+      case "activity_created":
+        // Template: activityCreated
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody = `${creatorName} quer ${activityName}, bora?`;
+        break;
+
+      case "activity_heating_up":
+        // Template: activityHeatingUp
+        notificationTitle = "Atividade bombando!🔥";
+        notificationBody =
+          `As pessoas estão entrando na atividade de ${creatorName}! ` +
+          "Não fique de fora!";
+        break;
+
+      case "activity_join_request":
+        // Template: activityJoinRequest
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody =
+          `${pushData.requesterName || creatorName} pediu ` +
+          "para entrar na sua atividade";
+        break;
+
+      case "activity_join_approved":
+        // Template: activityJoinApproved
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody = "Você foi aprovado para participar!";
+        break;
+
+      case "activity_join_rejected":
+        // Template: activityJoinRejected
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody = "Seu pedido para entrar foi recusado";
+        break;
+
+      case "activity_new_participant":
+        // Template: activityNewParticipant
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody =
+          `${pushData.participantName || creatorName} ` +
+          "entrou na sua atividade!";
+        break;
+
+      case "activity_expiring_soon":
+        // Template: activityExpiringSoon
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody =
+          "Esta atividade está quase acabando. Última chance!";
+        break;
+
+      case "activity_canceled":
+        // Template: activityCanceled
+        notificationTitle = `${activityName} ${emoji}`;
+        notificationBody = "Esta atividade foi cancelada";
+        break;
+      }
+
       // Disparar push via gateway único (type guard garante segurança)
       await sendPush({
         userId: receiverId,
         event: nType,
+        notification: {
+          title: notificationTitle,
+          body: notificationBody,
+        },
         data: pushData,
         context: {
           groupId: pushData.activityId as string,

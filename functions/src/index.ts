@@ -361,12 +361,18 @@ export const onApplicationApproved = functions.firestore
 
       // Push notification para participantes existentes (exceto novo)
       const existingParticipants = participantIds.filter((id) => id !== userId);
+      const emoji = eventData.emoji || "🎉";
 
       if (existingParticipants.length > 0) {
         const promises = existingParticipants.map((participantId) =>
           sendPush({
             userId: participantId,
             event: "event_join",
+            // Template: activityNewParticipant
+            notification: {
+              title: `${activityText} ${emoji}`,
+              body: `${userName} entrou na sua atividade!`,
+            },
             data: {
               n_type: "event_join",
               sub_type: "event_join",
@@ -376,6 +382,7 @@ export const onApplicationApproved = functions.firestore
               userName: userName,
               activityText: activityText,
               eventTitle: activityText,
+              emoji: emoji,
             },
           })
         );

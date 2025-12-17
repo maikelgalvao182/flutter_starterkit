@@ -203,7 +203,23 @@ async function processEvent(
   const participantIds = applicationsSnapshot.docs.map(
     (doc) => doc.data().userId
   );
-  const userIds = [...new Set(participantIds)]; // Remover duplicatas
+
+  // ⚠️ IMPORTANTE: Filtrar o owner da lista de participantes
+  // O owner não pode avaliar a si mesmo
+  const filteredParticipantIds = participantIds.filter((id) => id !== ownerId);
+  const userIds = [...new Set(filteredParticipantIds)]; // Remover duplicatas
+
+  // Se não sobrou nenhum participante (owner era o único), não criar review
+  if (userIds.length === 0) {
+    await eventDoc.ref.update({
+      reviewsCreated: true,
+      reviewsCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log(
+      `✅ [PendingReviews] Evento ${eventId} - owner é o único, nada a avaliar`
+    );
+    return;
+  }
 
   // Firestore permite "in" com até 10 valores, então fazer em chunks
   const participantProfiles: Record<

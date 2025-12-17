@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
@@ -53,6 +54,20 @@ class AppInitializerService {
   Future<void> initialize() async {
     try {
       debugPrint('🚀 [AppInitializer] Iniciando bootstrap do app...');
+      
+      // 0. Aguarda autenticação estar completa antes de fazer qualquer query
+      final auth = FirebaseAuth.instance;
+      if (auth.currentUser != null) {
+        try {
+          // Força renovação do token para garantir que está válido
+          await auth.currentUser!.getIdToken(true);
+          debugPrint('✅ [AppInitializer] Token de autenticação renovado');
+        } catch (e) {
+          debugPrint('⚠️ [AppInitializer] Erro ao renovar token: $e');
+          // Aguarda um pouco e tenta novamente
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
       
       // 1. Inicializa o cache de bloqueios
       final currentUserId = AppState.currentUserId;
@@ -127,34 +142,50 @@ class AppInitializerService {
           final appRepo = EventApplicationRepository();
           
           // Busca eventos criados pelo usuário (limitado aos 5 mais recentes)
-          final myEventsSnapshot = await FirebaseFirestore.instance
-              .collection('events')
-              .where('createdBy', isEqualTo: currentUserId)
-              .orderBy('createdAt', descending: true)
-              .limit(5)
-              .get();
+          // ⚠️ Wrapped em try-catch para evitar permission-denied durante inicialização
+          QuerySnapshot<Map<String, dynamic>>? myEventsSnapshot;
+          QuerySnapshot<Map<String, dynamic>>? myApplicationsSnapshot;
+          
+          try {
+            myEventsSnapshot = await FirebaseFirestore.instance
+                .collection('events')
+                .where('createdBy', isEqualTo: currentUserId)
+                .orderBy('createdAt', descending: true)
+                .limit(5)
+                .get();
+          } catch (e) {
+            debugPrint('     ⚠️ Erro ao buscar eventos criados (auth pendente): $e');
+          }
               
           // Busca eventos que o usuário participa (limitado aos 5 mais recentes)
-          final myApplicationsSnapshot = await FirebaseFirestore.instance
-              .collection('EventApplications')
-              .where('userId', isEqualTo: currentUserId)
-              .where('status', whereIn: ['approved', 'autoApproved'])
-              .orderBy('appliedAt', descending: true)
-              .limit(5)
-              .get();
+          try {
+            myApplicationsSnapshot = await FirebaseFirestore.instance
+                .collection('EventApplications')
+                .where('userId', isEqualTo: currentUserId)
+                .where('status', whereIn: ['approved', 'autoApproved'])
+                .orderBy('appliedAt', descending: true)
+                .limit(5)
+                .get();
+          } catch (e) {
+            debugPrint('     ⚠️ Erro ao buscar applications (auth pendente): $e');
+          }
               
           final eventIds = <String>{};
           
           // Adiciona IDs dos eventos criados
-          for (var doc in myEventsSnapshot.docs) {
-            eventIds.add(doc.id);
+          if (myEventsSnapshot != null) {
+            for (var doc in myEventsSnapshot.docs) {
+              eventIds.add(doc.id);
+            }
           }
           
           // Adiciona IDs dos eventos que participa
-          for (var doc in myApplicationsSnapshot.docs) {
-            final data = doc.data();
-            if (data['eventId'] != null) {
-              eventIds.add(data['eventId'] as String);
+          if (myApplicationsSnapshot != null) {
+            for (var doc in myApplicationsSnapshot.docs) {
+              final data = doc.data();
+              if (data['eventId'] != null) {
+                eventIds.add(data['eventId'] as String);
+              }
             }
           }
           

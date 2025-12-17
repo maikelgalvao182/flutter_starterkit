@@ -15,6 +15,7 @@ import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart'
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
 import 'package:partiu/screens/chat/chat_screen_refactored.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 
 /// Widget de mapa Google Maps limpo e performático
 /// 
@@ -103,6 +104,11 @@ class GoogleMapViewState extends State<GoogleMapView> {
     MapNavigationService.instance.registerMapHandler(_handleEventNavigation);
     debugPrint('🗺️ GoogleMapView: Handler de navegação registrado');
     
+    // ✅ Listener para invalidação de avatares do UserStore
+    // Quando um avatar é atualizado, limpa cache e regenera markers
+    UserStore.instance.avatarInvalidationNotifier.addListener(_onAvatarInvalidated);
+    debugPrint('👤 GoogleMapView: Listener de invalidação de avatar registrado');
+    
     // Listener para atualizar markers quando eventos mudarem
     widget.viewModel.addListener(_onEventsChanged);
     
@@ -129,11 +135,45 @@ class GoogleMapViewState extends State<GoogleMapView> {
     }
   }
   
+  /// Callback quando um avatar é invalidado
+  /// 
+  /// Limpa cache do avatar e regenera markers
+  void _onAvatarInvalidated() async {
+    final invalidatedUserId = UserStore.instance.avatarInvalidationNotifier.value;
+    if (invalidatedUserId == null || invalidatedUserId.isEmpty) return;
+    
+    debugPrint('👤 GoogleMapView: Avatar invalidado para userId: $invalidatedUserId');
+    
+    // Limpar cache do avatar invalidado
+    _markerService.removeCachedAvatar(invalidatedUserId);
+    
+    // Regenerar markers se houver eventos
+    if (widget.viewModel.events.isNotEmpty) {
+      debugPrint('🔄 GoogleMapView: Regenerando markers após invalidação de avatar');
+      await _rebuildClusteredMarkers();
+    }
+  }
+  
   /// Callback quando eventos mudarem
   /// 
   /// Recalcula clusters baseado no zoom atual
   void _onEventsChanged() async {
-    if (!mounted || _isAnimating) return;
+    if (!mounted) {
+      debugPrint('⚠️ GoogleMapView._onEventsChanged: widget não montado, ignorando');
+      return;
+    }
+    
+    if (_isAnimating) {
+      debugPrint('⚠️ GoogleMapView._onEventsChanged: animação em progresso, ignorando');
+      return;
+    }
+    
+    final eventCount = widget.viewModel.events.length;
+    debugPrint('🔔 GoogleMapView._onEventsChanged: $eventCount eventos');
+    
+    if (eventCount > 0) {
+      debugPrint('📋 IDs: ${widget.viewModel.events.map((e) => e.id).take(5).join(", ")}...');
+    }
     
     await _rebuildClusteredMarkers();
   }
@@ -144,11 +184,33 @@ class GoogleMapViewState extends State<GoogleMapView> {
   /// - Quando eventos mudam (listener do ViewModel)
   /// - Quando zoom muda (onCameraIdle)
   Future<void> _rebuildClusteredMarkers() async {
-    if (!mounted || widget.viewModel.events.isEmpty) return;
+    if (!mounted) {
+      debugPrint('⚠️ _rebuildClusteredMarkers: widget não montado');
+      return;
+    }
+    
+    final eventCount = widget.viewModel.events.length;
+    final currentMarkerCount = _markers.length;
+    
+    debugPrint('🔄 _rebuildClusteredMarkers: $eventCount eventos, $currentMarkerCount markers atuais');
+    
+    // ⚠️ IMPORTANTE: Limpar markers quando não há eventos
+    if (eventCount == 0) {
+      if (currentMarkerCount > 0) {
+        debugPrint('🗑️ Limpando $currentMarkerCount markers da UI (0 eventos)');
+        setState(() {
+          _markers = {};
+        });
+        debugPrint('✅ Markers limpos com sucesso!');
+      } else {
+        debugPrint('ℹ️ Nenhum marker para limpar (já está vazio)');
+      }
+      return;
+    }
     
     final stopwatch = Stopwatch()..start();
     
-    debugPrint('🔲 GoogleMapView: Reconstruindo markers com clustering (zoom: ${_currentZoom.toStringAsFixed(1)})');
+    debugPrint('🔲 Reconstruindo markers com clustering (zoom: ${_currentZoom.toStringAsFixed(1)}, $eventCount eventos)');
     
     // Gerar markers clusterizados
     final markers = await _markerService.buildClusteredMarkers(
@@ -171,6 +233,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
       });
       stopwatch.stop();
       debugPrint('✅ GoogleMapView: ${_markers.length} markers clusterizados em ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('🗺️ Markers atualizados na UI');
     }
   }
 
@@ -550,6 +613,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
   @override
   void dispose() {
     widget.viewModel.removeListener(_onEventsChanged);
+    UserStore.instance.avatarInvalidationNotifier.removeListener(_onAvatarInvalidated);
     MapNavigationService.instance.unregisterMapHandler();
     debugPrint('🗺️ GoogleMapView: Handler de navegação removido');
     _markerService.clearCache(); // Limpar cache de markers e clusters

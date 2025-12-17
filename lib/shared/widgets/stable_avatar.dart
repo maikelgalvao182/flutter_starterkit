@@ -4,7 +4,7 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/services/cache/avatar_cache_service.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/common/state/app_state.dart';
-import 'package:partiu/shared/stores/avatar_store.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/core/models/user.dart';
 
@@ -52,22 +52,15 @@ class StableAvatar extends StatelessWidget {
       );
     }
 
-    // Verificar cache primeiro para otimização
-    final cachedUrl = photoUrl ?? AvatarCacheService.instance.getAvatarUrl(userId);
-    debugPrint('💾 StableAvatar - cachedUrl: $cachedUrl');
+    // Usar UserStore para reatividade global (sincroniza com edição de perfil)
+    final notifier = UserStore.instance.getAvatarEntryNotifier(userId);
     
-    final store = AvatarStore.instance;
-    final notifier = store.getAvatarEntryNotifier(userId);
-    
-    // Se já temos URL no cache, fornecer ao store após o build
-    if (cachedUrl != null && cachedUrl.isNotEmpty) {
-      debugPrint('✅ StableAvatar - preloadAvatar com cachedUrl: $cachedUrl');
-      // Usar addPostFrameCallback para evitar setState durante build
+    // Se photoUrl foi passado explicitamente, preload no UserStore
+    if (photoUrl != null && photoUrl!.isNotEmpty) {
+      debugPrint('✅ StableAvatar - preloadAvatar com photoUrl: $photoUrl');
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        store.preloadAvatar(userId, cachedUrl);
+        UserStore.instance.preloadAvatar(userId, photoUrl!);
       });
-    } else {
-      debugPrint('⚠️ StableAvatar - Nenhuma URL em cache para userId: $userId');
     }
 
     return _AvatarShell(
@@ -80,8 +73,8 @@ class StableAvatar extends StatelessWidget {
         child: ValueListenableBuilder(
           valueListenable: notifier,
           builder: (context, entry, _) {
-            final AvatarState state = entry.state;
-            final ImageProvider provider = entry.provider;
+            final state = entry.state;
+            final provider = entry.provider;
 
             debugPrint('🔄 StableAvatar ValueListenableBuilder - userId: $userId, state: $state');
             debugPrint('🔄 StableAvatar ValueListenableBuilder - provider: $provider');

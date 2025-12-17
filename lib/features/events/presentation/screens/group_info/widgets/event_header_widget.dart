@@ -17,6 +17,7 @@ class EventHeaderWidget extends StatelessWidget {
     required this.participantCount,
     required this.isCreator,
     required this.onEditName,
+    required this.onEditDate,
     super.key,
   });
 
@@ -27,6 +28,7 @@ class EventHeaderWidget extends StatelessWidget {
   final int participantCount;
   final bool isCreator;
   final VoidCallback onEditName;
+  final VoidCallback onEditDate;
 
   @override
   Widget build(BuildContext context) {
@@ -53,13 +55,32 @@ class EventHeaderWidget extends StatelessWidget {
         // Data e hora do evento
         if (formattedDate != null) ...[
           const SizedBox(height: 8),
-          Text(
-            formattedDate!,
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: GlimpseColors.textSubTitle,
+          GestureDetector(
+            onTap: isCreator ? onEditDate : null,
+            child: Container(
+              padding: isCreator 
+                  ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+                  : EdgeInsets.zero,
+              decoration: isCreator
+                  ? BoxDecoration(
+                      color: GlimpseColors.lightTextField,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.transparent, // Pode ser usado para hover/foco futuro
+                      ),
+                    )
+                  : null,
+              child: Text(
+                formattedDate!,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isCreator 
+                      ? GlimpseColors.primaryColorLight 
+                      : GlimpseColors.textSubTitle,
+                ),
+              ),
             ),
           ),
         ],
@@ -80,7 +101,7 @@ class EventHeaderWidget extends StatelessWidget {
   }
 }
 
-/// Widget interno - Nome do evento com ícone de edição
+/// Widget interno - Nome do evento
 class _EventNameRow extends StatelessWidget {
   const _EventNameRow({
     required this.eventName,
@@ -94,35 +115,37 @@ class _EventNameRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Flexible(
-          child: Text(
-            eventName,
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.primaryColorLight,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+    Widget nameText = Text(
+      eventName,
+      style: GoogleFonts.getFont(
+        FONT_PLUS_JAKARTA_SANS,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: GlimpseColors.primaryColorLight,
+      ),
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    if (isCreator) {
+      return GestureDetector(
+        onTap: onEditName,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: GlimpseColors.lightTextField,
+            borderRadius: BorderRadius.circular(12),
           ),
+          child: nameText,
         ),
-        if (isCreator) ...[
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onEditName,
-            child: const Icon(
-              IconsaxPlusLinear.edit_2,
-              size: 20,
-              color: GlimpseColors.textSubTitle,
-            ),
-          ),
-        ],
-      ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: nameText,
     );
   }
 }

@@ -95,6 +95,7 @@ class EventActionButtons extends StatelessWidget {
                 onDeletePressed();
               },
               noPadding: true,
+              height: 48,
               fontSize: 14,
               isProcessing: isDeleting,
             ),
@@ -147,6 +148,7 @@ class EventActionButtons extends StatelessWidget {
                 onLeavePressed();
               },
               noPadding: true,
+              height: 48,
               fontSize: 14,
               isProcessing: isLeaving,
             ),

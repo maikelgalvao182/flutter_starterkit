@@ -70,7 +70,7 @@ class EditProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                     onPressed: onSave,
                     child: Text(
-                      'Save',
+                      'Salvar',
                       style: EditProfileStyles.saveButtonTextStyle,
                     ),
                   ),

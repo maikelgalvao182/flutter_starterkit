@@ -1,19 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:partiu/common/state/app_state.dart';
-import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/dialogs/common_dialogs.dart';
-import 'package:partiu/dialogs/progress_dialog.dart';
-import 'package:partiu/core/services/toast_service.dart';
 
-/// Serviço responsável por deletar eventos criados pelo usuário
+/// Serviço responsável por deletar eventos e todos os dados relacionados em cascata
 /// 
-/// IMPORTANTE: As operações são executadas via Cloud Function para garantir:
-/// - Segurança (validação server-side)
-/// - Atomicidade (todas as operações juntas)
-/// - Confiabilidade (não depende do cliente manter conexão)
+/// Deleta na seguinte ordem:
+/// 1. Messages (subcoleção do EventChats)
+/// 2. EventChats (documento principal)
+/// 3. Conversations de todos os participantes
+/// 4. EventApplications
+/// 5. Documento do evento
 class EventDeletionService {
   factory EventDeletionService() => _instance;
   EventDeletionService._internal();
@@ -21,304 +16,100 @@ class EventDeletionService {
   static final EventDeletionService _instance = EventDeletionService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  /// Deleta um evento e todos os seus dados relacionados
-  Future<void> handleDeleteEvent({
-    required BuildContext context,
-    required String eventId,
-    required AppLocalizations i18n,
-    required ProgressDialog progressDialog,
-    required VoidCallback onSuccess,
-  }) async {
-    final currentUserId = AppState.currentUserId;
-    if (currentUserId == null || currentUserId.isEmpty) {
-      ToastService.showError(
-        message: i18n.translate('user_not_authenticated',
-      ),
-      );
-      return;
-    }
-
-    // Verifica se o usuário é o criador do evento
-    final eventDoc = await _firestore.collection('events').doc(eventId).get();
+  /// Deleta um evento e todos os dados relacionados em cascata
+  /// 
+  /// Retorna true se bem-sucedido, false caso contrário
+  Future<bool> deleteEvent(String eventId) async {
+    debugPrint('🗑️ EventDeletionService.deleteEvent iniciado');
+    debugPrint('📋 EventId: $eventId');
     
-    if (!eventDoc.exists) {
-      ToastService.showError(
-        message: i18n.translate('event_not_found',
-      ),
-      );
-      return;
-    }
-
-    final eventData = eventDoc.data();
-    final createdBy = eventData?['createdBy'] as String?;
-    
-    if (createdBy != currentUserId) {
-      ToastService.showError(
-        message: i18n.translate('not_event_owner',
-      ),
-      );
-      return;
-    }
-
-    // Exibe confirmação antes de deletar
-    await _showDeleteConfirmation(
-      context: context,
-      eventId: eventId,
-      eventData: eventData,
-      i18n: i18n,
-      progressDialog: progressDialog,
-      onSuccess: onSuccess,
-    );
-  }
-
-  /// Exibe dialog de confirmação para deletar evento
-  Future<void> _showDeleteConfirmation({
-    required BuildContext context,
-    required String eventId,
-    required Map<String, dynamic>? eventData,
-    required AppLocalizations i18n,
-    required ProgressDialog progressDialog,
-    required VoidCallback onSuccess,
-  }) async {
-    final eventName = eventData?['activityText'] as String? ?? 
-                     i18n.translate('this_event');
-
-    confirmDialog(
-      context,
-      title: i18n.translate('delete_event'),
-      message: i18n.translate('delete_event_confirmation')
-          .replaceAll('{event}', eventName),
-      positiveText: i18n.translate('delete'),
-      negativeAction: () => Navigator.of(context).pop(),
-      positiveAction: () async {
-        Navigator.of(context).pop();
-        progressDialog.show(i18n.translate('deleting_event'));
-        
-        final success = await _deleteEventData(eventId, eventData);
-        await progressDialog.hide();
-        
-        if (success && context.mounted) {
-          ToastService.showSuccess(
-        message: i18n.translate('event_deleted_successfully',
-      ),
-          );
-          onSuccess();
-        } else if (context.mounted) {
-          ToastService.showError(
-        message: i18n.translate('failed_to_delete_event',
-      ),
-          );
-        }
-      },
-    );
-  }
-
-  /// Deleta todos os dados do evento (via Cloud Function)
-  Future<bool> _deleteEventData(
-    String eventId,
-    Map<String, dynamic>? eventData,
-  ) async {
-    try {
-      debugPrint('🔥 Calling Cloud Function: deleteEvent');
-      
-      // Chama a Cloud Function que faz todas as operações de forma atômica
-      final result = await _functions.httpsCallable('deleteEvent').call({
-        'eventId': eventId,
-      });
-
-      final success = result.data['success'] as bool? ?? false;
-      
-      if (success) {
-        debugPrint('✅ Cloud Function completed successfully');
-      } else {
-        debugPrint('❌ Cloud Function returned success=false');
-      }
-
-      return success;
-    } on FirebaseFunctionsException catch (e) {
-      debugPrint('❌ Cloud Function error: ${e.code} - ${e.message}');
-      
-      // Mensagens de erro específicas
-      if (e.code == 'permission-denied') {
-        debugPrint('⚠️ User is not the event creator');
-      } else if (e.code == 'not-found') {
-        debugPrint('⚠️ Event not found');
-      }
-      
-      return false;
-    } catch (e) {
-      debugPrint('❌ Unexpected error calling Cloud Function: $e');
-      return false;
-    }
-  }
-
-  /// [DEPRECATED] Método antigo - mantido como fallback
-  /// Use _deleteEventData() que chama a Cloud Function
-  Future<bool> _deleteEventDataLegacy(
-    String eventId,
-    Map<String, dynamic>? eventData,
-  ) async {
     try {
       final batch = _firestore.batch();
-
-      // 1. Remove documento do evento
-      batch.delete(_firestore.collection('events').doc(eventId));
-
-      // 2. Remove chat do evento em EventChats
-      batch.delete(_firestore.collection('EventChats').doc(eventId));
-
-      // 3. Remove mensagens do chat
+      
+      // 1. Buscar todos os participantes aprovados para remover suas conversas
+      debugPrint('🔍 Buscando participantes do evento...');
+      final applicationsSnapshot = await _firestore
+          .collection('EventApplications')
+          .where('eventId', isEqualTo: eventId)
+          .get();
+      
+      final participantIds = applicationsSnapshot.docs
+          .map((doc) => doc.data()['userId'] as String?)
+          .where((id) => id != null)
+          .cast<String>()
+          .toList();
+      
+      debugPrint('👥 ${participantIds.length} participantes encontrados');
+      
+      // 2. Deletar subcoleção Messages PRIMEIRO (antes de tudo)
+      // As regras de Messages precisam que events/{eventId} ainda exista
+      debugPrint('🔄 Deletando mensagens do chat...');
       final messagesSnapshot = await _firestore
           .collection('EventChats')
           .doc(eventId)
           .collection('Messages')
           .get();
-
-      for (final doc in messagesSnapshot.docs) {
-        batch.delete(doc.reference);
+      
+      for (final messageDoc in messagesSnapshot.docs) {
+        await messageDoc.reference.delete();
       }
-
-      // 4. Remove todas as aplicações em EventApplications
-      final applicationsSnapshot = await _firestore
-          .collection('EventApplications')
-          .where('eventId', isEqualTo: eventId)
-          .get();
-
+      debugPrint('✅ ${messagesSnapshot.docs.length} mensagens deletadas');
+      
+      // 3. Deletar documento principal do EventChats
+      // Agora pode deletar porque Messages já foram removidas
+      debugPrint('🔄 Tentando deletar EventChat document...');
+      final eventChatRef = _firestore.collection('EventChats').doc(eventId);
+      await eventChatRef.delete();
+      debugPrint('✅ EventChat deletado');
+      
+      // 4. Deletar conversas de todos os participantes
+      debugPrint('🔄 Preparando deleção de ${participantIds.length} conversas no batch...');
+      for (final participantId in participantIds) {
+        final conversationRef = _firestore
+            .collection('Connections')
+            .doc(participantId)
+            .collection('Conversations')
+            .doc('event_$eventId');
+        
+        debugPrint('   📝 Adicionando ao batch: Connections/$participantId/Conversations/event_$eventId');
+        batch.delete(conversationRef);
+      }
+      debugPrint('✅ ${participantIds.length} conversas adicionadas ao batch');
+      
+      // 5. Deletar todas as aplicações do evento
+      debugPrint('🔄 Preparando deleção de ${applicationsSnapshot.docs.length} aplicações no batch...');
       for (final doc in applicationsSnapshot.docs) {
+        debugPrint('   📝 Adicionando ao batch: EventApplications/${doc.id}');
         batch.delete(doc.reference);
       }
-
-      // 5. Remove conversas relacionadas ao evento (event_eventId)
-      final eventUserId = 'event_$eventId';
+      debugPrint('✅ ${applicationsSnapshot.docs.length} aplicações adicionadas ao batch');
       
-      // Remove das conversas do criador
-      final currentUserId = AppState.currentUserId;
-      if (currentUserId != null) {
-        batch.delete(
-          _firestore
-              .collection('Connections')
-              .doc(currentUserId)
-              .collection('Conversations')
-              .doc(eventUserId),
-        );
-      }
-
-      // Remove conversas de todos os participantes
-      for (final appDoc in applicationsSnapshot.docs) {
-        final userId = appDoc.data()['userId'] as String?;
-        if (userId != null) {
-          batch.delete(
-            _firestore
-                .collection('Connections')
-                .doc(userId)
-                .collection('Conversations')
-                .doc(eventUserId),
-          );
-        }
-      }
-
-      // Executa todas as deleções no Firestore
+      // 6. Deletar documento do evento
+      debugPrint('🔄 Preparando deleção do evento no batch...');
+      final eventRef = _firestore.collection('events').doc(eventId);
+      debugPrint('   📝 Adicionando ao batch: events/$eventId');
+      batch.delete(eventRef);
+      debugPrint('✅ Evento adicionado ao batch');
+      
+      // Executar batch
+      debugPrint('🔥 Executando batch com ${participantIds.length + applicationsSnapshot.docs.length + 1} operações...');
+      debugPrint('   - ${participantIds.length} conversas');
+      debugPrint('   - ${applicationsSnapshot.docs.length} aplicações');
+      debugPrint('   - 1 evento');
       await batch.commit();
-
-      // 6. Remove arquivos do Storage (em paralelo, não bloqueia o fluxo)
-      _deleteEventStorageFiles(eventId, eventData);
-
-      debugPrint('✅ Evento $eventId deletado com sucesso');
+      debugPrint('✅ Batch executado com sucesso');
+      
+      // Aguardar um breve momento para garantir que o Firestore propagou a deleção
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      debugPrint('✅ Evento e todos os dados relacionados deletados com sucesso');
+      debugPrint('🔔 Stream do Firestore deve emitir atualização automaticamente');
       return true;
-    } catch (e) {
-      debugPrint('❌ Erro ao deletar evento $eventId: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Erro ao deletar evento: $e');
+      debugPrint('📚 StackTrace: $stackTrace');
       return false;
-    }
-  }
-
-  /// Remove arquivos do Storage relacionados ao evento
-  /// Executa de forma assíncrona sem aguardar conclusão
-  Future<void> _deleteEventStorageFiles(
-    String eventId,
-    Map<String, dynamic>? eventData,
-  ) async {
-    try {
-      // Lista de possíveis caminhos de Storage para o evento
-      final paths = <String>[
-        'events/$eventId', // Pasta principal do evento
-        'event_images/$eventId', // Imagens do evento
-        'event_media/$eventId', // Mídia geral
-      ];
-
-      // Tenta deletar cada caminho
-      for (final path in paths) {
-        try {
-          final ref = _storage.ref(path);
-          final listResult = await ref.listAll();
-          
-          // Deleta todos os arquivos encontrados
-          for (final item in listResult.items) {
-            await item.delete();
-            debugPrint('🗑️ Arquivo deletado: ${item.fullPath}');
-          }
-          
-          // Deleta subpastas recursivamente
-          for (final prefix in listResult.prefixes) {
-            await _deleteStorageFolder(prefix);
-          }
-        } catch (e) {
-          debugPrint('⚠️ Erro ao deletar caminho $path: $e');
-          // Continua tentando outros caminhos mesmo se um falhar
-        }
-      }
-
-      // Tenta deletar imagens específicas mencionadas no eventData
-      if (eventData != null) {
-        final coverPhoto = eventData['coverPhoto'] as String?;
-        if (coverPhoto != null && coverPhoto.contains('firebase')) {
-          try {
-            await _storage.refFromURL(coverPhoto).delete();
-            debugPrint('🗑️ Cover photo deletada');
-          } catch (e) {
-            debugPrint('⚠️ Erro ao deletar cover photo: $e');
-          }
-        }
-
-        // Deleta fotos da galeria se existirem
-        final photos = eventData['photos'] as List?;
-        if (photos != null) {
-          for (final photo in photos) {
-            if (photo is String && photo.contains('firebase')) {
-              try {
-                await _storage.refFromURL(photo).delete();
-                debugPrint('🗑️ Foto da galeria deletada');
-              } catch (e) {
-                debugPrint('⚠️ Erro ao deletar foto da galeria: $e');
-              }
-            }
-          }
-        }
-      }
-
-      debugPrint('✅ Arquivos do Storage deletados para evento $eventId');
-    } catch (e) {
-      debugPrint('❌ Erro ao deletar arquivos do Storage: $e');
-      // Não propaga erro - deleção do Storage é best-effort
-    }
-  }
-
-  /// Deleta uma pasta do Storage recursivamente
-  Future<void> _deleteStorageFolder(Reference folderRef) async {
-    try {
-      final listResult = await folderRef.listAll();
-      
-      for (final item in listResult.items) {
-        await item.delete();
-      }
-      
-      for (final prefix in listResult.prefixes) {
-        await _deleteStorageFolder(prefix);
-      }
-    } catch (e) {
-      debugPrint('⚠️ Erro ao deletar pasta ${folderRef.fullPath}: $e');
     }
   }
 }

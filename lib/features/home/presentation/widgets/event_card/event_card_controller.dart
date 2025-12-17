@@ -8,6 +8,7 @@ import 'package:partiu/features/home/data/repositories/event_application_reposit
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/shared/utils/date_formatter.dart';
+import 'package:partiu/screens/chat/services/event_deletion_service.dart';
 
 /// Controller para gerenciar dados do EventCard
 class EventCardController extends ChangeNotifier {
@@ -525,98 +526,17 @@ class EventCardController extends ChangeNotifier {
     _isDeleting = true;
     notifyListeners();
     
-    debugPrint('🔄 Iniciando deleção completa do evento...');
+    debugPrint('🔄 Chamando EventDeletionService...');
 
     try {
-      final firestore = FirebaseFirestore.instance;
-      final batch = firestore.batch();
+      final deletionService = EventDeletionService();
+      final success = await deletionService.deleteEvent(eventId);
       
-      // 1. Buscar todos os participantes aprovados para remover suas conversas
-      debugPrint('🔍 Buscando participantes do evento...');
-      final applicationsSnapshot = await firestore
-          .collection('EventApplications')
-          .where('eventId', isEqualTo: eventId)
-          .get();
-      
-      final participantIds = applicationsSnapshot.docs
-          .map((doc) => doc.data()['userId'] as String?)
-          .where((id) => id != null)
-          .cast<String>()
-          .toList();
-      
-      debugPrint('👥 ${participantIds.length} participantes encontrados');
-      
-      // 2. Deletar subcoleção Messages PRIMEIRO (antes de tudo)
-      // As regras de Messages precisam que events/{eventId} ainda exista
-      debugPrint('🔄 Deletando mensagens do chat...');
-      final messagesSnapshot = await firestore
-          .collection('EventChats')
-          .doc(eventId)
-          .collection('Messages')
-          .get();
-      
-      for (final messageDoc in messagesSnapshot.docs) {
-        await messageDoc.reference.delete();
+      if (!success) {
+        throw Exception('Falha ao deletar evento');
       }
-      debugPrint('✅ ${messagesSnapshot.docs.length} mensagens deletadas');
       
-      // 3. Deletar documento principal do EventChats
-      // Agora pode deletar porque Messages já foram removidas
-      debugPrint('🔄 Tentando deletar EventChat document...');
-      final eventChatRef = firestore.collection('EventChats').doc(eventId);
-      await eventChatRef.delete();
-      debugPrint('✅ EventChat deletado');
-      
-      // 4. Deletar conversas de todos os participantes
-      debugPrint('🔄 Preparando deleção de ${participantIds.length} conversas no batch...');
-      for (final participantId in participantIds) {
-        final conversationRef = firestore
-            .collection('Connections')
-            .doc(participantId)
-            .collection('Conversations')
-            .doc('event_$eventId');
-        
-        // 🧪 Testar se pode ler antes de deletar
-        try {
-          final conversationDoc = await conversationRef.get();
-          if (conversationDoc.exists) {
-            debugPrint('   ✅ Conversa existe: Connections/$participantId/Conversations/event_$eventId');
-          } else {
-            debugPrint('   ⚠️ Conversa NÃO existe: Connections/$participantId/Conversations/event_$eventId');
-          }
-        } catch (e) {
-          debugPrint('   ❌ Erro ao verificar conversa de $participantId: $e');
-        }
-        
-        debugPrint('   📝 Adicionando ao batch: Connections/$participantId/Conversations/event_$eventId');
-        batch.delete(conversationRef);
-      }
-      debugPrint('✅ ${participantIds.length} conversas adicionadas ao batch');
-      
-      // 5. Deletar todas as aplicações do evento
-      debugPrint('🔄 Preparando deleção de ${applicationsSnapshot.docs.length} aplicações no batch...');
-      for (final doc in applicationsSnapshot.docs) {
-        debugPrint('   📝 Adicionando ao batch: EventApplications/${doc.id}');
-        batch.delete(doc.reference);
-      }
-      debugPrint('✅ ${applicationsSnapshot.docs.length} aplicações adicionadas ao batch');
-      
-      // 6. Deletar documento do evento
-      debugPrint('🔄 Preparando deleção do evento no batch...');
-      final eventRef = firestore.collection('events').doc(eventId);
-      debugPrint('   📝 Adicionando ao batch: events/$eventId');
-      batch.delete(eventRef);
-      debugPrint('✅ Evento adicionado ao batch');
-      
-      // Executar batch
-      debugPrint('🔥 Executando batch com ${participantIds.length + applicationsSnapshot.docs.length + 1} operações...');
-      debugPrint('   - ${participantIds.length} conversas');
-      debugPrint('   - ${applicationsSnapshot.docs.length} aplicações');
-      debugPrint('   - 1 evento');
-      await batch.commit();
-      debugPrint('✅ Batch executado com sucesso');
-      
-      debugPrint('✅ Evento e todos os dados relacionados deletados com sucesso');
+      debugPrint('✅ Evento deletado com sucesso');
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao deletar evento: $e');
       debugPrint('📚 StackTrace: $stackTrace');
