@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/features/notifications/controllers/simplified_notification_controller.dart';
-import 'package:partiu/features/notifications/repositories/notifications_repository.dart';
 import 'package:partiu/features/notifications/widgets/simplified_notification_screen.dart';
 
 /// Wrapper para instanciar o SimplifiedNotificationScreen com suas dependências
@@ -14,20 +13,19 @@ class SimplifiedNotificationScreenWrapper extends StatefulWidget {
 
 class _SimplifiedNotificationScreenWrapperState
     extends State<SimplifiedNotificationScreenWrapper> {
-  late final SimplifiedNotificationController _controller;
+  // Usa o Singleton do controller
+  final SimplifiedNotificationController _controller = SimplifiedNotificationController.instance;
 
   @override
   void initState() {
     super.initState();
-    
-    // Instancia o repository e controller
-    final repository = NotificationsRepository();
-    _controller = SimplifiedNotificationController(repository: repository);
+    // Não precisamos instanciar nada aqui, o Singleton já cuida disso
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    // NÃO fazemos dispose do controller aqui pois ele é um Singleton
+    // e deve manter o estado vivo entre navegações
     super.dispose();
   }
 

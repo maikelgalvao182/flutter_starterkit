@@ -378,17 +378,20 @@ class ChatAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   ) {
     if (controller.isEvent) {
       // Evento: ícone direto para group info
-      return IconButton(
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        iconSize: 20,
-        icon: const Icon(
-          Icons.info_outline,
-          color: GlimpseColors.primaryColorLight,
+      return SizedBox(
+        width: 28,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          icon: const Icon(
+            Icons.info_outline,
+            size: 20,
+            color: GlimpseColors.primaryColorLight,
+          ),
+          onPressed: () {
+            context.push('${AppRoutes.groupInfo}/${controller.eventId}');
+          },
         ),
-        onPressed: () {
-          context.push('${AppRoutes.groupInfo}/${controller.eventId}');
-        },
       );
     }
 

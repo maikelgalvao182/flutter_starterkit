@@ -102,6 +102,8 @@ class User {
     this.languages,
     this.from,
     this.distance,
+    this.displayLatitude,
+    this.displayLongitude,
     this.commonInterests,
     this.overallRating,
     this.visitedAt,
@@ -140,6 +142,8 @@ class User {
       userTotalVisits: 0,
       isUserOnline: false,
       distance: null,
+      displayLatitude: null,
+      displayLongitude: null,
       commonInterests: null,
       overallRating: null,
       visitedAt: null,
@@ -226,9 +230,11 @@ class User {
       isUserOnline: doc['isOnline'] ?? false,
       userInstagram: doc['instagram'],
       interests: (doc['interests'] as List?)?.cast<String>(),
-      languages: doc['languages'],
+      languages: doc['languages'] as String?,
       from: doc['from'],
       distance: (doc['distance'] as num?)?.toDouble(),
+      displayLatitude: (doc['displayLatitude'] as num?)?.toDouble(),
+      displayLongitude: (doc['displayLongitude'] as num?)?.toDouble(),
       commonInterests: (doc['commonInterests'] as List?)?.cast<String>(),
       overallRating: (doc['overallRating'] as num?)?.toDouble(),
       visitedAt: _parseDateTime(doc['visitedAt'], fallback: null),
@@ -271,6 +277,8 @@ class User {
   final String? languages;
   final String? from; // País de origem
   final double? distance; // Distância em km do usuário atual
+  final double? displayLatitude; // Latitude com offset para privacidade
+  final double? displayLongitude; // Longitude com offset para privacidade
   final List<String>? commonInterests; // Interesses em comum com o usuário logado
   final double? overallRating; // Rating geral do usuário
   final DateTime? visitedAt; // Data da visita (para ordenação)
@@ -322,6 +330,8 @@ class User {
     String? languages,
     String? from,
     double? distance,
+    double? displayLatitude,
+    double? displayLongitude,
     List<String>? commonInterests,
     double? overallRating,
     DateTime? visitedAt,
@@ -360,6 +370,8 @@ class User {
       languages: languages ?? this.languages,
       from: from ?? this.from,
       distance: distance ?? this.distance,
+      displayLatitude: displayLatitude ?? this.displayLatitude,
+      displayLongitude: displayLongitude ?? this.displayLongitude,
       commonInterests: commonInterests ?? this.commonInterests,
       overallRating: overallRating ?? this.overallRating,
       visitedAt: visitedAt ?? this.visitedAt,

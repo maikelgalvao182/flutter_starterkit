@@ -14,7 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// [MVVM] Constantes da View - evita magic numbers
 class _NotificationScreenConstants {
-  static const int filterCount = 4; // All, Activities, Event Chat, Profile Views
+  static const int filterCount = 5; // All, Activities, Event Chat, Profile Views, Reviews
   static const double titleFontSize = 20;
   static const double clearFontSize = 14;
   static const double backButtonSize = 24;

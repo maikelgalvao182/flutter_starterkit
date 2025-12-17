@@ -16,6 +16,8 @@ abstract class LocationRepositoryInterface {
     required String userId,
     required double latitude,
     required double longitude,
+    required double displayLatitude,
+    required double displayLongitude,
     required String country,
     required String locality,
     required String state,

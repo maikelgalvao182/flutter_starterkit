@@ -52,6 +52,11 @@ class NotificationsRepository implements INotificationsRepository {
             'activity_expiring_soon',
             'activity_canceled',
           ]);
+        } else if (filterKey == 'reviews') {
+          query = query.where(_fieldType, whereIn: [
+            'review_pending',
+            'new_review_received',
+          ]);
         } else {
           query = query.where(_fieldType, isEqualTo: filterKey);
         }
@@ -103,6 +108,11 @@ class NotificationsRepository implements INotificationsRepository {
             'activity_heating_up',
             'activity_expiring_soon',
             'activity_canceled',
+          ]);
+        } else if (filterKey == 'reviews') {
+          query = query.where(_fieldType, whereIn: [
+            'review_pending',
+            'new_review_received',
           ]);
         } else {
           query = query.where(_fieldType, isEqualTo: filterKey);

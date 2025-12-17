@@ -8,11 +8,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Widget compartilhável que mostra avatares empilhados de participantes
 /// 
-/// Busca automaticamente participantes aprovados via EventApplicationRepository
-/// e exibe seus avatares usando StableAvatar.
+/// Busca automaticamente participantes aprovados via EventApplicationRepository (Singleton)
+/// e usa GlobalCacheService para evitar queries desnecessárias ao Firestore.
 /// 
 /// **Recursos:**
 /// - ✅ Busca automática de participantes aprovados
+/// - ✅ Cache com TTL de 3 minutos (zero rebuilds desnecessários)
+/// - ✅ Singleton repository (mesma instância reutilizada)
 /// - ✅ Avatares empilhados com borda branca
 /// - ✅ Texto com contador de membros
 /// - ✅ Skeleton durante carregamento
@@ -47,6 +49,7 @@ class StackedAvatars extends StatefulWidget {
 }
 
 class _StackedAvatarsState extends State<StackedAvatars> {
+  // 🔄 SINGLETON: Mesma instância reutilizada em todo o app
   final EventApplicationRepository _applicationRepo = EventApplicationRepository();
   final UserRepository _userRepo = UserRepository();
   
@@ -62,6 +65,8 @@ class _StackedAvatarsState extends State<StackedAvatars> {
 
   Future<void> _loadParticipants() async {
     try {
+      // 🚀 O repository já usa cache interno com TTL de 3 minutos
+      // Se o cache existir, retorna imediatamente sem query ao Firestore
       final participants = await _applicationRepo.getApprovedApplicationsWithUserData(
         widget.eventId,
       );

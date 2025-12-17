@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:partiu/features/notifications/repositories/notifications_repository.dart';
 import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/core/services/block_service.dart';
@@ -12,6 +13,11 @@ import 'package:partiu/core/services/global_cache_service.dart';
 /// - Cache global com TTL para performance
 /// - SEM dependências de i18n (labels são responsabilidade da View)
 class SimplifiedNotificationController extends ChangeNotifier {
+  
+  /// Singleton Instance
+  static final SimplifiedNotificationController instance = SimplifiedNotificationController(
+    repository: NotificationsRepository(),
+  );
 
   SimplifiedNotificationController({
     required INotificationsRepository repository,
@@ -148,6 +154,7 @@ class SimplifiedNotificationController extends ChangeNotifier {
       case 1: return 'activity'; // Atividades (todos os tipos activity_*)
       case 2: return 'event_chat_message'; // Chat de Eventos
       case 3: return 'profile_views_aggregated'; // Visualizações de Perfil
+      case 4: return 'reviews'; // Avaliações
       default: return null;
     }
   }
@@ -159,11 +166,20 @@ class SimplifiedNotificationController extends ChangeNotifier {
     'notif_filter_activities',
     'notif_filter_event_chat',
     'notif_filter_profile_views',
+    'notif_filter_reviews',
   ];
 
   /// Inicializa o controller com status VIP e carrega dados iniciais
   Future<void> initialize(bool isVip) async {
     updateVipStatus(isVip);
+    
+    // Se já temos dados carregados, fazemos apenas um refresh silencioso
+    // Isso evita o "piscar" do loading e usa o estado mantido em memória (Singleton)
+    if (_notificationsByFilter[_selectedFilterKey]?.isNotEmpty ?? false) {
+      _silentRefresh(_selectedFilterKey);
+      return;
+    }
+
     _selectedFilterIndex = 0;
     _selectedFilterKey = mapFilterIndexToKey(0);
     await fetchNotifications(shouldRefresh: true, filterKey: _selectedFilterKey);

@@ -14,6 +14,7 @@ import 'package:partiu/shared/widgets/reactive/reactive_profile_completeness_rin
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
 import 'package:partiu/features/home/presentation/widgets/auto_updating_badge.dart';
 import 'package:partiu/features/home/presentation/widgets/home_app_bar_controller.dart';
+import 'package:partiu/shared/widgets/safety_tips_button.dart';
 
 /// AppBar personalizado para a tela home
 /// Exibido apenas na aba de descoberta (index 0)
@@ -71,6 +72,9 @@ class _HomeAppBarState extends State<HomeAppBar> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Botão de dicas de segurança
+              const SafetyTipsButton(),
+              const SizedBox(width: 12),
               // Botão de notificações (com badge reativo usando AppState)
               Builder(
                 builder: (context) {

@@ -129,8 +129,8 @@ class GlimpseChatBubble extends StatelessWidget {
       : GlimpseColors.lightTextField.withValues(alpha: 0.55))
     : isUserSender
       ? (isDarkMode
-        ? GlimpseColors.primaryColorLight
-        : GlimpseColors.primaryColorLight)
+        ? GlimpseColors.primaryLight
+        : GlimpseColors.primaryLight)
       : (isDarkMode
         ? GlimpseColors.lightTextField
         : GlimpseColors.lightTextField);
@@ -140,7 +140,7 @@ class GlimpseChatBubble extends StatelessWidget {
       ? GlimpseColors.textHint
       : GlimpseColors.textSubTitle)
     : isUserSender
-      ? Colors.white
+      ? GlimpseColors.primaryColorLight
       : (isDarkMode
         ? Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black
         : Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
+import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:partiu/features/home/data/models/event_application_model.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/services/activity_notification_service.dart';
@@ -14,18 +15,23 @@ import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/common/state/app_state.dart';
 
 /// Repositório para gerenciar aplicações de usuários em eventos
+/// 
+/// 🔄 SINGLETON: Usa instância única para evitar recriação e permitir cache eficiente
 class EventApplicationRepository {
-  final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
-  final UserRepository _userRepo;
-  late final ActivityNotificationService _notificationService;
-
-  EventApplicationRepository({
+  // Singleton instance
+  static final EventApplicationRepository _instance = EventApplicationRepository._internal();
+  
+  factory EventApplicationRepository({
     FirebaseFirestore? firestore,
     UserRepository? userRepository,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  }) {
+    return _instance;
+  }
+  
+  EventApplicationRepository._internal()
+      : _firestore = FirebaseFirestore.instance,
         _functions = FirebaseFunctions.instance,
-        _userRepo = userRepository ?? UserRepository(firestore) {
+        _userRepo = UserRepository() {
     // Inicializar serviço de notificações com todas as dependências
     final notificationRepo = NotificationsRepository();
     final geoService = GeoIndexService(firestore: _firestore);
@@ -46,6 +52,12 @@ class EventApplicationRepository {
       firestore: _firestore,
     );
   }
+
+  final FirebaseFirestore _firestore;
+  final FirebaseFunctions _functions;
+  final UserRepository _userRepo;
+  late final ActivityNotificationService _notificationService;
+  final GlobalCacheService _cache = GlobalCacheService.instance;
 
   /// Cria uma nova aplicação para um evento
   /// 
@@ -94,6 +106,9 @@ class EventApplicationRepository {
           .add(application.toFirestore());
 
       debugPrint('✅ Aplicação criada: ${docRef.id} (status: ${status.value})');
+      
+      // 🗑️ INVALIDAR cache de participantes do evento
+      _cache.remove('event_participants_$eventId');
       
       // Se foi auto-aprovado, verificar threshold para notificação "heating up"
       if (status == ApplicationStatus.autoApproved) {
@@ -200,6 +215,9 @@ class EventApplicationRepository {
 
       debugPrint('✅ Aplicação aprovada: $applicationId');
       
+      // 🗑️ INVALIDAR cache de participantes do evento
+      _cache.remove('event_participants_$eventId');
+      
       // Buscar dados do evento para disparar notificação
       final eventDoc = await _firestore.collection('events').doc(eventId).get();
       if (eventDoc.exists) {
@@ -257,6 +275,9 @@ class EventApplicationRepository {
       });
 
       debugPrint('❌ Aplicação rejeitada: $applicationId');
+      
+      // 🗑️ INVALIDAR cache de participantes do evento
+      _cache.remove('event_participants_$eventId');
       
       // Buscar dados do evento para disparar notificação
       final eventDoc = await _firestore.collection('events').doc(eventId).get();
@@ -348,6 +369,17 @@ class EventApplicationRepository {
   /// - fullName
   /// - appliedAt
   Future<List<Map<String, dynamic>>> getApprovedApplicationsWithUserData(String eventId) async {
+    final cacheKey = 'event_participants_$eventId';
+    
+    // 🚀 CACHE HIT: Retornar imediatamente se existe
+    final cached = _cache.get<List<Map<String, dynamic>>>(cacheKey);
+    if (cached != null) {
+      debugPrint('✅ [EventApplicationRepo] Cache HIT: $eventId');
+      return cached;
+    }
+    
+    debugPrint('⏳ [EventApplicationRepo] Cache MISS: buscando do Firestore...');
+    
     try {
       // 1. Buscar applications aprovadas ou auto-aprovadas
       final applicationsSnapshot = await _firestore
@@ -361,7 +393,9 @@ class EventApplicationRepository {
           .get();
 
       if (applicationsSnapshot.docs.isEmpty) {
-        return [];
+        final emptyResult = <Map<String, dynamic>>[];
+        _cache.set(cacheKey, emptyResult, ttl: const Duration(minutes: 3));
+        return emptyResult;
       }
 
       // 2. Extrair userIds e buscar em batch (otimizado)
@@ -393,6 +427,10 @@ class EventApplicationRepository {
           });
         }
       }
+
+      // 💾 SALVAR no cache (TTL: 3 minutos)
+      _cache.set(cacheKey, results, ttl: const Duration(minutes: 3));
+      debugPrint('💾 [EventApplicationRepo] Cache SAVED: $eventId (${results.length} membros)');
 
       return results;
     } catch (e) {
@@ -526,6 +564,9 @@ class EventApplicationRepository {
       debugPrint('✅ Cloud Function executada com sucesso');
       debugPrint('   - resultado: ${result.data}');
       
+      // 🗑️ INVALIDAR cache de participantes do evento
+      _cache.remove('event_participants_$eventId');
+      
     } catch (e) {
       debugPrint('❌ Erro ao chamar removeUserApplication: $e');
       rethrow;
@@ -573,5 +614,13 @@ class EventApplicationRepository {
       debugPrint('❌ Erro ao buscar participantes do evento $eventId: $e');
       rethrow;
     }
+  }
+
+  /// 🗑️ Invalida o cache de participantes de um evento específico
+  /// 
+  /// Útil para forçar refresh após operações externas que modificam participantes
+  void invalidateEventParticipantsCache(String eventId) {
+    _cache.remove('event_participants_$eventId');
+    debugPrint('🗑️ Cache invalidado para evento: $eventId');
   }
 }

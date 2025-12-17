@@ -5,7 +5,8 @@
 /// Características:
 /// - Apenas usuários autenticados podem criar reports
 /// - Ninguém pode ler reports (apenas admins via console/backend)
-/// - Mensagem limitada a 2000 caracteres
+/// - Suporta dois tipos: bug reports e event reports
+/// - Mensagem/reportText limitado a 2000/500 caracteres
 /// - Campos obrigatórios validados
 
 match /reports/{reportId} {
@@ -13,16 +14,33 @@ match /reports/{reportId} {
   allow read: if false;
   
   // ✅ Apenas usuários autenticados podem criar reports
-  allow create: if isSignedIn()
-    && request.resource.data.keys().hasAll([
-      'reporterId', 'message', 'createdAt', 'platform', 'appVersion'
-    ])
+  // Suporta dois tipos de reports:
+  // 1. Bug/Feedback reports (campos: reporterId, message, platform, appVersion)
+  // 2. Event reports (campos: reportedBy, eventId, reportText, type, status)
+  allow create: if isSignedIn() && (
+    // Tipo 1: Bug/Feedback report
+    ('reporterId' in request.resource.data
+    && 'message' in request.resource.data
     && request.resource.data.reporterId == request.auth.uid
     && request.resource.data.message is string
     && request.resource.data.message.size() >= 10
-    && request.resource.data.message.size() <= 2000
-    && request.resource.data.platform is string
-    && request.resource.data.appVersion is string;
+    && request.resource.data.message.size() <= 2000)
+    
+    ||
+    
+    // Tipo 2: Event report
+    ('reportedBy' in request.resource.data
+    && 'eventId' in request.resource.data
+    && 'reportText' in request.resource.data
+    && 'type' in request.resource.data
+    && request.resource.data.reportedBy == request.auth.uid
+    && request.resource.data.reportText is string
+    && request.resource.data.reportText.size() >= 1
+    && request.resource.data.reportText.size() <= 500
+    && request.resource.data.eventId is string
+    && request.resource.data.type == 'event'
+    && request.resource.data.status == 'pending')
+  );
   
   // ❌ Ninguém pode atualizar ou deletar reports
   allow update, delete: if false;

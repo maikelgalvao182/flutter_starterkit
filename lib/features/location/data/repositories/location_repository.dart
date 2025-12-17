@@ -93,6 +93,8 @@ class LocationRepository implements LocationRepositoryInterface {
     required String userId,
     required double latitude,
     required double longitude,
+    required double displayLatitude,
+    required double displayLongitude,
     required String country,
     required String locality,
     required String state,
@@ -114,6 +116,8 @@ class LocationRepository implements LocationRepositoryInterface {
       await _firestore.collection('Users').doc(userId).update({
         'latitude': latitude,
         'longitude': longitude,
+        'displayLatitude': displayLatitude,
+        'displayLongitude': displayLongitude,
         'country': country,
         'locality': locality,
         'state': state,

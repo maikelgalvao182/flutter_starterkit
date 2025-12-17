@@ -183,8 +183,8 @@ class _GlimpseTextFieldState extends State<GlimpseTextField> {
                               decoration: InputDecoration(
                                 hintText: widget.hintText,
                                 hintStyle: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                                  color: GlimpseColors.textHint,
-                                  fontWeight: FontWeight.w300,
+                                  color: GlimpseColors.textSubTitle,
+                                  fontWeight: FontWeight.w500,
                                   fontSize: 14,
                                   height: 1.4,
                                 ),
@@ -236,7 +236,7 @@ class _GlimpseTextFieldState extends State<GlimpseTextField> {
                           decoration: InputDecoration(
                             hintText: widget.hintText,
                             hintStyle: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                              color: GlimpseColors.textHint,
+                              color: GlimpseColors.textSubTitle,
                               fontWeight: FontWeight.w300,
                               fontSize: 14,
                               height: 1.4,

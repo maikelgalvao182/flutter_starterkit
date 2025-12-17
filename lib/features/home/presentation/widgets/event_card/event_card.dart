@@ -11,6 +11,7 @@ import 'package:partiu/shared/widgets/dialogs/dialog_styles.dart';
 import 'package:partiu/shared/widgets/emoji_container.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 import 'package:partiu/shared/widgets/place_details_modal.dart';
+import 'package:partiu/shared/widgets/report_event_button.dart';
 
 /// Card de evento que exibe informações do criador e localização
 /// 
@@ -197,16 +198,22 @@ class _EventCardState extends State<EventCard> {
               ),
             ),
             
-            // Close button
+            // Botões de ação no topo direito
             Positioned(
               top: 0,
               right: 0,
-              child: GlimpseCloseButton(
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  }
-                },
+              child: Row(
+                children: [
+                  ReportEventButton(eventId: _controller.eventId),
+                  const SizedBox(width: 8),
+                  GlimpseCloseButton(
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
               ),
             ),
           ],

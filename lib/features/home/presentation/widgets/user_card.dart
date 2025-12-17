@@ -176,16 +176,18 @@ class _UserCardState extends State<UserCard> {
 
     // Process common interests
     String commonInterestsText = '0 matchs';
+    String commonInterestsEmojis = '';
     if (commonInterests.isNotEmpty) {
       final count = commonInterests.length;
       final emojis = commonInterests
-          .take(5)
+          .take(6)
           .map((id) => getInterestById(id)?.icon ?? '')
           .where((icon) => icon.isNotEmpty)
           .join(' ');
       
       if (emojis.isNotEmpty) {
-        commonInterestsText = '$count matchs: $emojis';
+        commonInterestsText = '$count matchs: ';
+        commonInterestsEmojis = emojis;
       } else {
         commonInterestsText = '$count matchs';
       }
@@ -255,17 +257,41 @@ class _UserCardState extends State<UserCard> {
                         // Interesses em comum
                         if (commonInterestsText.isNotEmpty)
                           Expanded(
-                            child: Text(
-                              commonInterestsText,
-                              style: GoogleFonts.getFont(
-                                FONT_PLUS_JAKARTA_SANS,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: GlimpseColors.textSubTitle,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            child: commonInterestsEmojis.isEmpty
+                                ? Text(
+                                    commonInterestsText,
+                                    style: GoogleFonts.getFont(
+                                      FONT_PLUS_JAKARTA_SANS,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: GlimpseColors.textSubTitle,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: commonInterestsText,
+                                          style: GoogleFonts.getFont(
+                                            FONT_PLUS_JAKARTA_SANS,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: GlimpseColors.textSubTitle,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: commonInterestsEmojis,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                           ),
                         
                         // Distância alinhada à direita

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/core/utils/location_offset_helper.dart';
 import 'package:partiu/features/location/domain/repositories/location_repository_interface.dart';
 import 'package:partiu/core/services/state_abbreviation_service.dart';
 import 'package:partiu/core/services/location_service.dart';
@@ -164,11 +165,26 @@ class UpdateLocationViewModel extends ChangeNotifier {
         throw Exception('Estado está vazio. Não é possível salvar localização sem estado.');
       }
       
+      // 🔒 Gerar coordenadas display com offset determinístico
+      final displayCoords = LocationOffsetHelper.generateDisplayLocation(
+        realLat: latitude,
+        realLng: longitude,
+        userId: userId,
+      );
+      final displayLatitude = displayCoords['displayLatitude']!;
+      final displayLongitude = displayCoords['displayLongitude']!;
+      
+      AppLogger.info('🔒 Generated display offset:', tag: 'UpdateLocationVM');
+      AppLogger.info('   Real: ($latitude, $longitude)', tag: 'UpdateLocationVM');
+      AppLogger.info('   Display: ($displayLatitude, $displayLongitude)', tag: 'UpdateLocationVM');
+      
       // Update User location
       await _locationRepository.updateUserLocation(
         userId: userId,
         latitude: latitude,
         longitude: longitude,
+        displayLatitude: displayLatitude,
+        displayLongitude: displayLongitude,
         country: countryStr,
         locality: localityStr,
         state: stateStr,

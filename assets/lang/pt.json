@@ -664,7 +664,14 @@
   "vip_subscription_restored": "Assinatura VIP restaurada com sucesso!",
   "payment_cancelled": "Pagamento cancelado",
   "payment_cancelled_by_user": "Pagamento cancelado pelo usuário",
-  "profile_visits": "Visitas Recebidas"
+  "profile_visits": "Visitas Recebidas",
+  "report_event": "Denunciar Evento",
+  "report_reason_hint": "Descreva o motivo da denúncia...",
+  "send": "Enviar",
+  "report_empty_error": "Por favor, descreva o motivo da denúncia",
+  "report_submitted_success": "✅ Denúncia enviada com sucesso!",
+  "report_submit_error": "❌ Erro ao enviar denúncia. Tente novamente."
 
 }
+
 

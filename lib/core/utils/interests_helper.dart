@@ -27,15 +27,23 @@ class InterestsHelper {
 
   /// Calcula distância em km entre dois usuários
   /// 
-  /// Requer dados completos de ambos os usuários (latitude e longitude)
+  /// 🔒 USA COORDENADAS DISPLAY (com offset de privacidade)
+  /// Requer dados completos de ambos os usuários (displayLatitude e displayLongitude)
+  /// 
+  /// Fallback: se displayLatitude/displayLongitude não existirem, usa latitude/longitude
   static double? calculateDistance(
     Map<String, dynamic> userData1,
     Map<String, dynamic> userData2,
   ) {
-    final lat1 = (userData1['latitude'] as num?)?.toDouble();
-    final lng1 = (userData1['longitude'] as num?)?.toDouble();
-    final lat2 = (userData2['latitude'] as num?)?.toDouble();
-    final lng2 = (userData2['longitude'] as num?)?.toDouble();
+    // Prioriza coordenadas display (com offset de privacidade)
+    final lat1 = (userData1['displayLatitude'] as num?)?.toDouble() ?? 
+                 (userData1['latitude'] as num?)?.toDouble();
+    final lng1 = (userData1['displayLongitude'] as num?)?.toDouble() ?? 
+                 (userData1['longitude'] as num?)?.toDouble();
+    final lat2 = (userData2['displayLatitude'] as num?)?.toDouble() ?? 
+                 (userData2['latitude'] as num?)?.toDouble();
+    final lng2 = (userData2['displayLongitude'] as num?)?.toDouble() ?? 
+                 (userData2['longitude'] as num?)?.toDouble();
 
     if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) {
       return null;
