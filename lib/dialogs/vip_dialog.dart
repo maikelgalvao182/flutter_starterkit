@@ -238,36 +238,47 @@ class _VipBottomSheetState extends State<VipBottomSheet> {
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
-        return Column(
-          children: [
-            // Card plano semanal (se disponível)
-            if (_controller.weeklyPackage != null)
-              SubscriptionPlanCard(
-                package: _controller.weeklyPackage!,
-                isSelected: _controller.selectedPlan == SubscriptionPlan.weekly,
-                onTap: () => _controller.selectPlan(SubscriptionPlan.weekly),
-              ),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              // Card plano semanal (se disponível)
+              if (_controller.weeklyPackage != null)
+                Expanded(
+                  child: SubscriptionPlanCard(
+                    package: _controller.weeklyPackage!,
+                    isSelected: _controller.selectedPlan == SubscriptionPlan.weekly,
+                    onTap: () => _controller.selectPlan(SubscriptionPlan.weekly),
+                  ),
+                ),
 
-            const SizedBox(height: 0),
+              if (_controller.weeklyPackage != null && _controller.monthlyPackage != null)
+                const SizedBox(width: 8),
 
-            // Card plano mensal (se disponível)
-            if (_controller.monthlyPackage != null)
-              SubscriptionPlanCard(
-                package: _controller.monthlyPackage!,
-                isSelected: _controller.selectedPlan == SubscriptionPlan.monthly,
-                onTap: () => _controller.selectPlan(SubscriptionPlan.monthly),
-              ),
+              // Card plano mensal (se disponível)
+              if (_controller.monthlyPackage != null)
+                Expanded(
+                  child: SubscriptionPlanCard(
+                    package: _controller.monthlyPackage!,
+                    isSelected: _controller.selectedPlan == SubscriptionPlan.monthly,
+                    onTap: () => _controller.selectPlan(SubscriptionPlan.monthly),
+                  ),
+                ),
 
-            const SizedBox(height: 0),
+              if (_controller.monthlyPackage != null && _controller.annualPackage != null)
+                const SizedBox(width: 8),
 
-            // Card plano anual (se disponível)
-            if (_controller.annualPackage != null)
-              SubscriptionPlanCard(
-                package: _controller.annualPackage!,
-                isSelected: _controller.selectedPlan == SubscriptionPlan.annual,
-                onTap: () => _controller.selectPlan(SubscriptionPlan.annual),
-              ),
-          ],
+              // Card plano anual (se disponível)
+              if (_controller.annualPackage != null)
+                Expanded(
+                  child: SubscriptionPlanCard(
+                    package: _controller.annualPackage!,
+                    isSelected: _controller.selectedPlan == SubscriptionPlan.annual,
+                    onTap: () => _controller.selectPlan(SubscriptionPlan.annual),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

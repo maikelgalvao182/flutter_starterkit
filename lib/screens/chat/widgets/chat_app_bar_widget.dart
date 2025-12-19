@@ -354,7 +354,11 @@ class ChatAppBarWidget extends StatelessWidget implements PreferredSizeWidget {
     return Row(
       children: [
         if (controller.isEvent)
-          EventNameText(user: user, chatService: chatService)
+          EventNameText(
+            user: user,
+            chatService: chatService,
+            controller: controller,
+          )
         else
           Flexible(
             child: ReactiveUserNameWithBadge(userId: user.userId),

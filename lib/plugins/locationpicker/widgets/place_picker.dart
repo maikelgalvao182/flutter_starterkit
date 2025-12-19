@@ -783,7 +783,7 @@ class PlacePickerState extends State<PlacePicker> {
           return AlertDialog(
             title: const Text('Location is disabled'),
             content: const Text(
-              'The app needs to access your location. Please enable location service.',
+              'Boora needs to access your location. Please enable location service.',
             ),
             actions: [
               TextButton(
@@ -795,8 +795,8 @@ class PlacePickerState extends State<PlacePicker> {
               TextButton(
                 child: const Text('OK'),
                 onPressed: () async {
-                  Geolocator.openLocationSettings();
-                  Navigator.of(context).pop(true);
+                  await Geolocator.openLocationSettings();
+                  Future(() => Navigator.of(context).pop(true));
                 },
               ),
             ],

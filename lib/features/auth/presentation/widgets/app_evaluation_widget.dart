@@ -27,9 +27,9 @@ class _AppEvaluationWidgetState extends State<AppEvaluationWidget> {
   bool _hasRequestedReview = false;
 
   final List<String> _avatarPaths = const [
-    'assets/images/avatar/image 2.jpg',
+    'assets/images/avatar/avatar3.jpg',
     'assets/images/avatar/image 3.jpg',
-    'assets/images/avatar/image 5.jpg',
+    'assets/images/avatar/avatar11.jpg',
     'assets/images/avatar/image 4.jpg',
     'assets/images/avatar/image 7.jpg',
   ];
@@ -58,7 +58,7 @@ class _AppEvaluationWidgetState extends State<AppEvaluationWidget> {
       if (await inAppReview.isAvailable()) {
         await inAppReview.requestReview();
       } else {
-        await inAppReview.openStoreListing(appStoreId: '6746080646');
+        await inAppReview.openStoreListing(appStoreId: '6755944656');
       }
     } catch (e) {
       AppLogger.error('Error requesting review: $e', tag: 'AppEvaluationWidget');

@@ -135,7 +135,7 @@ class AppRoot extends StatelessWidget {
     
     debugPrint('📊 [AppRoot] Construindo MaterialApp.router...');
     return MaterialApp.router(
-      title: 'Partiu',
+      title: 'Boora',
       debugShowCheckedModeBanner: false,
       
       // Configuração de rotas com go_router protegido por AuthSyncService

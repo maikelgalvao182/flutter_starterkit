@@ -1,5 +1,5 @@
 name: partiu
-description: Partiu - Event Planning & Social App
+description: Boora - Não vá sozinho!
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -109,6 +109,24 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.2
+
+# Configuração de ícones
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icone.png"
+  min_sdk_android: 21
+  
+  # Configurações iOS
+  ios_content_json: true
+  
+  # Configurações Android
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/icone.png"
+  
+  # Remove ícone padrão
+  remove_alpha_ios: true
 
 # Flutter configuration
 flutter:

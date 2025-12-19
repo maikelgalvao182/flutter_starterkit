@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 /// OTIMIZADO: Apenas 3 steps essenciais para reduzir friction
 enum SignupWizardStep {
   profilePhoto,
-  personalInfo, 
+  personalInfo,
+  bio,
+  brazilianCity,
   interests,
   origin,
   evaluation,
@@ -27,6 +29,8 @@ class SignupWizardViewModel extends ChangeNotifier {
   final List<SignupWizardStep> _steps = [
     SignupWizardStep.profilePhoto,
     SignupWizardStep.personalInfo,
+    SignupWizardStep.bio,
+    SignupWizardStep.brazilianCity,
     SignupWizardStep.interests,
     SignupWizardStep.origin,
     SignupWizardStep.evaluation,

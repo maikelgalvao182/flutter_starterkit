@@ -732,7 +732,7 @@ async function sendUserNotification(
     }
 
     // Template: systemAlert - mapear eventos RevenueCat para mensagens
-    let alertTitle = "Partiu";
+    let alertTitle = "Boora";
     let alertBody = "Você tem uma nova atualização";
 
     switch (eventType) {

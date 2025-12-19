@@ -225,8 +225,13 @@ class ImageUploadService {
       
       // Monitora progresso
       uploadTask.snapshotEvents.listen((snapshot) {
-        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
-        onProgress?.call(progress);
+        // Evita divisão por zero e valores inválidos (Infinity/NaN)
+        if (snapshot.totalBytes > 0) {
+          final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+          if (progress.isFinite) {
+            onProgress?.call(progress);
+          }
+        }
       });
       
       await uploadTask;

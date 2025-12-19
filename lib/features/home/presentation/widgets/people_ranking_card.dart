@@ -218,7 +218,7 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: GlimpseColors.textSubTitle,
+                  color: GlimpseColors.primaryColorLight,
                 ),
               ),
               const SizedBox(width: 4),

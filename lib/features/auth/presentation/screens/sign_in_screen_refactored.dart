@@ -120,12 +120,12 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                           ? _i18n.translate('auth_title')
                           : 'Where Wedding Dreams\nMeet Reality',
                         style: const TextStyle(
-                          fontFamily: 'Glitz',
+                          fontFamily: FONT_PLUS_JAKARTA_SANS,
                           color: Colors.white,
-                          fontSize: 34,
+                          fontSize: 30,
                           fontWeight: FontWeight.w700,
                           height: 1.1,
-                          letterSpacing: 1.5,
+                          letterSpacing: 0.0,
                           shadows: [
                             Shadow(
                               offset: Offset(0, 2),
@@ -261,7 +261,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                     ],
                     /// Sign in with Facebook (hidden)
                     const SizedBox.shrink(),
-                    const SizedBox(height: 0),
+                    const SizedBox(height: 4),
                     /// Sign in with Google
                     Padding(
                       padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
@@ -353,6 +353,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 60),
 
                       ],
                     ),

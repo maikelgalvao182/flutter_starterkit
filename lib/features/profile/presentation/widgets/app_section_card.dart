@@ -47,114 +47,235 @@ class _AppSectionCardState extends State<AppSectionCard> {
   Widget build(BuildContext context) {
     final i18n = LocalizationService.of(context);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSwitchItem(
-            context,
-            icon: Iconsax.notification,
-            title: i18n.translate('global_notifications') ?? 'Notificações gerais',
-            value: PushPreferencesService.isEnabled(
-              PushType.global,
-              SessionManager.instance.currentUser?.pushPreferences,
-            ),
-            onChanged: (v) => _updatePushPreference(PushType.global, v),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        // Seção: Notificações
+        _buildSectionHeader(context, i18n.translate('section_notifications') ?? 'Notificações'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildSwitchItem(
-            context,
-            icon: Iconsax.message,
-            title: i18n.translate('event_messages') ?? 'Mensagens dos eventos',
-            value: PushPreferencesService.isEnabled(
-              PushType.chatEvent,
-              SessionManager.instance.currentUser?.pushPreferences,
-            ),
-            onChanged: (v) => _updatePushPreference(PushType.chatEvent, v),
+          color: Colors.white,
+          child: Column(
+            children: [
+              _buildSwitchItem(
+                context,
+                icon: Iconsax.notification,
+                title: i18n.translate('global_notifications') ?? 'Notificações gerais',
+                value: PushPreferencesService.isEnabled(
+                  PushType.global,
+                  SessionManager.instance.currentUser?.pushPreferences,
+                ),
+                onChanged: (v) => _updatePushPreference(PushType.global, v),
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildSwitchItem(
+                context,
+                icon: Iconsax.message,
+                title: i18n.translate('event_messages') ?? 'Mensagens dos eventos',
+                value: PushPreferencesService.isEnabled(
+                  PushType.chatEvent,
+                  SessionManager.instance.currentUser?.pushPreferences,
+                ),
+                onChanged: (v) => _updatePushPreference(PushType.chatEvent, v),
+              ),
+            ],
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.user_remove,
-            title: i18n.translate('blocked_users') ?? 'Usuários Bloqueados',
-            onTap: () {
-              context.push(AppRoutes.blockedUsers);
-            },
+        ),
+        const SizedBox(height: 20),
+
+        // Seção: Visibilidade
+        _buildSectionHeader(context, i18n.translate('section_visibility') ?? 'Visibilidade'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.info_circle,
-            title: i18n.translate('about_us') ?? 'Sobre Nós',
-            onTap: () {
-              // TODO: Implementar navegação para sobre nós
-            },
+          color: Colors.white,
+          child: Column(
+            children: [
+              _buildListItem(
+                context,
+                icon: Iconsax.user_remove,
+                title: i18n.translate('blocked_users') ?? 'Usuários Bloqueados',
+                onTap: () {
+                  context.push(AppRoutes.blockedUsers);
+                },
+              ),
+            ],
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.share,
-            title: i18n.translate('share_with_friends') ?? 'Compartilhar com Amigos',
-            onTap: () async {
-              _appHelper.shareApp(context: context);
-            },
+        ),
+        const SizedBox(height: 20),
+
+        // Seção: Suporte
+        _buildSectionHeader(context, i18n.translate('section_support') ?? 'Suporte'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.star,
-            title: Platform.isAndroid
-                ? (i18n.translate('rate_on_play_store') ?? 'Avaliar na Play Store')
-                : (i18n.translate('rate_on_app_store') ?? 'Avaliar na App Store'),
-            onTap: () async {
-              _appHelper.reviewApp();
-            },
+          color: Colors.white,
+          child: Column(
+            children: [
+              _buildListItem(
+                context,
+                icon: Iconsax.shield_tick,
+                title: i18n.translate('safety_and_etiquette') ?? 'Segurança e Etiqueta',
+                onTap: () async {
+                  _appHelper.openSafetyPage();
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.document_text_1,
+                title: i18n.translate('community_guidelines') ?? 'Diretrizes da Comunidade',
+                onTap: () async {
+                  _appHelper.openGuidelinesPage();
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.info_circle,
+                title: i18n.translate('about_us') ?? 'Sobre Nós',
+                onTap: () async {
+                  _appHelper.openAboutPage();
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.message_question,
+                title: i18n.translate('report_bug') ?? 'Reportar um Bug',
+                onTap: () async {
+                  _appHelper.openBugReport();
+                },
+              ),
+            ],
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.shield_tick,
-            title: i18n.translate('privacy_policy') ?? 'Política de Privacidade',
-            onTap: () async {
-              _appHelper.openPrivacyPage();
-            },
+        ),
+        const SizedBox(height: 20),
+
+        // Seção: Social
+        _buildSectionHeader(context, i18n.translate('section_social') ?? 'Social'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.document_text,
-            title: i18n.translate('terms_of_service') ?? 'Termos de Serviço',
-            onTap: () async {
-              _appHelper.openTermsPage();
-            },
+          color: Colors.white,
+          child: Column(
+            children: [
+              _buildListItem(
+                context,
+                icon: Iconsax.share,
+                title: i18n.translate('share_with_friends') ?? 'Compartilhar com Amigos',
+                onTap: () async {
+                  _appHelper.shareApp(context: context);
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.star,
+                title: Platform.isAndroid
+                    ? (i18n.translate('rate_on_play_store') ?? 'Avaliar na Play Store')
+                    : (i18n.translate('rate_on_app_store') ?? 'Avaliar na App Store'),
+                onTap: () async {
+                  _appHelper.reviewApp();
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.video_play,
+                title: i18n.translate('follow_us_on_tiktok') ?? 'Seguir no TikTok',
+                onTap: () async {
+                  _appHelper.openUrl('https://www.tiktok.com/@booraapp');
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.camera,
+                title: i18n.translate('follow_us_on_instagram') ?? 'Seguir no Instagram',
+                onTap: () async {
+                  _appHelper.openUrl('https://www.instagram.com/booraapp');
+                },
+              ),
+            ],
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          _buildListItem(
-            context,
-            icon: Iconsax.logout,
-            title: i18n.translate('sign_out') ?? 'Sair',
-            onTap: () {
-              debugPrint('🚪 [LOGOUT] Botão de logout clicado');
-              _handleLogout(context, i18n);
-            },
+        ),
+        const SizedBox(height: 20),
+
+        // Seção: Legal
+        _buildSectionHeader(context, i18n.translate('section_legal') ?? 'Legal'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
-          
-          _buildListItem(
-            context,
-            icon: Iconsax.trash,
-            title: i18n.translate('delete_account') ?? 'Excluir Conta',
-            iconColor: Colors.red,
-            textColor: Colors.red,
-            onTap: () => _handleDeleteAccount(context, i18n),
+          color: Colors.white,
+          child: Column(
+            children: [
+              _buildListItem(
+                context,
+                icon: Iconsax.lock,
+                title: i18n.translate('privacy_policy') ?? 'Política de Privacidade',
+                onTap: () async {
+                  _appHelper.openPrivacyPage();
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.document_text,
+                title: i18n.translate('terms_of_service') ?? 'Termos de Serviço',
+                onTap: () async {
+                  _appHelper.openTermsPage();
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+
+        // Seção: Conta
+        _buildSectionHeader(context, i18n.translate('section_account') ?? 'Conta'),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          color: Colors.white,
+          child: Column(
+            children: [
+              _buildListItem(
+                context,
+                icon: Iconsax.logout,
+                title: i18n.translate('sign_out') ?? 'Sair',
+                onTap: () {
+                  debugPrint('🚪 [LOGOUT] Botão de logout clicado');
+                  _handleLogout(context, i18n);
+                },
+              ),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
+              _buildListItem(
+                context,
+                icon: Iconsax.trash,
+                title: i18n.translate('delete_account') ?? 'Excluir Conta',
+                iconColor: Colors.red,
+                textColor: Colors.red,
+                onTap: () => _handleDeleteAccount(context, i18n),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
   
@@ -307,6 +428,22 @@ class _AppSectionCardState extends State<AppSectionCard> {
       
       if (mounted) setState(() {}); // Rebuild UI
     }
+  }
+  
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, bottom: 8, top: 0),
+      child: Text(
+        title.toUpperCase(),
+        style: GoogleFonts.getFont(
+          FONT_PLUS_JAKARTA_SANS,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Colors.black.withValues(alpha: 0.40),
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 
   Widget _buildSwitchItem(BuildContext context, {

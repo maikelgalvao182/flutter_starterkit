@@ -45,10 +45,9 @@ class SubscriptionPlanCard extends StatelessWidget {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: borderColor, width: 2),
           color: Colors.white,
           boxShadow: isSelected
@@ -61,41 +60,26 @@ class SubscriptionPlanCard extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Informações do plano
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Título do plano
-                  Text(
-                    product.title,
-                    style: const TextStyle(
-                      fontFamily: FONT_PLUS_JAKARTA_SANS,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 4),
-                  
-                  // Descrição do plano
-                  Text(
-                    _getDescription(i18n, product),
-                    style: const TextStyle(
-                      fontFamily: FONT_PLUS_JAKARTA_SANS,
-                      fontSize: 13,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.visible,
-                  ),
-                ],
+            // Título do plano
+            Text(
+              product.title,
+              style: const TextStyle(
+                fontFamily: FONT_PLUS_JAKARTA_SANS,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+                height: 1.2,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
+            
+            const SizedBox(height: 8),
             
             // Preço
             Text(
@@ -105,6 +89,30 @@ class SubscriptionPlanCard extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            
+            const SizedBox(height: 6),
+            
+            // Descrição do plano
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                _getDescription(i18n, product),
+                style: const TextStyle(
+                  fontFamily: FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 12,
+                  color: GlimpseColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

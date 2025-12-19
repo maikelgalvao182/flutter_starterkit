@@ -37,7 +37,10 @@ class BasicInformationProfileSection extends StatelessWidget {
 
     return Container(
       padding: GlimpseStyles.profileSectionPadding,
-      child: BasicInformationSection(entries: entries),
+      child: BasicInformationSection(
+        title: i18n.translate('basic_information_profile'),
+        entries: entries,
+      ),
     );
   }
 
@@ -59,7 +62,7 @@ class BasicInformationProfileSection extends StatelessWidget {
     if (user.gender != null && user.gender!.trim().isNotEmpty) {
       entries.add(BasicInfoEntry(
         label: i18n.translate('gender_label'),
-        value: user.gender!,
+        value: _translateGender(i18n, user.gender!),
       ));
     }
 
@@ -88,5 +91,19 @@ class BasicInformationProfileSection extends StatelessWidget {
     }
 
     return entries;
+  }
+
+  /// Traduz valor de gênero do banco (inglês) para o idioma atual
+  String _translateGender(AppLocalizations i18n, String gender) {
+    switch (gender) {
+      case 'Male':
+        return i18n.translate('gender_male');
+      case 'Female':
+        return i18n.translate('gender_female');
+      case 'Other':
+        return i18n.translate('gender_non_binary');
+      default:
+        return gender; // Retorna o valor original se não encontrar tradução
+    }
   }
 }

@@ -11,7 +11,6 @@ import 'package:partiu/features/home/presentation/widgets/user_card/user_card_co
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
 import 'package:partiu/shared/widgets/star_badge.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
-import 'package:partiu/core/utils/card_color_helper.dart';
 
 /// Card horizontal de usuário
 /// 
@@ -199,14 +198,15 @@ class _UserCardState extends State<UserCard> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: widget.index != null 
-              ? CardColorHelper.getColor(widget.index!) 
-              : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: GlimpseColors.borderColorLight,
-            width: 0,
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,

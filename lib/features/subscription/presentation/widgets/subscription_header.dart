@@ -30,7 +30,7 @@ class SubscriptionHeader extends StatelessWidget {
       children: [
         // Container sem imagem de fundo
         Container(
-          height: 190,
+          height: 170,
           width: double.infinity,
           color: Colors.white,
           child: Column(
@@ -40,9 +40,9 @@ class SubscriptionHeader extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 80,
-                  width: 80,
+                  'assets/images/simbolo.png',
+                  height: 70,
+                  width: 70,
                 ),
               ),
                             
@@ -55,7 +55,7 @@ class SubscriptionHeader extends StatelessWidget {
                     fontFamily: FONT_PLUS_JAKARTA_SANS,
                     fontSize: 20,
                     color: Colors.black,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: -0.2,
                   ),
                   textAlign: TextAlign.center,

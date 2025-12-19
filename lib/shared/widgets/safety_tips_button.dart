@@ -97,7 +97,7 @@ class _SafetyDialogContent extends StatelessWidget {
             'Dicas de Segurança',
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
-              fontSize: 17,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               color: GlimpseColors.primaryColorLight,
             ),
@@ -105,12 +105,12 @@ class _SafetyDialogContent extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Fique seguro ao encontrar outras pessoas',
+            'Fique seguro durante os encontros',
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: GlimpseColors.textSubTitle,
+              fontWeight: FontWeight.w600,
+              color: GlimpseColors.primaryColorLight,
             ),
             textAlign: TextAlign.center,
           ),
@@ -119,7 +119,7 @@ class _SafetyDialogContent extends StatelessWidget {
           // Dicas
           _SafetyTipItem(
             icon: IconsaxPlusLinear.people,
-            title: 'Encontre-se sempre em locais públicos',
+            title: 'Priorize locais públicos',
             description: 'Prefira locais públicos, bem iluminados e com outras pessoas por perto.',
           ),
           const SizedBox(height: 16),
@@ -131,7 +131,7 @@ class _SafetyDialogContent extends StatelessWidget {
           const SizedBox(height: 16),
           _SafetyTipItem(
             icon: Iconsax.eye,
-            title: 'Fique atento às bebidas',
+            title: 'Fique atenta(o) às bebidas',
             description: 'Cuide da sua bebida e não aceite bebidas de desconhecidos.',
           ),
           const SizedBox(height: 16),
@@ -232,7 +232,7 @@ class _SafetyTipItem extends StatelessWidget {
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: GlimpseColors.primaryColorLight,
                 ),
               ),

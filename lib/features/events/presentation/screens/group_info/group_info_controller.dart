@@ -21,6 +21,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
 import 'package:partiu/core/services/global_cache_service.dart';
+import 'package:partiu/features/events/state/event_store.dart';
 
 /// Controller para a tela de informações do grupo/evento
 class GroupInfoController extends ChangeNotifier {
@@ -225,6 +226,13 @@ class GroupInfoController extends ChangeNotifier {
       // Salva no cache (TTL 5 min)
       if (_eventData != null) {
         GlobalCacheService.instance.set(cacheKey, _eventData, ttl: const Duration(minutes: 5));
+        
+        // Atualiza EventStore
+        EventStore.instance.setEventData(
+          eventId,
+          eventName,
+          eventEmoji,
+        );
       }
     } catch (e) {
       _error = 'Failed to load event: $e';
@@ -373,6 +381,14 @@ class GroupInfoController extends ChangeNotifier {
       if (newEmoji != null) {
         _eventData?['emoji'] = newEmoji;
       }
+      
+      // Atualiza EventStore para refletir mudanças em toda a app
+      EventStore.instance.updateEvent(
+        eventId,
+        name: newName,
+        emoji: newEmoji,
+      );
+
       notifyListeners();
 
       await progressDialog.hide();

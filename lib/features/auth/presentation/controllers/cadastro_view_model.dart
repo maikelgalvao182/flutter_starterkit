@@ -28,6 +28,7 @@ class CadastroViewModel extends ChangeNotifier {
   String instagram = '';
   String jobTitle = '';
   String? country;
+  String? from; // Cidade e Estado de origem
   
   // Origin
   String? originSource;
@@ -47,6 +48,7 @@ class CadastroViewModel extends ChangeNotifier {
     instagram = '';
     jobTitle = '';
     country = null;
+    from = null;
     originSource = null;
     agreeTerms = false;
     notifyListeners();
@@ -119,9 +121,13 @@ class CadastroViewModel extends ChangeNotifier {
     sexualOrientation = orientation;
     notifyListeners();
   }
-  
   void setCountry(String? countryCode) {
     country = countryCode;
+    notifyListeners();
+  }
+  
+  void setFrom(String? cityState) {
+    from = cityState;
     notifyListeners();
   }
   
@@ -129,7 +135,6 @@ class CadastroViewModel extends ChangeNotifier {
     originSource = source;
     notifyListeners();
   }
-  
   
   void setAgreeTerms(bool value) {
     agreeTerms = value;
@@ -175,7 +180,9 @@ class CadastroViewModel extends ChangeNotifier {
             userId: userId,
             filePath: (imageFile as File).path,
             onProgress: (progress) {
-              AppLogger.info('Upload progress: ${(progress * 100).toInt()}%', tag: tag);
+              if (progress.isFinite && !progress.isNaN) {
+                AppLogger.info('Upload progress: ${(progress * 100).toInt()}%', tag: tag);
+              }
             },
           );
           

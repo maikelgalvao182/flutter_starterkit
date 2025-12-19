@@ -89,10 +89,14 @@ match /Users/{userId} {
   /// - Qualquer usuário autenticado pode ler perfis públicos
   allow read: if isSignedIn();
   
-  /// ✍️ CRIAR/ATUALIZAR perfil:
-  /// - Apenas o próprio usuário pode criar/atualizar seu perfil
+  /// ✍️ CRIAR perfil:
+  /// - Apenas o próprio usuário pode criar seu perfil
+  allow create: if isOwner(userId);
+  
+  /// ✏️ ATUALIZAR perfil:
+  /// - Apenas o próprio usuário pode atualizar seu perfil
   /// - NÃO pode alterar campos protegidos (rating, verification, VIP)
-  allow create, update: if isOwner(userId) &&
+  allow update: if isOwner(userId) &&
     !request.resource.data.diff(resource.data).affectedKeys()
       .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate', 
                'isVerified', 'verifiedAt', 'facialId', 'verificationType',
@@ -110,6 +114,12 @@ match /Users/{userId} {
     request.resource.data.diff(resource.data).affectedKeys()
     .hasOnly(['vipExpiresAt', 'vipProductId', 'vipUpdatedAt', 
               'user_is_vip', 'user_is_verified', 'user_level']);
+  
+  /// 📍 ATUALIZAR localização (apenas o próprio usuário):
+  /// - Permite atualizar latitude, longitude, geohash e locationUpdatedAt
+  allow update: if isOwner(userId) &&
+    request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['latitude', 'longitude', 'geohash', 'locationUpdatedAt']);
   
   /// 🗑️ DELETAR perfil:
   /// - Apenas o próprio usuário pode deletar seu perfil
@@ -134,15 +144,25 @@ match /users/{userId} {
   /// - Qualquer usuário autenticado pode ler perfis públicos
   allow read: if isSignedIn();
   
-  /// ✍️ CRIAR/ATUALIZAR perfil:
-  /// - Apenas o próprio usuário pode criar/atualizar seu perfil
+  /// ✍️ CRIAR perfil:
+  /// - Apenas o próprio usuário pode criar seu perfil
+  allow create: if isOwner(userId);
+  
+  /// ✏️ ATUALIZAR perfil:
+  /// - Apenas o próprio usuário pode atualizar seu perfil
   /// - NÃO pode alterar campos protegidos
-  allow create, update: if isOwner(userId) &&
+  allow update: if isOwner(userId) &&
     !request.resource.data.diff(resource.data).affectedKeys()
       .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate',
                'isVerified', 'verifiedAt', 'facialId', 'verificationType',
                'vipExpiresAt', 'vipProductId', 'vipUpdatedAt',
                'user_is_vip', 'user_is_verified', 'user_level']);
+  
+  /// 📍 ATUALIZAR localização (apenas o próprio usuário):
+  /// - Permite atualizar latitude, longitude, geohash e locationUpdatedAt
+  allow update: if isOwner(userId) &&
+    request.resource.data.diff(resource.data).affectedKeys()
+    .hasOnly(['latitude', 'longitude', 'geohash', 'locationUpdatedAt']);
   
   /// ✏️ ATUALIZAR campos protegidos (APENAS Cloud Functions):
   allow update: if request.resource.data.diff(resource.data).affectedKeys()

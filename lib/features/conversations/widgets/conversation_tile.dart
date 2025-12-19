@@ -7,6 +7,7 @@ import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/features/conversations/services/conversation_data_processor.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/conversations/utils/conversation_styles.dart';
+import 'package:partiu/features/events/state/event_store.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/event_emoji_avatar.dart';
 import 'package:flutter/material.dart';
@@ -115,6 +116,34 @@ class ConversationTile extends StatelessWidget {
               context,
               timestamp: timestampValue,
             );
+
+            if (eventId.isNotEmpty) {
+              return ValueListenableBuilder<EventInfo?>(
+                valueListenable: EventStore.instance.getEventNotifier(eventId),
+                builder: (context, eventInfo, _) {
+                  // Se tiver dados no store, usa eles (são mais recentes/reativos)
+                  // Se não, usa os dados do snapshot/rawData
+                  final effectiveDisplayName = eventInfo?.name ?? displayName;
+                  final effectiveEmoji = eventInfo?.emoji ?? emoji;
+
+                  // Se o store estiver vazio mas temos dados, podemos inicializar?
+                  // Melhor não fazer side-effects no build.
+                  // O GroupInfoController ou quem carrega o evento deve popular o store.
+
+                  return _buildTileContent(
+                    context,
+                    displayData,
+                    i18n,
+                    hasUnread: hasUnread,
+                    displayName: effectiveDisplayName,
+                    lastMessage: lastMessageText,
+                    timeAgo: timeAgoText,
+                    emoji: effectiveEmoji,
+                    eventId: eventId,
+                  );
+                },
+              );
+            }
 
             return _buildTileContent(
               context,

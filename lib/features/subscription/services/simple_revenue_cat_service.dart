@@ -265,22 +265,20 @@ class SimpleRevenueCatService {
   static bool hasAccess(CustomerInfo info) {
     try {
       final entId = _entitlementId ?? REVENUE_CAT_ENTITLEMENT_ID;
-      print('🔍 [RevenueCat] Verificando acesso ao entitlement "$entId"');
-      print('   Entitlements disponíveis: ${info.entitlements.all.keys.toList()}');
-      print('   Entitlements ativos: ${info.entitlements.active.keys.toList()}');
       
       final ent = info.entitlements.active[entId];
 
       if (ent == null) {
-        print('   ❌ Entitlement "$entId" NÃO encontrado nos ativos');
+        // Log reduzido - só mostra na primeira vez ou quando debugar
+        // print('   ❌ Entitlement "$entId" não ativo');
         return false;
       }
       
-      print('   ✅ Entitlement "$entId" encontrado');
-      print('      - isActive: ${ent.isActive}');
-      print('      - willRenew: ${ent.willRenew}');
-      print('      - expirationDate: ${ent.expirationDate}');
-      print('      - billingIssue: ${ent.billingIssueDetectedAt != null}');
+      // Log apenas quando encontrar assinatura ativa
+      print('✅ [RevenueCat] Assinatura "$entId" ativa');
+      print('   - willRenew: ${ent.willRenew}');
+      print('   - expirationDate: ${ent.expirationDate}');
+      print('   - billingIssue: ${ent.billingIssueDetectedAt != null}');
 
       // billing issue → sem acesso
       if (ent.billingIssueDetectedAt != null) return false;

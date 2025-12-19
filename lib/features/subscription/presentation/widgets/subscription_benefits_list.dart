@@ -88,10 +88,10 @@ class _BenefitItem extends StatelessWidget {
         ListTile(
           leading: CircleAvatar(
             radius: 24,
-            backgroundColor: GlimpseColors.primary,
+            backgroundColor: GlimpseColors.primaryLight,
             child: Icon(
               benefit.icon,
-              color: Colors.white,
+              color: GlimpseColors.primary,
             ),
           ),
           title: Text(

@@ -6,6 +6,7 @@ import 'package:partiu/screens/chat/controllers/chat_app_bar_controller.dart';
 import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/shared/widgets/event_emoji_avatar.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
+import 'package:partiu/features/events/state/event_store.dart';
 
 /// Avatar do chat - evento ou usuário
 class ChatAvatarWidget extends StatelessWidget {
@@ -23,23 +24,29 @@ class ChatAvatarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.isEvent) {
-      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: chatService.getConversationSummary(user.userId),
-        builder: (context, snap) {
-          String emoji = EventEmojiAvatar.defaultEmoji;
-          String eventId = controller.eventId;
-          
-          if (snap.hasData && snap.data!.data() != null) {
-            final data = snap.data!.data()!;
-            emoji = data['emoji'] ?? EventEmojiAvatar.defaultEmoji;
-            eventId = data['event_id']?.toString() ?? eventId;
-          }
-          
-          return EventEmojiAvatar(
-            emoji: emoji,
-            eventId: eventId,
-            size: ConversationStyles.avatarSizeChatAppBar,
-            emojiSize: ConversationStyles.eventEmojiFontSizeChatAppBar,
+      return ValueListenableBuilder<EventInfo?>(
+        valueListenable: EventStore.instance.getEventNotifier(controller.eventId),
+        builder: (context, eventInfo, _) {
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: chatService.getConversationSummary(user.userId),
+            builder: (context, snap) {
+              String emoji = eventInfo?.emoji ?? EventEmojiAvatar.defaultEmoji;
+              String eventId = controller.eventId;
+              
+              // Fallback para stream se store estiver vazio
+              if (eventInfo == null && snap.hasData && snap.data!.data() != null) {
+                final data = snap.data!.data()!;
+                emoji = data['emoji'] ?? emoji;
+                eventId = data['event_id']?.toString() ?? eventId;
+              }
+              
+              return EventEmojiAvatar(
+                emoji: emoji,
+                eventId: eventId,
+                size: ConversationStyles.avatarSizeChatAppBar,
+                emojiSize: ConversationStyles.eventEmojiFontSizeChatAppBar,
+              );
+            },
           );
         },
       );

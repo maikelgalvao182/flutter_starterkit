@@ -66,11 +66,11 @@ class AppHelper {
 
   /// Compartilha o app
   Future<void> shareApp({BuildContext? context}) async {
-    const String appUrl = 'https://play.google.com/store/apps/details?id=com.partiu.app';
-    const String message = 'Conheça o Partiu! O app para encontros e relacionamentos. $appUrl';
+    const String appUrl = 'https://apps.apple.com/br/app/boora/id6755944656';
+    const String message = 'Conheça o Partiu! O app para encontros e relacionamentos.';
     
     try {
-      await SharePlus.instance.share(ShareParams(text: message));
+      await SharePlus.instance.share(ShareParams(text: '$message $appUrl'));
     } catch (e) {
       debugPrint('Erro ao compartilhar: $e');
     }
@@ -83,7 +83,7 @@ class AppHelper {
       if (Platform.isAndroid) {
         url = Uri.parse('https://play.google.com/store/apps/details?id=com.partiu.app');
       } else {
-        url = Uri.parse('https://apps.apple.com/app/partiu/id123456789');
+        url = Uri.parse('https://apps.apple.com/app/id6755944656');
       }
       
       if (await canLaunchUrl(url)) {
@@ -97,7 +97,7 @@ class AppHelper {
   /// Abre política de privacidade
   Future<void> openPrivacyPage() async {
     try {
-      final url = Uri.parse('https://partiu.app/privacy');
+      final url = Uri.parse('https://www.boora.space/politica-de-privacidade');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
@@ -109,7 +109,7 @@ class AppHelper {
   /// Abre termos de serviço
   Future<void> openTermsPage() async {
     try {
-      final url = Uri.parse('https://partiu.app/terms');
+      final url = Uri.parse('https://www.boora.space/termos-de-servico');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
@@ -118,5 +118,63 @@ class AppHelper {
     }
   }
 
+  /// Abre página de segurança e etiqueta
+  Future<void> openSafetyPage() async {
+    try {
+      final url = Uri.parse('https://www.boora.space/seguranca-etiqueta');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Erro ao abrir página de segurança: $e');
+    }
+  }
 
+  /// Abre diretrizes da comunidade
+  Future<void> openGuidelinesPage() async {
+    try {
+      final url = Uri.parse('https://www.boora.space/diretrizes-da-comunidade');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Erro ao abrir diretrizes da comunidade: $e');
+    }
+  }
+
+  /// Abre página sobre nós
+  Future<void> openAboutPage() async {
+    try {
+      final url = Uri.parse('https://www.boora.space/');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Erro ao abrir página sobre nós: $e');
+    }
+  }
+
+  /// Abre WhatsApp para reportar bug
+  Future<void> openBugReport() async {
+    try {
+      final url = Uri.parse('https://wa.me/5511940498184?text=Ol%C3%A1%2C%20preciso%20de%20ajuda...');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Erro ao abrir WhatsApp para reportar bug: $e');
+    }
+  }
+
+  /// Abre URL genérica
+  Future<void> openUrl(String urlString) async {
+    try {
+      final url = Uri.parse(urlString);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Erro ao abrir URL ($urlString): $e');
+    }
+  }
 }

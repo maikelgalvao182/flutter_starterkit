@@ -1,6 +1,6 @@
-# partiu
+# Boora
 
-A new Flutter project.
+A Flutter project for event planning and social activities.
 
 ## Getting Started
 

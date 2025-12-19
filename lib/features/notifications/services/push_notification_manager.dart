@@ -298,7 +298,7 @@ class PushNotificationManager {
   // Channel Android
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'partiu_high_importance',
-    'Notificações do Partiu',
+    'Notificações do Boora',
     description: 'Notificações de mensagens, rolês e atividades',
     importance: Importance.high,
     enableVibration: true,

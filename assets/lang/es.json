@@ -1,6 +1,6 @@
 {
-  "app_name": "Partiu",
-  "welcome": "Bienvenido a Partiu",
+  "app_name": "Boora",
+  "welcome": "Bienvenido a Boora",
   "sign_in": "Iniciar sesión",
   "sign_up": "Crear cuenta",
   "email": "Correo electrónico",
@@ -186,6 +186,7 @@
   "delete_failed": "Error al eliminar",
   "about_me_title": "Sobre mí",
   "basic_information_title": "Información Básica",
+  "basic_information_profile": "Información Básica",
   "interests_section_title": "Intereses",
   "name_label": "Nombre",
   "gender_label": "Género",
@@ -415,6 +416,7 @@
   "notif_filter_activities": "Actividades",
   "notif_filter_event_chat": "Chat de Eventos",
   "notif_filter_profile_views": "Visualizaciones",
+  "notif_filter_reviews": "Evaluaciones",
   
   "help_us_keep_community_safe": "Ayúdanos a mantener la comunidad segura",
   "report_dialog_description": "Elige una acción para este usuario.",
@@ -476,6 +478,15 @@
   "vip_subscription_restored": "¡Suscripción VIP restaurada con éxito!",
   "payment_cancelled": "Pago cancelado",
   "payment_cancelled_by_user": "Pago cancelado por el usuario",
+  
+  "section_notifications": "Notificaciones",
+  "section_visibility": "Visibilidad",
+  "section_support": "Soporte",
+  "section_social": "Social",
+  "section_legal": "Legal",
+  "section_account": "Cuenta",
+  "follow_us_on_tiktok": "Síguenos en TikTok",
+  "follow_us_on_instagram": "Síguenos en Instagram",
   
   "years_old": "años"
 }

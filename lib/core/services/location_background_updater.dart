@@ -76,9 +76,9 @@ class LocationSyncScheduler {
     debugPrint('🔄 LocationSyncScheduler iniciado (intervalo: ${config.updateInterval})');
     debugPrint('📍 Configuração: distância mínima=${config.minimumDistanceMeters}m, cache=${config.cacheMaxAgeMinutes}min');
 
-    // Executa imediatamente na primeira vez
-    _updateLocationIfNeeded(locationService);
-
+    // Não executa imediatamente - aguarda primeiro ciclo do timer
+    // Isso evita erro de permissão caso usuário ainda não esteja logado
+    
     // Configura timer periódico
     _timer = Timer.periodic(config.updateInterval, (_) {
       _updateLocationIfNeeded(locationService);

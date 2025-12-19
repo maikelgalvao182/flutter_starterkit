@@ -6,6 +6,7 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/shared/screens/media_viewer_screen.dart';
 
 /// Gallery section widget exibindo grid de imagens
 /// 
@@ -85,6 +86,7 @@ class GalleryProfileSection extends StatelessWidget {
               return _ImageThumb(
                 key: ValueKey(imageUrl),
                 imageUrl: imageUrl,
+                onTap: () => _openGalleryViewer(context, imageUrls, index),
               );
             },
           ),
@@ -116,45 +118,70 @@ class GalleryProfileSection extends StatelessWidget {
     
     return urls;
   }
+  
+  /// Abre o visualizador de imagens em tela cheia
+  void _openGalleryViewer(BuildContext context, List<String> urls, int initialIndex) {
+    final items = urls.map((url) => MediaViewerItem(
+      url: url,
+      heroTag: 'gallery_$url',
+    )).toList();
+    
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => MediaViewerScreen(
+          items: items,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
 }
 
 class _ImageThumb extends StatelessWidget {
   const _ImageThumb({
     required this.imageUrl,
+    required this.onTap,
     super.key,
   });
   
   final String imageUrl;
-
+  final VoidCallback onTap;
+  
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: CachedNetworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: GlimpseColors.lightTextField,
-            child: const Center(
-              child: CupertinoActivityIndicator(
-                radius: 14,
-                color: GlimpseColors.primaryColorLight,
+      child: GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Hero(
+            tag: 'gallery_$imageUrl',
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: GlimpseColors.lightTextField,
+                child: const Center(
+                  child: CupertinoActivityIndicator(
+                    radius: 14,
+                    color: GlimpseColors.primaryColorLight,
+                  ),
+                ),
               ),
+              errorWidget: (context, url, error) => Container(
+                color: GlimpseColors.lightTextField,
+                child: const Center(
+                  child: Icon(
+                    Icons.photo_outlined,
+                    color: Colors.white70,
+                    size: 28,
+                  ),
+                ),
+              ),
+              fadeInDuration: const Duration(milliseconds: 200),
+              fadeOutDuration: const Duration(milliseconds: 100),
             ),
           ),
-          errorWidget: (context, url, error) => Container(
-            color: GlimpseColors.lightTextField,
-            child: const Center(
-              child: Icon(
-                Icons.photo_outlined,
-                color: Colors.white70,
-                size: 28,
-              ),
-            ),
-          ),
-          fadeInDuration: const Duration(milliseconds: 200),
-          fadeOutDuration: const Duration(milliseconds: 100),
         ),
       ),
     );
