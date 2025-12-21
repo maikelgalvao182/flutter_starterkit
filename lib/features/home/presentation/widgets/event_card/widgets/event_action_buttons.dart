@@ -152,6 +152,7 @@ class EventActionButtons extends StatelessWidget {
               height: 48,
               fontSize: 14,
               isProcessing: isLeaving,
+              hideProcessingText: true,
             ),
           ),
         ],
@@ -162,6 +163,7 @@ class EventActionButtons extends StatelessWidget {
       text: buttonText,
       onPressed: (isEnabled && !isApplying) ? onSingleButtonPressed : null,
       isProcessing: isApplying,
+      noPadding: true,
     );
   }
 }

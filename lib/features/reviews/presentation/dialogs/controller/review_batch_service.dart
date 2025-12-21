@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/controller/review_dialog_state.dart';
 
 /// Serviço responsável por operações em lote (batch) no Firestore
@@ -9,21 +10,29 @@ class ReviewBatchService {
     WriteBatch batch,
     String participantId,
     ReviewDialogState state,
-    FirebaseFirestore firestore,
-  ) {
+    FirebaseFirestore firestore, {
+    required String reviewerName,
+    String? reviewerPhotoUrl,
+  }) {
     final reviewRef = firestore.collection('Reviews').doc();
+    final criteriaRatings = state.ratingsPerParticipant[participantId] ?? {};
+    final overallRating = ReviewModel.calculateOverallRating(criteriaRatings);
+    
     final reviewData = {
       'event_id': state.eventId,
       'reviewee_id': participantId,
       'reviewer_id': state.reviewerId,
       'reviewer_role': 'owner',
-      'criteria_ratings': state.ratingsPerParticipant[participantId] ?? {},
+      'criteria_ratings': criteriaRatings,
+      'overall_rating': overallRating,
       'badges': state.badgesPerParticipant[participantId] ?? [],
       'comment': state.commentPerParticipant[participantId]?.trim().isEmpty == true
           ? null
           : state.commentPerParticipant[participantId]?.trim(),
       'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
+      'reviewer_name': reviewerName,
+      if (reviewerPhotoUrl != null) 'reviewer_photo_url': reviewerPhotoUrl,
     };
     
     debugPrint('📝 [Batch] Criando Review');
@@ -31,6 +40,8 @@ class ReviewBatchService {
     debugPrint('   - reviewee_id: $participantId');
     debugPrint('   - reviewer_id: ${state.reviewerId}');
     debugPrint('   - reviewer_role: owner');
+    debugPrint('   - reviewer_name: $reviewerName');
+    debugPrint('   - overall_rating: $overallRating');
     
     batch.set(reviewRef, reviewData);
   }

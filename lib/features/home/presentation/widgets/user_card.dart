@@ -11,6 +11,7 @@ import 'package:partiu/features/home/presentation/widgets/user_card/user_card_co
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
 import 'package:partiu/shared/widgets/star_badge.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
+import 'package:partiu/core/helpers/time_ago_helper.dart';
 
 /// Card horizontal de usuário
 /// 
@@ -19,6 +20,7 @@ import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dar
 /// - fullName
 /// - from (localização)
 /// - Interesses em comum (se fornecido via userWithMeta)
+/// - Time ago (opcional, apenas para profile_visits)
 class UserCard extends StatefulWidget {
   const UserCard({
     required this.userId,
@@ -29,6 +31,7 @@ class UserCard extends StatefulWidget {
     this.onLongPress,
     this.trailingWidget,
     this.index,
+    this.showTimeAgo = false,
     super.key,
   });
 
@@ -40,6 +43,7 @@ class UserCard extends StatefulWidget {
   final VoidCallback? onLongPress;
   final Widget? trailingWidget;
   final int? index;
+  final bool showTimeAgo;
 
   @override
   State<UserCard> createState() => _UserCardState();
@@ -99,12 +103,13 @@ class _UserCardState extends State<UserCard> {
     if (widget.user != null) {
       final u = widget.user!;
       return _buildUserCard(
-        fullName: u.fullName,
+        fullName: u.userFullname,
         from: u.from ?? '',
         distanceKm: u.distance,
         commonInterests: u.commonInterests ?? [],
         photoUrl: u.photoUrl,
         overallRating: rating,
+        visitedAt: u.visitedAt,
       );
     }
 
@@ -168,6 +173,7 @@ class _UserCardState extends State<UserCard> {
     List<String> commonInterests = const [],
     String? photoUrl,
     double? overallRating,
+    DateTime? visitedAt,
   }) {
     final distanceText = distanceKm != null 
         ? '${distanceKm.toStringAsFixed(1)} km' 
@@ -221,7 +227,7 @@ class _UserCardState extends State<UserCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Nome completo + Rating badge
+                  // Nome completo + Rating badge + Time ago (se showTimeAgo)
                   Row(
                     children: [
                       Expanded(
@@ -235,6 +241,18 @@ class _UserCardState extends State<UserCard> {
                           ),
                         ),
                       ),
+                      if (widget.showTimeAgo && visitedAt != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          TimeAgoHelper.format(context, timestamp: visitedAt),
+                          style: GoogleFonts.getFont(
+                            FONT_PLUS_JAKARTA_SANS,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: GlimpseColors.textSubTitle,
+                          ),
+                        ),
+                      ],
                       if (overallRating != null && overallRating > 0) ...[
                         const SizedBox(width: 8),
                         StarBadge(rating: overallRating),

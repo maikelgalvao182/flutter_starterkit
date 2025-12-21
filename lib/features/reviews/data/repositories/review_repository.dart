@@ -312,12 +312,31 @@ class ReviewRepository {
     String? comment,
     String? pendingReviewId,
   }) async {
+    debugPrint('🔍 [createReview] Iniciando...');
+    debugPrint('   eventId: $eventId');
+    debugPrint('   revieweeId: $revieweeId');
+    debugPrint('   reviewerRole: $reviewerRole');
+    debugPrint('   criteriaRatings: $criteriaRatings');
+    debugPrint('   pendingReviewId: $pendingReviewId');
+    
     final userId = _auth.currentUser?.uid;
+    debugPrint('   userId (reviewer): $userId');
+    
     if (userId == null) {
+      debugPrint('❌ [createReview] Usuário não autenticado');
       throw Exception('Usuário não autenticado');
     }
 
+    // VALIDAÇÃO CRÍTICA: Bloquear autoavaliação
+    if (userId == revieweeId) {
+      debugPrint('❌ [createReview] BLOQUEADO: Tentativa de autoavaliação!');
+      debugPrint('   reviewerId: $userId');
+      debugPrint('   revieweeId: $revieweeId');
+      throw Exception('Você não pode avaliar a si mesmo');
+    }
+
     // Verifica duplicata
+    debugPrint('🔍 [createReview] Verificando duplicata...');
     final existing = await _firestore
         .collection('Reviews')
         .where('reviewer_id', isEqualTo: userId)
@@ -327,15 +346,21 @@ class ReviewRepository {
         .get();
 
     if (existing.docs.isNotEmpty) {
+      debugPrint('❌ [createReview] Review duplicado encontrado');
       throw Exception('Você já avaliou esta pessoa neste evento');
     }
+    debugPrint('   ✅ Nenhum duplicado encontrado');
 
     // Busca dados do reviewer
+    debugPrint('🔍 [createReview] Buscando dados do reviewer...');
     final userDoc = await _firestore.collection('Users').doc(userId).get();
     final userData = userDoc.data();
+    debugPrint('   reviewerName: ${userData?['fullname']}');
+    debugPrint('   reviewerPhotoUrl: ${userData?['user_photo_link']}');
 
     // Calcula overall rating
     final overallRating = ReviewModel.calculateOverallRating(criteriaRatings);
+    debugPrint('   overallRating calculado: $overallRating');
 
     // Cria review
     final now = DateTime.now();
@@ -355,17 +380,42 @@ class ReviewRepository {
       reviewerPhotoUrl: userData?['user_photo_link'] as String?,
     );
 
+    // Converte para Firestore e loga
+    final firestoreData = review.toFirestore();
+    debugPrint('📤 [createReview] Dados a serem salvos no Firestore:');
+    debugPrint('   ${firestoreData.toString()}');
+    
+    // Validação final de segurança
+    if (firestoreData['reviewer_id'] != userId) {
+      debugPrint('❌ [createReview] ERRO CRÍTICO: reviewer_id não corresponde ao userId autenticado!');
+      debugPrint('   reviewer_id no documento: ${firestoreData['reviewer_id']}');
+      debugPrint('   userId autenticado: $userId');
+      throw Exception('Erro de segurança: reviewer_id inválido');
+    }
+
     // Salva no Firestore
-    await _firestore.collection('Reviews').add(review.toFirestore());
+    debugPrint('💾 [createReview] Salvando no Firestore...');
+    try {
+      await _firestore.collection('Reviews').add(firestoreData);
+      debugPrint('   ✅ Review salvo com sucesso');
+    } catch (e, stack) {
+      debugPrint('❌ [createReview] ERRO ao salvar no Firestore: $e');
+      debugPrint('   Stack trace: $stack');
+      rethrow;
+    }
 
     // Remove pending review
     if (pendingReviewId != null && pendingReviewId.isNotEmpty) {
+      debugPrint('🗑️ [createReview] Removendo PendingReview: $pendingReviewId');
       await _removePendingReviewById(pendingReviewId);
       // Notifica o listener
       PendingReviewsListenerService.instance.clearPendingReview(pendingReviewId);
     } else {
+      debugPrint('🗑️ [createReview] Removendo PendingReview por query');
       await _removePendingReview(userId, revieweeId, eventId);
     }
+    
+    debugPrint('✅ [createReview] Processo completo!');
   }
 
   /// Busca reviews de um usuário

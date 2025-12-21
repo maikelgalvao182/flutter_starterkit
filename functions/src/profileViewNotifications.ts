@@ -145,15 +145,25 @@ export const processProfileViewNotifications = functions
           .collection("Notifications")
           .doc();
 
+        // Formatar título dinâmico baseado no count
+        let title: string;
+        if (data.count === 1) {
+          title = "1 pessoa visualizou seu perfil 👏";
+        } else {
+          title = `${data.count} pessoas visualizaram seu perfil 👏`;
+        }
+
         batch.set(notificationRef, {
           n_receiver_id: userId, // Campo padrão para queries
           userId: userId, // Campo duplicado para compatibilidade
           n_type: "profile_views_aggregated",
           n_params: {
+            title: title, // ✅ Título para exibição no widget
+            body: "Novos amigos?", // ✅ Call-to-action
             count: data.count.toString(),
             lastViewedAt: formatRelativeTime(data.lastViewedAt.toDate()),
             viewerIds: data.viewerIds.join(","),
-            emoji: "👀", // Emoji para exibição no widget
+            emoji: "👏", // Emoji para exibição no widget
           },
           n_related_id: "profile_visits", // Identificador para navegação
           n_read: false,
@@ -181,11 +191,11 @@ export const processProfileViewNotifications = functions
       const pushPromises = Object.entries(aggregated)
         .filter(([, data]) => data.count >= 1)
         .map(([userId, data]) => {
-          // Template: profileViewsAggregated
+          // Template: profileViewsAggregated com título dinâmico
           const count = data.count;
-          const body = count === 1 ?
-            "1 pessoa da região visualizou seu perfil" :
-            `${count} pessoas da região visualizaram seu perfil`;
+          const title = count === 1 ?
+            "1 pessoa visualizou seu perfil 👏" :
+            `${count} pessoas visualizaram seu perfil 👏`;
 
           // DeepLink: abre tela de visitas ao perfil
           const deepLink = "partiu://profile-visits";
@@ -194,8 +204,8 @@ export const processProfileViewNotifications = functions
             userId: userId,
             event: "profile_views_aggregated",
             notification: {
-              title: "👀 Visitas ao perfil",
-              body: body,
+              title: title,
+              body: "Novos amigos?",
             },
             data: {
               n_type: "profile_views_aggregated",

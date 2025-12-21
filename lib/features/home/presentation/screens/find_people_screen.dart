@@ -80,12 +80,12 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
     }
     
     // Cada card tem ~80px de altura + 12px de separador = ~92px
-    // Considerando padding de 20px no topo
+    // Sem padding no topo
     const cardHeight = 92.0;
-    const topPadding = 20.0;
+    const topPadding = 0.0;
     
     // Calcular posição do 12º card (índice 11)
-    // 11 cards anteriores * 92px + 20px padding = 1032px
+    // 11 cards anteriores * 92px = 1012px
     const card12Position = (11 * cardHeight) + topPadding;
     
     // O card 12 se torna visível quando: scrollPosition + viewportHeight >= posição do card
@@ -203,7 +203,7 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
       builder: (context, isLoading, _) {
         if (isLoading) {
           return ListView.separated(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
             itemCount: 5,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) => const UserCardShimmer(),
@@ -260,7 +260,7 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                 return PlatformPullToRefresh(
                   onRefresh: _controller.refresh,
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
                   // 🔒 Limitar a 13 itens para não-VIP (12 cards + 1 VipLockedCard)
                   itemCount: VipAccessService.isVip 
                     ? usersList.length 

@@ -650,7 +650,8 @@ class ReviewDialogController extends ChangeNotifier {
   void goToCommentStep() {
     _batchUpdate(() {
       _state.errorMessage = null;
-      _state.currentStep = 3;
+      // Owner: step 3 é comment, Participant: step 2 é comment
+      _state.currentStep = _state.isOwnerReview ? 3 : 2;
     });
   }
 
@@ -827,7 +828,14 @@ class ReviewDialogController extends ChangeNotifier {
     for (final participantId in _state.selectedParticipants) {
       // Adicionar 1 operação por participante (Review)
       // PendingReview do participante agora é criada via Cloud Function (createPendingReviewsScheduled)
-      ReviewBatchService.createReviewBatch(batch, participantId, _state, firestore);
+      ReviewBatchService.createReviewBatch(
+        batch, 
+        participantId, 
+        _state, 
+        firestore,
+        reviewerName: ownerName,
+        reviewerPhotoUrl: ownerPhotoUrl,
+      );
       operationCount++;
 
       // Commit parcial se atingir limite

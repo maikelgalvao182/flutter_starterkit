@@ -105,6 +105,7 @@ dependencies:
   webview_flutter: ^4.13.0
   webview_flutter_android: ^4.10.11
   webview_flutter_wkwebview: ^3.23.5
+  confetti: ^0.8.0
 
 dev_dependencies:
   freezed: ^2.5.7

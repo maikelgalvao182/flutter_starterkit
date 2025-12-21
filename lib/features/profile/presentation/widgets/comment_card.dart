@@ -82,20 +82,28 @@ class _CommentCardState extends State<CommentCard> {
                         ),
                         const SizedBox(height: 4),
                         ValueListenableBuilder<String?>(
-                          valueListenable: UserStore.instance.getFromNotifier(widget.review.reviewerId),
-                          builder: (context, from, _) {
-                            if (from == null || from.isEmpty) {
-                              return const SizedBox.shrink();
-                            }
-                            return Text(
-                              from,
-                              style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: GlimpseColors.textSubTitle,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          valueListenable: UserStore.instance.getCityNotifier(widget.review.reviewerId),
+                          builder: (context, city, _) {
+                            return ValueListenableBuilder<String?>(
+                              valueListenable: UserStore.instance.getStateNotifier(widget.review.reviewerId),
+                              builder: (context, state, _) {
+                                final parts = <String>[];
+                                if (city != null && city.isNotEmpty) parts.add(city);
+                                if (state != null && state.isNotEmpty) parts.add(state);
+                                
+                                if (parts.isEmpty) return const SizedBox.shrink();
+                                
+                                return Text(
+                                  parts.join(', '),
+                                  style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: GlimpseColors.textSubTitle,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                );
+                              },
                             );
                           },
                         ),

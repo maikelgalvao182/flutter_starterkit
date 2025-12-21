@@ -3,6 +3,7 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
 import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
+import 'package:partiu/shared/widgets/confetti_celebration.dart';
 
 /// Handler externo para ações do EventCard
 /// 
@@ -39,11 +40,35 @@ class EventCardHandler {
         await controller.applyToEvent();
         debugPrint('✅ Aplicação realizada com sucesso!');
         
-        // Se foi auto-aprovado (evento aberto), entrar no chat
-        if (controller.isApproved) {
-          debugPrint('✅ Auto-aprovado, entrando no chat');
-          onActionSuccess();
+        // 🎉 Mostrar confetti celebration
+        if (context.mounted) {
+          debugPrint('🎊 Disparando animação de confetti...');
+          ConfettiOverlay.show(context);
         } else {
+          debugPrint('⚠️ Context não está montado, confetti não será exibido');
+        }
+        
+        // Se foi auto-aprovado (evento aberto), confirmar entrada no chat
+        if (controller.isApproved && context.mounted) {
+          debugPrint('✅ Auto-aprovado, mostrando dialog de confirmação');
+          
+          final i18n = AppLocalizations.of(context);
+          final confirmed = await GlimpseCupertinoDialog.show(
+            context: context,
+            title: i18n.translate('success') ?? 'Sucesso',
+            message: i18n.translate('application_approved_redirect_to_chat') ?? 
+                     'Sua aplicação foi aprovada! Deseja entrar no chat do evento?',
+            confirmText: i18n.translate('go_to_chat') ?? 'Ir para o chat',
+            cancelText: i18n.translate('later') ?? 'Depois',
+          );
+          
+          if (confirmed == true) {
+            debugPrint('✅ Usuário confirmou, entrando no chat');
+            onActionSuccess();
+          } else {
+            debugPrint('⏸️ Usuário optou por entrar depois');
+          }
+        } else if (!controller.isApproved) {
           debugPrint('⏳ Aplicação pendente de aprovação');
         }
       } catch (e) {

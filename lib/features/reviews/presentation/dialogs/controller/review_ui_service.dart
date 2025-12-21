@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:partiu/features/reviews/domain/constants/review_criteria.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/controller/review_dialog_state.dart';
 
@@ -73,14 +74,35 @@ class ReviewUIService {
   static String getErrorMessage(dynamic error) {
     final errorString = error.toString().toLowerCase();
 
+    // Erro de autorização do Firestore (mais específico)
+    if (errorString.contains('permission-denied') || 
+        errorString.contains('insufficient permissions') ||
+        errorString.contains('missing or insufficient permissions')) {
+      return 'Erro de autorização: Você não tem permissão para enviar esta avaliação. Sua presença pode não ter sido confirmada pelo organizador.';
+    }
+    
+    // Erro de duplicata
     if (errorString.contains('já avaliou')) {
       return 'Você já avaliou esta pessoa neste evento';
-    } else if (errorString.contains('autenticado')) {
-      return 'Você precisa estar logado para avaliar';
-    } else if (errorString.contains('network')) {
-      return 'Erro de conexão. Verifique sua internet';
-    } else {
-      return 'Erro ao enviar avaliação. Tente novamente';
     }
+    
+    // Erro de autoavaliação
+    if (errorString.contains('avaliar a si mesmo')) {
+      return 'Erro: Você não pode avaliar a si mesmo';
+    }
+    
+    // Erro de autenticação
+    if (errorString.contains('autenticado')) {
+      return 'Você precisa estar logado para avaliar';
+    }
+    
+    // Erro de rede
+    if (errorString.contains('network') || errorString.contains('conexão')) {
+      return 'Erro de conexão. Verifique sua internet';
+    }
+    
+    // Erro genérico
+    debugPrint('⚠️ [ReviewUIService] Erro não reconhecido: $error');
+    return 'Erro ao enviar avaliação. Tente novamente ou contate o suporte.';
   }
 }

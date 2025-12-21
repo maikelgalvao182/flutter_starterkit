@@ -659,6 +659,12 @@
   "section_legal": "Legal",
   "section_account": "Account",
   "follow_us_on_tiktok": "Follow us on TikTok",
-  "follow_us_on_instagram": "Follow us on Instagram"
+  "follow_us_on_instagram": "Follow us on Instagram",
+  "application_approved_redirect_to_chat": "Your application was approved! Do you want to enter the event chat?",
+  "go_to_chat": "Go to chat",
+  "later": "Later",
+  "review_sent_successfully": "Review sent successfully!",
+  "reviews_sent_successfully": "{count} reviews sent successfully!",
+  "error_confirming_presence": "Error confirming presence"
   
 }

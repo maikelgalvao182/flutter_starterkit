@@ -25,6 +25,10 @@ class LocalizationService {
       'CANCEL': 'CANCELAR',
       'DELETE': 'EXCLUIR',
       'all_your_profile_data_will_be_permanently_deleted': 'Todos os seus dados de perfil serão permanentemente excluídos',
+      'success': 'Sucesso',
+      'application_approved_redirect_to_chat': 'Sua aplicação foi aprovada! Deseja entrar no chat do evento?',
+      'go_to_chat': 'Ir para o chat',
+      'later': 'Depois',
     },
     'en': {
       'profile': 'Profile',
@@ -47,6 +51,10 @@ class LocalizationService {
       'CANCEL': 'CANCEL',
       'DELETE': 'DELETE',
       'all_your_profile_data_will_be_permanently_deleted': 'All your profile data will be permanently deleted',
+      'success': 'Success',
+      'application_approved_redirect_to_chat': 'Your application has been approved! Would you like to enter the event chat?',
+      'go_to_chat': 'Go to chat',
+      'later': 'Later',
     },
   };
 

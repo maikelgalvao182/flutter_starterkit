@@ -54,7 +54,7 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
           // Loading inicial
           if (controller.isLoading) {
             return ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
               itemCount: 5,
               separatorBuilder: (context, index) => const SizedBox(height: 16),
               itemBuilder: (context, index) => const UserCardShimmer(),
@@ -83,27 +83,25 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
           // 🚀 OTIMIZAÇÃO: InfiniteListView carrega 20 por vez
           final displayedVisitors = controller.displayedVisitors;
 
-          return RefreshIndicator(
-            onRefresh: controller.refresh,
-            child: InfiniteListView(
-              controller: _scrollController,
-              itemCount: displayedVisitors.length,
-              itemBuilder: (context, index) {
-                final visitor = displayedVisitors[index];
-                return UserCard(
-                  key: ValueKey(visitor.userId),
-                  user: visitor,
-                  userId: visitor.userId,
-                  overallRating: visitor.overallRating,
-                  index: index,
-                );
-              },
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              onLoadMore: controller.loadMore,
-              isLoadingMore: controller.isLoadingMore,
-              exhausted: !controller.hasMore,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            ),
+          return InfiniteListView(
+            controller: _scrollController,
+            itemCount: displayedVisitors.length,
+            itemBuilder: (context, index) {
+              final visitor = displayedVisitors[index];
+              return UserCard(
+                key: ValueKey(visitor.userId),
+                user: visitor,
+                userId: visitor.userId,
+                overallRating: visitor.overallRating,
+                showTimeAgo: true,
+                index: index,
+              );
+            },
+            separatorBuilder: (context, index) => const SizedBox(height: 0),
+            onLoadMore: controller.loadMore,
+            isLoadingMore: controller.isLoadingMore,
+            exhausted: !controller.hasMore,
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
           );
         },
       ),

@@ -270,49 +270,24 @@ class NotificationTemplates {
   /// Notificação agregada de visualizações de perfil
   /// Disparada pela Cloud Function a cada 15 minutos
   /// 
-  /// Exemplos:
-  /// - "3 pessoas visualizaram seu perfil"
-  /// - "João e Maria visualizaram seu perfil"
-  /// - "10 pessoas visualizaram seu perfil nas últimas 3 horas"
+  /// Título (negrito): contador de visualizações
+  /// Body: "Novos amigos?" (call-to-action)
+  /// 
+  /// Exemplos de título:
+  /// - "1 pessoa visualizou seu perfil 👏"
+  /// - "5 pessoas visualizaram seu perfil 👏"
   static NotificationMessage profileViewsAggregated({
     required int count,
     String? lastViewedAt,
     List<String>? viewerNames,
   }) {
-    String body;
-    
-    if (count == 1 && viewerNames != null && viewerNames.isNotEmpty) {
-      // Uma pessoa específica
-      body = "${viewerNames.first} visualizou seu perfil";
-    } else if (count == 2 && viewerNames != null && viewerNames.length == 2) {
-      // Duas pessoas específicas
-      body = "${viewerNames[0]} e ${viewerNames[1]} visualizaram seu perfil";
-    } else if (count <= 5 && viewerNames != null && viewerNames.length == count) {
-      // Até 5 pessoas com nomes
-      final names = viewerNames.take(3).join(", ");
-      final remaining = count - 3;
-      if (remaining > 0) {
-        body = "$names e mais $remaining ${remaining == 1 ? 'pessoa visualizou' : 'pessoas visualizaram'} seu perfil";
-      } else {
-        body = "$names visualizaram seu perfil";
-      }
-    } else {
-      // Apenas contador
-      if (count == 1) {
-        body = "1 pessoa da região visualizou seu perfil";
-      } else {
-        body = "$count pessoas da região visualizaram seu perfil";
-      }
-    }
-
-    // Adiciona tempo relativo se disponível
-    if (lastViewedAt != null && lastViewedAt.isNotEmpty) {
-      body += " $lastViewedAt";
-    }
+    final title = count == 1
+        ? "1 pessoa visualizou seu perfil 👏"
+        : "$count pessoas visualizaram seu perfil 👏";
 
     return NotificationMessage(
-      title: "👀 Visitas ao perfil",
-      body: body,
+      title: title,
+      body: "Novos amigos?",
       preview: "$count ${count == 1 ? 'nova visita' : 'novas visitas'}",
       extra: {
         'count': count,

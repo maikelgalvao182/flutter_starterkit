@@ -24,6 +24,7 @@ class GlimpseButton extends StatelessWidget {
     this.noPadding = false,
     this.icon,
     this.iconSize = 16,
+    this.hideProcessingText = false,
   });
   final String text;
   final VoidCallback? onTap;
@@ -39,6 +40,7 @@ class GlimpseButton extends StatelessWidget {
   final bool noPadding;
   final IconData? icon;
   final double iconSize;
+  final bool hideProcessingText;
 
   @override
   Widget build(BuildContext context) {
@@ -91,15 +93,17 @@ class GlimpseButton extends StatelessWidget {
                       CupertinoActivityIndicator(
                         color: effectiveTextColor,
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        i18n.translate('processing'),
-                        style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                          fontWeight: fontWeight,
-                          color: effectiveTextColor,
-                          fontSize: fontSize,
+                      if (!hideProcessingText) ...[
+                        const SizedBox(width: 12),
+                        Text(
+                          i18n.translate('processing'),
+                          style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+                            fontWeight: fontWeight,
+                            color: effectiveTextColor,
+                            fontSize: fontSize,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   )
                 : Row(

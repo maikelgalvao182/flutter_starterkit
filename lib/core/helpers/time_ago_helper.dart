@@ -49,27 +49,45 @@ class TimeAgoHelper {
     
     // Minutos (1-59)
     if (difference.inMinutes < 60) {
-      return i18n.translate('minutes_ago').replaceAll('{count}', difference.inMinutes.toString());
+      final count = difference.inMinutes;
+      if (count == 1) {
+        return 'há 1 min';
+      }
+      return i18n.translate('minutes_ago').replaceAll('{count}', count.toString());
     }
     
     // Horas (1-23)
     if (difference.inHours < 24) {
-      return i18n.translate('hours_ago').replaceAll('{count}', difference.inHours.toString());
+      final count = difference.inHours;
+      if (count == 1) {
+        return 'há 1 hora';
+      }
+      return i18n.translate('hours_ago').replaceAll('{count}', count.toString());
     }
     
     // Dias (1-29)
     if (difference.inDays < 30) {
-      return i18n.translate('days_ago').replaceAll('{count}', difference.inDays.toString());
+      final count = difference.inDays;
+      if (count == 1) {
+        return 'há 1 dia';
+      }
+      return i18n.translate('days_ago').replaceAll('{count}', count.toString());
     }
     
     // Meses (aproximado - 1-11)
     final months = (difference.inDays / 30).floor();
     if (months < 12) {
+      if (months == 1) {
+        return 'há 1 mês';
+      }
       return i18n.translate('months_ago').replaceAll('{count}', months.toString());
     }
     
     // Anos
     final years = (difference.inDays / 365).floor();
+    if (years == 1) {
+      return 'há 1 ano';
+    }
     return i18n.translate('years_ago').replaceAll('{count}', years.toString());
   }
   

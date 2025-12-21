@@ -702,7 +702,13 @@
   "section_legal": "Legal",
   "section_account": "Conta",
   "follow_us_on_tiktok": "Seguir no TikTok",
-  "follow_us_on_instagram": "Seguir no Instagram"
+  "follow_us_on_instagram": "Seguir no Instagram",
+  "application_approved_redirect_to_chat": "Sua aplicação foi aprovada! Deseja entrar no chat do evento?",
+  "go_to_chat": "Ver chat",
+  "later": "Depois",
+  "review_sent_successfully": "Avaliação enviada com sucesso!",
+  "reviews_sent_successfully": "{count} avaliações enviadas com sucesso!",
+  "error_confirming_presence": "Erro ao confirmar presença"
 
 }
 

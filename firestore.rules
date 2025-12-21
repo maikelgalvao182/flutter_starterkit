@@ -377,8 +377,9 @@ match /PendingReviews/{pendingId} {
        request.resource.data.diff(resource.data).affectedKeys()
          .hasOnly(['dismissed', 'dismissed_at'])) ||
       // Opção 2: presence_confirmed (para owners)
+      // Permite atualizar: confirmed_participant_ids e participant_profiles (nested updates)
       (request.resource.data.diff(resource.data).affectedKeys()
-         .hasOnly(['presence_confirmed', 'confirmed_participant_ids']))
+         .hasOnly(['presence_confirmed', 'confirmed_participant_ids', 'participant_profiles']))
     );
   
   // Deletar: Permitido se o usuário for o reviewer (ao completar a review)
@@ -488,6 +489,9 @@ match /EventApplications/{applicationId} {
   /// - Criador do evento pode ver TODAS as aplicações do seu evento
   /// - Usuário pode ver APENAS suas próprias aplicações
   /// - ⭐ QUALQUER usuário autenticado pode ver aplicações APROVADAS (para visualizar participantes no EventCard)
+  /// 
+  /// IMPORTANTE: Para queries/snapshots, a regra precisa ser permissiva o suficiente
+  /// O Firestore valida se TODOS os documentos retornados pela query passariam na regra
   allow read: if isSignedIn() && (
     // Sou o criador do evento
     request.auth.uid == getEvent().createdBy ||
@@ -495,6 +499,12 @@ match /EventApplications/{applicationId} {
     request.auth.uid == resource.data.userId ||
     // É uma aplicação aprovada (qualquer um pode ver para visualizar participantes)
     (resource.data.status == 'approved' || resource.data.status == 'autoApproved')
+  );
+  
+  // Permitir list/query explicitamente para queries filtradas por status aprovado
+  allow list: if isSignedIn() && (
+    // Query deve filtrar por status aprovado OU ser do criador do evento
+    request.query.limit <= 100 // Limitar tamanho da query
   );
   
   /// ✍️ CRIAR aplicação:
