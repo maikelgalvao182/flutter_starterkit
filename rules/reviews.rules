@@ -46,7 +46,7 @@ match /PendingReviews/{pendingId} {
   
   // Atualizar: apenas o reviewer pode:
   // 1. Marcar como dismissed
-  // 2. Confirmar presença (para owners)
+  // 2. Confirmar presença (para owners) - inclui participant_profiles
   allow update: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id &&
     (
@@ -55,8 +55,9 @@ match /PendingReviews/{pendingId} {
        request.resource.data.diff(resource.data).affectedKeys()
          .hasOnly(['dismissed', 'dismissed_at'])) ||
       // Opção 2: presence_confirmed (para owners)
-      (request.resource.data.diff(resource.data).affectedKeys()
-         .hasOnly(['presence_confirmed', 'confirmed_participant_ids']))
+      // Permite: presence_confirmed, confirmed_participant_ids, participant_profiles.*
+      request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['presence_confirmed', 'confirmed_participant_ids', 'participant_profiles'])
     );
   
   // Deletar: Permitido se o usuário for o reviewer (ao completar a review)

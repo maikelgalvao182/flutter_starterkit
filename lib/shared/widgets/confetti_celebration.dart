@@ -103,24 +103,28 @@ class ConfettiOverlay {
     final overlay = Overlay.of(context);
     
     final overlayEntry = OverlayEntry(
-      builder: (context) => Material(
-        color: Colors.transparent,
-        child: Stack(
-          children: [
-            // Confetti na parte inferior da tela
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: ConfettiCelebration(
-                numberOfParticles: 80,
-                maxBlastForce: 45,
-                minBlastForce: 20,
-                emissionFrequency: 0.02,
-                gravity: 0.1,
+      builder: (context) => IgnorePointer(
+        // ✅ CORREÇÃO: Permite que toques passem através do confetti
+        // Isso garante que o dialog Cupertino possa receber toques
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              // Confetti na parte inferior da tela
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: ConfettiCelebration(
+                  numberOfParticles: 80,
+                  maxBlastForce: 45,
+                  minBlastForce: 20,
+                  emissionFrequency: 0.02,
+                  gravity: 0.1,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

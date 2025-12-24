@@ -135,6 +135,14 @@ class ProfileFormData {
   
   /// Factory para criar a partir de dados do Firestore
   factory ProfileFormData.fromFirestore(Map<String, dynamic> data) {
+    // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+    var rawPhotoUrl = data['photoUrl'] as String?;
+    if (rawPhotoUrl != null && 
+        (rawPhotoUrl.contains('googleusercontent.com') || 
+         rawPhotoUrl.contains('lh3.google'))) {
+      rawPhotoUrl = null;
+    }
+    
     return ProfileFormData(
       fullname: data['userFullname'] as String?,
       bio: data['userBio'] as String?,
@@ -155,7 +163,7 @@ class ProfileFormData {
       yearsOfExperience: data['yearsOfExperience'] as int?,
       servicesOffered: data['servicesOffered'] as String?,
       offerCategories: (data['offerCategories'] as List?)?.cast<String>(),
-      photoUrl: data['photoUrl'] as String?,
+      photoUrl: rawPhotoUrl,
       photoUrls: (data['userPhotos'] as List?)?.cast<String>(),
       interests: (data['interests'] as List?)?.cast<String>(),
     );

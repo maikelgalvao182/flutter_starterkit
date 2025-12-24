@@ -110,8 +110,8 @@ const String NOTIF_TYPE_MESSAGE = 'message';
 ///
 const String TIMESTAMP = 'timestamp';
 const String USER_ID = 'user_id';
-const String USER_PROFILE_PHOTO = 'user_photo_link';
-const String fullname = 'fullname';
+const String photoUrl = 'photoUrl';
+const String fullName = 'fullName'; // ✅ CORRIGIDO: Campo oficial do Firestore Users
 const String MESSAGE_TYPE = 'message_type';
 const String MESSAGE_READ = 'message_read';
 const String LAST_MESSAGE = 'last_message';

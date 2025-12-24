@@ -36,6 +36,7 @@ class ListDrawerController {
 
   // Subscriptions
   StreamSubscription<QuerySnapshot>? _myEventsSubscription;
+  StreamSubscription<User?>? _authSubscription;
 
   // Getters convenientes
   bool get hasMyEvents => myEvents.value.isNotEmpty;
@@ -44,16 +45,31 @@ class ListDrawerController {
 
   /// Inicializa listeners das streams
   void _initialize() {
+    _authSubscription ??= _auth.authStateChanges().listen((user) {
+      if (user == null) {
+        reset();
+        return;
+      }
+
+      if (_myEventsSubscription != null) return;
+      _startMyEventsStream(user.uid);
+    });
+
     final userId = currentUserId;
-    
-    if (userId == null) {
-      error.value = 'Usuário não autenticado';
-      isLoadingMyEvents.value = false;
-      debugPrint('❌ ListDrawerController: Usuário não autenticado');
+    if (userId != null) {
+      _startMyEventsStream(userId);
       return;
     }
 
-    // Stream: Eventos criados pelo usuário
+    // Sem usuário: mantém estado vazio e aguarda auth listener.
+    reset();
+  }
+
+  void _startMyEventsStream(String userId) {
+    error.value = null;
+    isLoadingMyEvents.value = true;
+
+    _myEventsSubscription?.cancel();
     _myEventsSubscription = _firestore
         .collection('events')
         .where('createdBy', isEqualTo: userId)
@@ -63,19 +79,41 @@ class ListDrawerController {
           _onMyEventsChanged,
           onError: _onMyEventsError,
         );
-    
-    debugPrint('✅ ListDrawerController: Stream inicializado para userId: ${userId.substring(0, 8)}...');
   }
 
   /// Handler para mudanças nos eventos do usuário
   void _onMyEventsChanged(QuerySnapshot snapshot) {
-    myEvents.value = snapshot.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>();
+    final docs = snapshot.docs
+        .cast<QueryDocumentSnapshot<Map<String, dynamic>>>()
+        .where((doc) {
+      final data = doc.data();
+
+      final isCanceled = data['isCanceled'] as bool? ?? false;
+      if (isCanceled) return false;
+
+      final isActive = data['isActive'] as bool?;
+      if (isActive == false) return false;
+
+      final status = data['status'] as String?;
+      if (status != null && status != 'active') return false;
+
+      return true;
+    }).toList();
+
+    myEvents.value = docs;
     isLoadingMyEvents.value = false;
     debugPrint('✅ ListDrawerController: ${myEvents.value.length} eventos do usuário carregados');
   }
 
   /// Handler para erros nos eventos do usuário
   void _onMyEventsError(dynamic err) {
+    final isPermissionDenied = err is FirebaseException && err.code == 'permission-denied';
+    if (isPermissionDenied && currentUserId == null) {
+      // Logout: o stream pode estourar permission-denied antes do cancel.
+      reset();
+      return;
+    }
+
     error.value = 'Erro ao carregar suas atividades';
     isLoadingMyEvents.value = false;
     debugPrint('❌ ListDrawerController: Erro ao carregar eventos do usuário: $err');
@@ -93,5 +131,14 @@ class ListDrawerController {
   void dispose() {
     // Singleton não deve ser disposto
     debugPrint('⚠️ ListDrawerController: dispose() chamado (singleton não será destruído)');
+  }
+
+  void reset() {
+    _myEventsSubscription?.cancel();
+    _myEventsSubscription = null;
+
+    myEvents.value = [];
+    isLoadingMyEvents.value = false;
+    error.value = null;
   }
 }

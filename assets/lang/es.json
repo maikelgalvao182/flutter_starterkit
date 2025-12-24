@@ -522,6 +522,8 @@
   "upload_failed": "Error al subir",
   "image_removed": "¡Imagen eliminada!",
   "user_not_authenticated_message": "El usuario no está autenticado",
-  "application_approved_successfully": "¡Solicitud aprobada con éxito!"
+  "application_approved_successfully": "¡Solicitud aprobada con éxito!",
+  "presence_updated": "¡Presencia actualizada!",
+  "presence_update_error": "Error al actualizar presencia"
 }
 

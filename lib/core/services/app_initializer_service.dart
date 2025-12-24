@@ -200,6 +200,23 @@ class AppInitializerService {
           // Adiciona IDs dos eventos criados
           if (myEventsSnapshot != null) {
             for (var doc in myEventsSnapshot.docs) {
+              final data = doc.data();
+
+              final isCanceled = data['isCanceled'] as bool? ?? false;
+              if (isCanceled) {
+                continue;
+              }
+
+              final isActive = data['isActive'] as bool?;
+              if (isActive == false) {
+                continue;
+              }
+
+              final status = data['status'] as String?;
+              if (status != null && status != 'active') {
+                continue;
+              }
+
               eventIds.add(doc.id);
             }
           }

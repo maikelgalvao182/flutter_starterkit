@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/dialogs/common_dialogs.dart';
@@ -139,9 +140,9 @@ class EventApplicationRemovalService {
       message: i18n.translate('leave_event_confirmation')
           .replaceAll('{event}', eventName),
       positiveText: i18n.translate('leave'),
-      negativeAction: () => Navigator.of(context).pop(),
+      negativeAction: () => _safePopDialog(context),
       positiveAction: () async {
-        Navigator.of(context).pop();
+        _safePopDialog(context);
         progressDialog.show(i18n.translate('leaving_event'));
         
         final success = await _removeApplicationData(
@@ -184,9 +185,9 @@ class EventApplicationRemovalService {
       message: i18n.translate('remove_application_confirmation')
           .replaceAll('{event}', eventName),
       positiveText: i18n.translate('remove'),
-      negativeAction: () => Navigator.of(context).pop(),
+      negativeAction: () => _safePopDialog(context),
       positiveAction: () async {
-        Navigator.of(context).pop();
+        _safePopDialog(context);
         progressDialog.show(i18n.translate('removing_application'));
         
         final success = await _removeApplicationData(
@@ -341,9 +342,9 @@ class EventApplicationRemovalService {
       message: i18n.translate('remove_participant_confirmation')
           .replaceAll('{user}', participantName),
       positiveText: i18n.translate('remove'),
-      negativeAction: () => Navigator.of(context).pop(),
+      negativeAction: () => _safePopDialog(context),
       positiveAction: () async {
-        Navigator.of(context).pop();
+        _safePopDialog(context);
         progressDialog.show(i18n.translate('removing_participant'));
         
         // Chama Cloud Function para remover participante
@@ -399,6 +400,19 @@ class EventApplicationRemovalService {
     } catch (e) {
       debugPrint('❌ Unexpected error calling Cloud Function: $e');
       return false;
+    }
+  }
+
+  /// Fecha o dialog de forma segura, verificando se pode fazer pop
+  /// Usa Navigator para dialogs (não go_router) mas verifica se pode fazer pop
+  void _safePopDialog(BuildContext context) {
+    if (!context.mounted) return;
+    
+    // Para dialogs, usamos Navigator.of(context) diretamente
+    // mas verificamos se há algo para fazer pop
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) {
+      navigator.pop();
     }
   }
 }

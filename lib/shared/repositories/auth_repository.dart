@@ -85,12 +85,38 @@ class AuthRepository implements IAuthRepository {
     required VoidCallback homeScreen,
     required VoidCallback blockedScreen,
   }) async {
+    bool isUnmountedContextError(Object error) {
+      final message = error.toString();
+      return message.contains('unmounted') && message.contains('context');
+    }
+
+    void safeInvoke(VoidCallback callback, String name) {
+      try {
+        callback();
+      } catch (e, stackTrace) {
+        if (isUnmountedContextError(e)) {
+          AppLogger.warning(
+            'Navigation callback ignorado (widget desmontado): $name',
+            tag: 'AUTH_REPOSITORY',
+          );
+          return;
+        }
+
+        AppLogger.error(
+          'Navigation callback falhou: $name',
+          tag: 'AUTH_REPOSITORY',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
     try {
       final user = _firebaseAuth.currentUser;
       
       if (user == null) {
         AppLogger.warning('No authenticated user found', tag: 'AUTH_REPOSITORY');
-        signUpScreen();
+        safeInvoke(signUpScreen, 'signUpScreen');
         return;
       }
 
@@ -121,7 +147,7 @@ class AuthRepository implements IAuthRepository {
 
       if (userDoc == null || !userDoc.exists) {
         AppLogger.info('User document not found - redirecting to signup wizard', tag: 'AUTH_REPOSITORY');
-        signUpScreen();
+        safeInvoke(signUpScreen, 'signUpScreen');
         return;
       }
 
@@ -134,7 +160,7 @@ class AuthRepository implements IAuthRepository {
       
       if (!hasFullName) {
         AppLogger.info('User profile incomplete - redirecting to signup wizard', tag: 'AUTH_REPOSITORY');
-        signUpScreen();
+        safeInvoke(signUpScreen, 'signUpScreen');
         return;
       }
 
@@ -142,18 +168,31 @@ class AuthRepository implements IAuthRepository {
       final isBlocked = (userData['status'] ?? userData['user_status']) == 'blocked';
       if (isBlocked) {
         AppLogger.warning('User is blocked', tag: 'AUTH_REPOSITORY');
-        blockedScreen();
+        safeInvoke(blockedScreen, 'blockedScreen');
         return;
       }
 
       // Perfil completo - vai para home
       // NOTA: Removida verificação de localização - usuário pode adicionar depois
       AppLogger.success('User profile complete - redirecting to home', tag: 'AUTH_REPOSITORY');
-      homeScreen();
-    } catch (e) {
-      AppLogger.error('Error checking user account: $e', tag: 'AUTH_REPOSITORY');
+      safeInvoke(homeScreen, 'homeScreen');
+    } catch (e, stackTrace) {
+      if (isUnmountedContextError(e)) {
+        AppLogger.warning(
+          'Auth flow abortado: widget desmontado durante verificação',
+          tag: 'AUTH_REPOSITORY',
+        );
+        return;
+      }
+
+      AppLogger.error(
+        'Error checking user account',
+        tag: 'AUTH_REPOSITORY',
+        error: e,
+        stackTrace: stackTrace,
+      );
       // Em caso de erro, assume que é um novo usuário e vai para signup
-      signUpScreen();
+      safeInvoke(signUpScreen, 'signUpScreen (fallback)');
     }
   }
 

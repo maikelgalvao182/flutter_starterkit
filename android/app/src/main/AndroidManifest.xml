@@ -10,11 +10,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     
-    <!-- Permissions for Didit verification -->
+    <!-- Permissions for camera -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.VIDEO_CAPTURE" />
-    <uses-permission android:name="android.permission.AUDIO_CAPTURE" />
     
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
@@ -23,32 +20,6 @@
         android:label="Boora"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        
-        <!-- Google Maps API Key - Necessário para Maps SDK funcionar -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCUkR549yBaSk1MSiPxo_NrKh4sSJrUj4k" />
-        
-        <!-- Firebase Cloud Messaging -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="boora_high_importance" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
-        
-        <!-- InAppWebView File Provider for Didit -->
-        <provider
-          android:name="com.pichillilorenzo.flutter_inappwebview_android.InAppWebViewFileProvider"
-          android:authorities="${applicationId}.flutter_inappwebview_android.fileprovider"
-          android:exported="false"
-          android:grantUriPermissions="true">
-          <meta-data
-            android:name="android.support.FILE_PROVIDER_PATHS"
-            android:resource="@xml/provider_paths"
-          />
-        </provider>
-        
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -76,6 +47,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyD_WdCn19E8sJjtnLXu8i8UnvpffQKkPpo" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -56,7 +56,7 @@ GET  /reviews/check            // Verifica duplicatas
   updatedAt: Timestamp,
   // Dados adicionais do reviewer
   fullname?: string,
-  user_photo_link?: string,
+  photoUrl?: string,
 }
 ```
 

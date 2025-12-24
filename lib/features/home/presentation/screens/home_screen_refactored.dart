@@ -13,10 +13,14 @@ import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.d
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:provider/provider.dart';
 
-
-import 'package:partiu/core/services/app_initializer_service.dart';
-
 /// Tela principal do app com navegação por tabs
+/// 
+/// IMPORTANTE: A inicialização (AppInitializerService) é feita no SplashScreen.
+/// Quando esta tela é criada, todos os dados já devem estar pré-carregados:
+/// - MapViewModel: eventos, markers, localização
+/// - PeopleRankingViewModel: rankings de pessoas
+/// - RankingViewModel: rankings de locais
+/// - ConversationsViewModel: conversas
 class HomeScreenRefactored extends StatefulWidget {
   const HomeScreenRefactored({
     super.key, 
@@ -31,7 +35,6 @@ class HomeScreenRefactored extends StatefulWidget {
 
 class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   int _selectedIndex = 0;
-  bool _initialized = false;
 
   // Lazy loading das páginas - instancia apenas quando necessário
   final List<Widget?> _pages = List<Widget?>.filled(5, null);
@@ -41,9 +44,10 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
     super.initState();
     _selectedIndex = widget.initialIndex;
     
-    // Inicializar dados em background
+    // ✅ INICIALIZAÇÃO JÁ FOI FEITA NO SPLASH SCREEN
+    // Apenas criar a página inicial imediatamente
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeData();
+      _ensureInitialPage();
     });
   }
 
@@ -58,38 +62,16 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
     }
   }
 
-  Future<void> _initializeData() async {
-    if (_initialized) return;
-    
-    final mapViewModel = Provider.of<MapViewModel>(context, listen: false);
-    final peopleRankingViewModel = Provider.of<PeopleRankingViewModel>(context, listen: false);
-    final locationsRankingViewModel = Provider.of<RankingViewModel>(context, listen: false);
-    final conversationsViewModel = Provider.of<ConversationsViewModel>(context, listen: false);
-
-    // Definir instância global (legado)
-    PeopleRankingViewModel.instance = peopleRankingViewModel;
-
-    final initializer = AppInitializerService(
-      mapViewModel,
-      peopleRankingViewModel,
-      locationsRankingViewModel,
-      conversationsViewModel,
-    );
-    
-    // ⚡ AGUARDAR inicialização completar antes de renderizar UI
-    // Isso garante que os bitmaps dos markers estejam em cache
-    // quando o GoogleMapView for criado
-    try {
-      await initializer.initialize();
-    } catch (e) {
-      debugPrint('Erro na inicialização: $e');
-    }
-
+  /// Garante que a página inicial está pronta
+  /// Diferente do antigo _initializeData, não espera nenhum carregamento
+  void _ensureInitialPage() {
     if (!mounted) return;
     
+    // Verificar se dados já estão carregados (pelo SplashScreen)
+    final mapViewModel = Provider.of<MapViewModel>(context, listen: false);
+    debugPrint('🏠 [HomeScreen] mapReady: ${mapViewModel.mapReady}, eventos: ${mapViewModel.events.length}');
+    
     setState(() {
-      _initialized = true;
-      // Carregar página inicial após ter acesso aos providers
       _ensurePage(_selectedIndex);
     });
   }

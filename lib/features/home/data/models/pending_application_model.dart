@@ -39,16 +39,14 @@ class PendingApplicationModel {
     final extractedUserId = applicationData['userId'] as String;
     debugPrint('   extractedUserId: $extractedUserId');
     
-    // Busca campos com nomes do Firestore (user_photo_link, fullname)
+    // Busca campos com nomes do Firestore (photoUrl, fullname)
     // e também fallbacks para nomes normalizados (photoUrl, fullName)
     final fullName = userData['fullname'] as String? ?? 
                      userData['fullName'] as String? ?? 
                      'Usuário';
     debugPrint('   fullName: $fullName');
                      
-    final photoUrl = userData['user_photo_link'] as String? ?? 
-                     userData['photoUrl'] as String? ?? 
-                     userData['user_profile_photo'] as String? ??
+    final photoUrl = userData['photoUrl'] as String? ?? 
                      userData['image'] as String?;
     debugPrint('   photoUrl: $photoUrl');
 

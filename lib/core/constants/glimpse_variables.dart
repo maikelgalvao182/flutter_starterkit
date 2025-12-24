@@ -409,7 +409,7 @@ const List<ActivitySuggestion> activitySuggestions = [
   ActivitySuggestion('🪗', 'Dançar um Forrozinho'),
   ActivitySuggestion('🤠', 'Ir num sertanejo'),
   ActivitySuggestion('🎸', 'Ir num show de rock'),
-  ActivitySuggestion('🎧', 'CurtirFesta eletrônica'),
+  ActivitySuggestion('🎧', 'Curtir Festa eletrônica'),
   ActivitySuggestion('🔊', 'Ouvir música ao vivo'),
   ActivitySuggestion('🪩', 'Ir numa balada'),
   ActivitySuggestion('🕺', 'Sair pra dançar'),

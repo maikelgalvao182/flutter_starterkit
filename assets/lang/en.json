@@ -682,6 +682,8 @@
   "upload_failed": "Upload failed",
   "image_removed": "Image removed!",
   "user_not_authenticated_message": "User is not authenticated",
-  "application_approved_successfully": "Application approved successfully!"
+  "application_approved_successfully": "Application approved successfully!",
+  "presence_updated": "Presence updated!",
+  "presence_update_error": "Error updating presence"
   
 }

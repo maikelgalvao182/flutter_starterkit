@@ -256,6 +256,16 @@ class AuthSyncService extends ChangeNotifier {
             notifyListeners();
           }
         }
+      }, onError: (error, stack) {
+        final isPermissionDenied =
+            error is FirebaseException && error.code == 'permission-denied';
+        final isLoggedOut = fire_auth.FirebaseAuth.instance.currentUser == null;
+
+        if (isPermissionDenied && isLoggedOut) {
+          return;
+        }
+
+        _logError('Erro no stream Users/$uid', error, stack);
       });
     } catch (e, stack) {
       _logError('Erro ao carregar dados do usuário', e, stack);

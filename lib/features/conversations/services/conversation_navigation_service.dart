@@ -73,14 +73,14 @@ class ConversationNavigationService {
     debugPrint('   - is_event_chat: ${data['is_event_chat']}');
     debugPrint('   - event_id: ${data['event_id']}');
     debugPrint('   - fullname: ${data['fullname']}');
-    debugPrint('   - user_profile_photo: ${data['user_profile_photo']}');
+    debugPrint('   - photoUrl: ${data['photoUrl']}');
     debugPrint('   - data keys: ${data.keys.toList()}');
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // Para chats de eventos, os dados já vêm corretos do backend
-    // Backend salva como: fullname (activityText) e user_profile_photo (emoji)
+    // Backend salva como: fullname (activityText) e photoUrl (emoji)
     final userName = data['fullname'] ?? 'Unknown User';
-    final userPhoto = data['user_profile_photo'] ?? '';
+    final userPhoto = data['photoUrl'] ?? '';
     
     debugPrint('✅ User criado: userName="$userName", userPhoto="$userPhoto"');
     
@@ -89,7 +89,7 @@ class ConversationNavigationService {
     return app_models.User.fromDocument({
       'userId': userId,              // ✅ userId (não user_id)
       'fullName': userName,          // ✅ fullName (não fullname)
-      'photoUrl': userPhoto,  // ✅ photoUrl (não user_profile_photo)
+      'photoUrl': userPhoto,  // ✅ photoUrl (não photoUrl)
       'gender': '',
       'birthDay': 1,
       'birthMonth': 1,

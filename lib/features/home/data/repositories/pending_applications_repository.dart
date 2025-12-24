@@ -144,6 +144,23 @@ class PendingApplicationsRepository {
           debugPrint('❌ Erro ao processar aplicações: $e');
           if (!controller.isClosed) controller.add([]);
         }
+      }, onError: (error) {
+        final isPermissionDenied =
+            error is FirebaseException && error.code == 'permission-denied';
+        final isLoggedOut = _auth.currentUser == null;
+        
+        // Silenciar permission-denied após logout
+        if (isPermissionDenied && isLoggedOut) {
+          appsSub?.cancel();
+          if (!controller.isClosed) controller.add([]);
+          return;
+        }
+
+        // Só loga se não for permission-denied durante logout
+        if (!isPermissionDenied) {
+          debugPrint('❌ Erro no stream de aplicações: $error');
+        }
+        if (!controller.isClosed) controller.add([]);
       });
       
     }, onError: (e) {

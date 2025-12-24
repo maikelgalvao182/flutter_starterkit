@@ -37,11 +37,24 @@ class GoogleMapsConfigService {
       if (androidDoc.exists) {
         final data = androidDoc.data();
         print('🔑 [GoogleMapsConfig] AndroidDoc data keys: ${data?.keys}');
-        _androidMapsKey = (data?['Api_key'] as String?)?.trim();
+        print('🔑 [GoogleMapsConfig] AndroidDoc full data: $data');
+        // Tenta buscar com diferentes variações do nome do campo
+        // Prioriza Api_key (formato usado no Firebase)
+        String? key = (data?['Api_key'] as String?)?.trim();
+        if (key == null || key.isEmpty) {
+          key = (data?['api_key'] as String?)?.trim();
+        }
+        if (key == null || key.isEmpty) {
+          key = (data?['API_KEY'] as String?)?.trim();
+        }
+        _androidMapsKey = (key != null && key.isNotEmpty) ? key : null;
+        
         final androidPreview = _androidMapsKey != null && _androidMapsKey!.length > 10 ? _androidMapsKey!.substring(0, 10) : _androidMapsKey;
         print('🔑 [GoogleMapsConfig] Android key loaded: ${_androidMapsKey != null ? "✅ ($androidPreview...)" : "❌ null"}');
         if (_androidMapsKey != null) {
           print('🔑 [GoogleMapsConfig] Android key length: ${_androidMapsKey!.length}');
+        } else {
+          print('❌ [GoogleMapsConfig] Android key não encontrada. Campos disponíveis: ${data?.keys.join(", ")}');
         }
       } else {
         print('❌ [GoogleMapsConfig] AndroidDoc NOT FOUND! Path: AppInfo/GoogleAndroidMaps');
@@ -57,11 +70,17 @@ class GoogleMapsConfigService {
       if (iosDoc.exists) {
         final data = iosDoc.data();
         print('🔑 [GoogleMapsConfig] iOSDoc data keys: ${data?.keys}');
-        _iosMapsKey = (data?['Api_key'] as String?)?.trim();
+        print('🔑 [GoogleMapsConfig] iOSDoc full data: $data');
+        // Tenta buscar com diferentes variações do nome do campo
+        _iosMapsKey = (data?['api_key'] as String?)?.trim() ?? 
+                     (data?['Api_key'] as String?)?.trim() ??
+                     (data?['API_KEY'] as String?)?.trim();
         final iosPreview = _iosMapsKey != null && _iosMapsKey!.length > 10 ? _iosMapsKey!.substring(0, 10) : _iosMapsKey;
         print('🔑 [GoogleMapsConfig] iOS key loaded: ${_iosMapsKey != null ? "✅ ($iosPreview...)" : "❌ null"}');
         if (_iosMapsKey != null) {
           print('🔑 [GoogleMapsConfig] iOS key length: ${_iosMapsKey!.length}');
+        } else {
+          print('❌ [GoogleMapsConfig] iOS key não encontrada. Campos disponíveis: ${data?.keys.join(", ")}');
         }
       } else {
         print('❌ [GoogleMapsConfig] iOSDoc NOT FOUND! Path: AppInfo/GoogleMapsApiKey');

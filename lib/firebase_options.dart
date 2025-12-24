@@ -50,8 +50,8 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCUkR549yBaSk1MSiPxo_NrKh4sSJrUj4k',
-    appId: '1:13564294004:android:48a6bfd9d8fe371dc0f221',
+    apiKey: 'AIzaSyD_WdCn19E8sJjtnLXu8i8UnvpffQKkPpo',
+    appId: '1:13564294004:android:9919ac8251e1e278c0f221',
     messagingSenderId: '13564294004',
     projectId: 'partiu-479902',
     storageBucket: 'partiu-479902.firebasestorage.app',

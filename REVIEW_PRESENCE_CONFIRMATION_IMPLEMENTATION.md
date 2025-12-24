@@ -782,7 +782,7 @@ async function processEvent(
       const userData = userDoc.data();
       participantProfiles[userDoc.id] = {
         name: userData.fullname || 'Usuário',
-        photo: userData.user_photo_link || null,
+        photo: userData.photoUrl || null,
       };
     });
   }
@@ -840,7 +840,7 @@ async function processEvent(
 ```
 EventApplications (presence="Vou", status=approved/autoApproved)
   ↓ (batch query - 10 users por chunk)
-Users (fullname, user_photo_link)
+Users (fullname, photoUrl)
   ↓
 PendingReviews/{eventId}_owner_{ownerId}
   - reviewer_id: ownerId

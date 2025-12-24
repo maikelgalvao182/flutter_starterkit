@@ -430,6 +430,11 @@ export * from "./chatPushNotifications";
 // Monitora coleção Notifications e dispara push para 8 tipos de atividades
 export * from "./activityPushNotifications";
 
+// ===== ACTIVITY IN-APP NOTIFICATIONS =====
+// Cria notificações in-app na coleção Notifications
+// (triggers de eventos que geram notificações)
+export * from "./activityNotifications";
+
 // ===== REVIEW FUNCTIONS =====
 // Importa e exporta as Cloud Functions de reviews
 export * from "./reviews/createPendingReviews";

@@ -179,6 +179,12 @@ class _ListCardState extends State<ListCard> {
 
     // Error state
     if (_controller.error != null) {
+      // No drawer (e outras listas), evento pode ficar inválido entre o snapshot e o fetch.
+      // Nesses casos, não renderiza um card de erro para não poluir a lista.
+      if (_controller.error == 'Atividade indisponível') {
+        return const SizedBox.shrink();
+      }
+
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -216,6 +222,12 @@ class _ListCardState extends State<ListCard> {
 
     final hasParticipants = _controller.totalParticipantsCount > 0;
     final locationName = _controller.locationName;
+    final locality = _controller.locality;
+    final state = _controller.state;
+    final cityStateText = [
+      if (locality != null && locality.isNotEmpty) locality,
+      if (state != null && state.isNotEmpty) state,
+    ].join(' • ');
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -271,6 +283,29 @@ class _ListCardState extends State<ListCard> {
                                 ),
                                 child: Text(
                                   locationName,
+                                  style: GoogleFonts.getFont(
+                                    FONT_PLUS_JAKARTA_SANS,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: GlimpseColors.primaryDarker,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+
+                            if (cityStateText.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: GlimpseColors.primaryLight,
+                                  borderRadius: BorderRadius.circular(100),
+                                ),
+                                child: Text(
+                                  cityStateText,
                                   style: GoogleFonts.getFont(
                                     FONT_PLUS_JAKARTA_SANS,
                                     fontSize: 13,

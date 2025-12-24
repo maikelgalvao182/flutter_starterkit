@@ -131,6 +131,21 @@ class MapDiscoveryService {
 
     for (final doc in query.docs) {
       try {
+        final data = doc.data();
+
+        // Filtros defensivos (evita cards vazios no drawer)
+        // - Cancelados
+        // - Status != active (quando presente)
+        final isCanceled = data['isCanceled'] as bool? ?? false;
+        if (isCanceled) {
+          continue;
+        }
+
+        final status = data['status'] as String?;
+        if (status != null && status != 'active') {
+          continue;
+        }
+
         final event = EventLocation.fromFirestore(doc.id, doc.data());
         
         // Filtrar por longitude (Firestore não permite 2 ranges)

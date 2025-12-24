@@ -72,12 +72,14 @@ class AvatarStore {
             }
             
             final data = snapshot.data()!;
-            // Tentar ambos os campos para compatibilidade
-            final photoUrl = data['photoUrl'] as String? ?? 
-                           data['photoUrl'] as String? ?? 
-                           data['photoURL'] as String? ??
-                           data['image'] as String? ??
-                           '';
+            // Campo oficial: photoUrl
+            // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+            var rawPhotoUrl = data['photoUrl'] as String? ?? '';
+            if (rawPhotoUrl.contains('googleusercontent.com') || 
+                rawPhotoUrl.contains('lh3.google')) {
+              rawPhotoUrl = '';
+            }
+            final photoUrl = rawPhotoUrl;
             
             if (photoUrl.isEmpty) {
               _setEmptyAvatar(userId);

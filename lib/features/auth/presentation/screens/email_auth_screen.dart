@@ -61,15 +61,25 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   // Handle User Auth - chama o fluxo de verificação de conta
   void _checkUserAccount() {
     _signInViewModel.authUserAccount(
-      updateLocationScreen: () => context.go(AppRoutes.updateLocation),
+      updateLocationScreen: () {
+        if (!mounted) return;
+        context.go(AppRoutes.updateLocation);
+      },
       signUpScreen: () {
         // Reset loading state before navigation
         _emailAuthViewModel.setLoading(false);
         // Navega para próxima tela (cadastro)
+        if (!mounted) return;
         context.push(AppRoutes.signupWizard);
       },
-      homeScreen: () => context.go(AppRoutes.home),
-      blockedScreen: () => context.go(AppRoutes.blocked),
+      homeScreen: () {
+        if (!mounted) return;
+        context.go(AppRoutes.home);
+      },
+      blockedScreen: () {
+        if (!mounted) return;
+        context.go(AppRoutes.blocked);
+      },
     );
   }
 

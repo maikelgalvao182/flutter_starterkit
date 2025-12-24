@@ -185,7 +185,7 @@ Future<bool> submitAllReviews({String? pendingReviewId}) async {
   // 1. Buscar dados do owner
   final ownerDoc = await firestore.collection('Users').doc(reviewerId).get();
   final ownerName = ownerData?['fullName'] ?? 'Organizador';
-  final ownerPhotoUrl = ownerData?['user_photo_link'];
+  final ownerPhotoUrl = ownerData?['photoUrl'];
 
   // 2. Para CADA participante selecionado:
   for (final participantId in selectedParticipants) {

@@ -1,11 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/services/geo_index_service.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/models/activity_notification_types.dart';
-import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 import 'package:partiu/features/notifications/services/user_affinity_service.dart';
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// TRIGGER 6: Atividade começando a esquentar (threshold de pessoas)
 /// 
@@ -41,43 +40,34 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
     ActivityModel activity,
     Map<String, dynamic> context,
   ) async {
-    print('🔥 [ActivityHeatingUpTrigger.execute] INICIANDO');
-    print('🔥 [ActivityHeatingUpTrigger.execute] Activity: ${activity.id} - ${activity.name} ${activity.emoji}');
-    print('🔥 [ActivityHeatingUpTrigger.execute] Context: $context');
-    
     try {
       final currentCount = context['currentCount'] as int?;
-      print('🔥 [ActivityHeatingUpTrigger.execute] CurrentCount: $currentCount');
 
       if (currentCount == null) {
-        print('❌ [ActivityHeatingUpTrigger.execute] currentCount não fornecido');
-        return;
-      }
-
-      // Verificar coordenadas da atividade
-      if (activity.latitude == null || activity.longitude == null) {
-        print('❌ [ActivityHeatingUpTrigger.execute] Atividade sem localização');
+        AppLogger.warning(
+          'ActivityHeatingUpTrigger: currentCount não fornecido',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
       // PASSO 1: Buscar participantes DENTRO do evento (para excluir)
-      print('🔥 [ActivityHeatingUpTrigger.execute] Buscando participantes do evento...');
       final eventParticipants = await _getEventParticipants(activity.id);
       final excludeIds = [...eventParticipants, activity.createdBy]; // Excluir participantes + criador
-      print('🔥 [ActivityHeatingUpTrigger.execute] IDs a excluir: ${excludeIds.length} (${eventParticipants.length} participantes + 1 criador)');
 
       // PASSO 2: Buscar usuários no raio geográfico (30km)
-      print('🔥 [ActivityHeatingUpTrigger.execute] Buscando usuários no raio de 30km...');
       final usersInRadius = await _geoIndexService.findUsersInRadius(
-        latitude: activity.latitude!,
-        longitude: activity.longitude!,
+        latitude: activity.latitude,
+        longitude: activity.longitude,
         radiusKm: 30.0,
         excludeUserIds: excludeIds,
       );
-      print('🔥 [ActivityHeatingUpTrigger.execute] Usuários no raio: ${usersInRadius.length}');
 
       if (usersInRadius.isEmpty) {
-        print('⚠️ [ActivityHeatingUpTrigger.execute] Nenhum usuário encontrado no raio');
+        AppLogger.info(
+          'ActivityHeatingUpTrigger: nenhum usuário no raio',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
@@ -85,12 +75,9 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
       // Diferente de "activity_created", este trigger é para gerar FOMO/buzz
       // e deve alcançar mais pessoas no raio, não apenas quem tem interesses em comum
       final targetUsers = usersInRadius;
-      print('🔥 [ActivityHeatingUpTrigger.execute] Usuários alvo (todos no raio): ${targetUsers.length}');
 
       // PASSO 4: Buscar dados do criador
-      print('🔥 [ActivityHeatingUpTrigger.execute] Buscando dados do criador: ${activity.createdBy}');
       final creatorInfo = await getUserInfo(activity.createdBy);
-      print('🔥 [ActivityHeatingUpTrigger.execute] Criador: ${creatorInfo['fullName']}');
 
       // PASSO 5: Gerar template de mensagem
       final template = NotificationTemplates.activityHeatingUp(
@@ -100,39 +87,47 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
         participantCount: currentCount,
       );
 
-      print('🔥 [ActivityHeatingUpTrigger.execute] Template gerado: ${template.title}');
-
       // PASSO 6: Enviar notificações para usuários elegíveis
-      print('🔥 [ActivityHeatingUpTrigger.execute] Enviando notificações para ${targetUsers.length} usuários...');
+      AppLogger.info(
+        'ActivityHeatingUpTrigger: enviando para ${targetUsers.length} usuários (count=$currentCount)',
+        tag: 'NOTIFICATIONS',
+      );
       int sent = 0;
       for (final userId in targetUsers) {
-        try {
-          await createNotification(
-            receiverId: userId,
-            type: ActivityNotificationTypes.activityHeatingUp,
-            params: {
-              'title': template.title,
-              'body': template.body,
-              'preview': template.preview,
-              ...template.extra,
-            },
-            relatedId: activity.id,
-          );
-          sent++;
-          print('✅ [ActivityHeatingUpTrigger.execute] [$sent/${targetUsers.length}] Notificação criada para: $userId');
-        } catch (e) {
-          print('❌ [ActivityHeatingUpTrigger.execute] Erro ao notificar $userId: $e');
+        final ok = await createNotification(
+          receiverId: userId,
+          type: ActivityNotificationTypes.activityHeatingUp,
+          params: {
+            'title': template.title,
+            'body': template.body,
+            'preview': template.preview,
+            ...template.extra,
+          },
+          relatedId: activity.id,
+          // ✅ CORREÇÃO: Passar dados do CRIADOR (não do participante que entrou)
+          senderId: activity.createdBy,
+          senderName: creatorInfo['fullName'],
+          senderPhotoUrl: creatorInfo['photoUrl'],
+        );
+
+        if (!ok) {
+          continue;
         }
+
+        sent++;
       }
 
-      print('✅ [ActivityHeatingUpTrigger.execute] CONCLUÍDO - $sent notificações enviadas');
-      print('📊 [ActivityHeatingUpTrigger.execute] Resumo:');
-      print('   • Participantes no evento: ${eventParticipants.length}');
-      print('   • Usuários no raio (30km): ${usersInRadius.length}');
-      print('   • Notificações enviadas: $sent');
+      AppLogger.success(
+        'ActivityHeatingUpTrigger concluído: $sent/${targetUsers.length} notificações criadas',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityHeatingUpTrigger.execute] ERRO: $e');
-      print('❌ [ActivityHeatingUpTrigger.execute] StackTrace: $stackTrace');
+      AppLogger.error(
+        'ActivityHeatingUpTrigger: erro ao executar',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -140,15 +135,11 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
   /// (para excluir das notificações heating up)
   Future<List<String>> _getEventParticipants(String activityId) async {
     try {
-      print('🔍 [ActivityHeatingUpTrigger._getEventParticipants] Buscando aplicações aprovadas para: $activityId');
-      
       final querySnapshot = await firestore
           .collection('EventApplications')
           .where('eventId', isEqualTo: activityId)
           .where('status', whereIn: ['approved', 'autoApproved'])
           .get();
-
-      print('🔍 [ActivityHeatingUpTrigger._getEventParticipants] Encontradas ${querySnapshot.docs.length} aplicações aprovadas');
 
       if (querySnapshot.docs.isEmpty) return [];
 
@@ -156,11 +147,14 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
           .map((doc) => doc.data()['userId'] as String)
           .toList();
 
-      print('🔍 [ActivityHeatingUpTrigger._getEventParticipants] ParticipantIds: $participantIds');
       return participantIds;
     } catch (e, stackTrace) {
-      print('❌ [ActivityHeatingUpTrigger._getEventParticipants] ERRO: $e');
-      print('❌ [ActivityHeatingUpTrigger._getEventParticipants] StackTrace: $stackTrace');
+      AppLogger.error(
+        'ActivityHeatingUpTrigger: erro ao buscar participantes',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return [];
     }
   }

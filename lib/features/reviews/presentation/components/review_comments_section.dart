@@ -23,13 +23,18 @@ class _ReviewCommentsSectionState extends State<ReviewCommentsSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.reviews.isEmpty) {
+    // Filtrar apenas reviews que têm comentário
+    final reviewsWithComments = widget.reviews.where((review) => 
+      review.comment != null && review.comment!.trim().isNotEmpty
+    ).toList();
+
+    if (reviewsWithComments.isEmpty) {
       return const SizedBox.shrink();
     }
 
     // Lógica de exibição: 3 iniciais ou todas se expandido
-    final displayedReviews = _isExpanded ? widget.reviews : widget.reviews.take(3).toList();
-    final hasMoreReviews = widget.reviews.length > 3;
+    final displayedReviews = _isExpanded ? reviewsWithComments : reviewsWithComments.take(3).toList();
+    final hasMoreReviews = reviewsWithComments.length > 3;
 
     return Container(
       padding: GlimpseStyles.profileSectionPadding,

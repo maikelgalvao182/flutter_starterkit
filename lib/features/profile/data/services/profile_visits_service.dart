@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fire_auth;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
@@ -72,6 +74,7 @@ class VisitsCache {
 class ProfileVisitsService {
   ProfileVisitsService._() {
     _initializeAutoReload();
+    _initializeAuthListener();
   }
   
   static final ProfileVisitsService _instance = ProfileVisitsService._();
@@ -92,6 +95,8 @@ class ProfileVisitsService {
   
   // Subscription do Firestore (para auto-reload)
   StreamSubscription<QuerySnapshot>? _firestoreSubscription;
+
+  StreamSubscription<fire_auth.User?>? _authSubscription;
   
   // UserId sendo monitorado atualmente
   String? _currentUserId;
@@ -114,6 +119,13 @@ class ProfileVisitsService {
   /// Inicializa auto-reload via Firestore snapshots
   void _initializeAutoReload() {
     debugPrint('🔄 [ProfileVisitsService] Auto-reload inicializado');
+  }
+
+  void _initializeAuthListener() {
+    _authSubscription ??= fire_auth.FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) return;
+      reset();
+    });
   }
 
   /// Monitora visitas de um userId específico
@@ -150,6 +162,13 @@ class ProfileVisitsService {
             _scheduleReload(userId);
           },
           onError: (error) {
+            final isPermissionDenied = error is FirebaseException && error.code == 'permission-denied';
+            final isLoggedOut = fire_auth.FirebaseAuth.instance.currentUser == null;
+            if (isPermissionDenied && isLoggedOut) {
+              reset();
+              return;
+            }
+
             debugPrint('❌ [ProfileVisitsService] Erro no stream: $error');
           },
         );
@@ -212,8 +231,6 @@ class ProfileVisitsService {
         debugPrint('⚠️ [ProfileVisitsService] Usuário atual não encontrado');
         return [];
       }
-
-      final myInterests = List<String>.from(myUserData['interests'] ?? []);
 
       // 3. Carregar dados dos visitantes usando UserDataService (com cache!)
       final visitorIds = visits.map((v) => v.visitorId).toList();
@@ -361,10 +378,15 @@ class ProfileVisitsService {
 
   /// Busca contador de visitas (one-time fetch)
   /// 
-  /// Nota: Não usa .count() pois requer permissões especiais.
-  /// Em vez disso, usa count() que é otimizado e não cobra leituras de documentos.
+  /// Nota: Usa aggregation query (`count()`) para evitar leituras de documentos.
   Future<int> getVisitsCount(String userId) async {
     if (userId.isEmpty) return 0;
+
+    // Se não há usuário logado, não há permissão para consultar.
+    // Evita "permission-denied" tardio (pós-logout) e ruído no console.
+    if (fire_auth.FirebaseAuth.instance.currentUser == null) {
+      return 0;
+    }
 
     try {
       // count() é otimizado e não conta como leituras de documentos
@@ -375,11 +397,20 @@ class ProfileVisitsService {
           .get();
 
       return countResult.count ?? 0;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        return 0;
+      }
+      debugPrint('❌ [ProfileVisitsService] Erro ao contar visitas: $e');
+      return 0;
+    } on PlatformException catch (e) {
+      if (e.code == 'permission-denied') {
+        return 0;
+      }
+      debugPrint('❌ [ProfileVisitsService] Erro ao contar visitas: $e');
+      return 0;
     } catch (e) {
       debugPrint('❌ [ProfileVisitsService] Erro ao contar visitas: $e');
-      
-      // Fallback: Se o usuário não é VIP, retorna 0
-      // (VIPs podem ver as visitas, não-VIPs não)
       return 0;
     }
   }
@@ -393,9 +424,19 @@ class ProfileVisitsService {
     debugPrint('🗑️ [ProfileVisitsService] Todos os caches limpos');
   }
 
+  /// Reseta estado/streams para evitar erros após logout
+  void reset() {
+    clearAllCaches();
+    _reloadDebounceTimer?.cancel();
+    if (!_visitsStreamController.isClosed) {
+      _visitsStreamController.add([]);
+    }
+  }
+
   /// Dispose (limpa recursos)
   void dispose() {
     _firestoreSubscription?.cancel();
+    _authSubscription?.cancel();
     _reloadDebounceTimer?.cancel();
     _visitsStreamController.close();
   }

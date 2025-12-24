@@ -46,18 +46,22 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
     _viewModel.authUserAccount(
       updateLocationScreen: () {
         // Navega para atualização de localização
+        if (!mounted) return;
         context.go(AppRoutes.updateLocation);
       },
       signUpScreen: () {
         // Navega para wizard de cadastro
+        if (!mounted) return;
         context.go(AppRoutes.signupWizard);
       },
       homeScreen: () {
         // Navega para home após login bem-sucedido
+        if (!mounted) return;
         context.go(AppRoutes.home);
       },
       blockedScreen: () {
         // Navega para tela de conta bloqueada
+        if (!mounted) return;
         context.go(AppRoutes.blocked);
       },
     );

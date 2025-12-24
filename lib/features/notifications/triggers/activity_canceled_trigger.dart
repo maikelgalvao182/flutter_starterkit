@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/models/activity_notification_types.dart';
-import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// TRIGGER 8: Atividade cancelada
 /// 
@@ -19,17 +18,15 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
     ActivityModel activity,
     Map<String, dynamic> context,
   ) async {
-    print('🚫 [ActivityCanceledTrigger.execute] INICIANDO');
-    print('🚫 [ActivityCanceledTrigger.execute] Activity: ${activity.id} - ${activity.name} ${activity.emoji}');
-    
     try {
       // Busca participantes da atividade
-      print('🚫 [ActivityCanceledTrigger.execute] Buscando participantes da atividade...');
       final participants = await _getActivityParticipants(activity.id);
-      print('🚫 [ActivityCanceledTrigger.execute] Participantes encontrados: ${participants.length}');
       
       if (participants.isEmpty) {
-        print('⚠️ [ActivityCanceledTrigger.execute] Nenhum participante encontrado');
+        AppLogger.info(
+          'ActivityCanceledTrigger: nenhum participante encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
@@ -39,13 +36,14 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
         emoji: activity.emoji,
       );
 
-      print('🚫 [ActivityCanceledTrigger.execute] Template gerado: ${template.title}');
-
       // Notifica todos os participantes
-      print('🚫 [ActivityCanceledTrigger.execute] Enviando notificações para ${participants.length} participantes...');
+      AppLogger.info(
+        'ActivityCanceledTrigger: enviando para ${participants.length} participantes',
+        tag: 'NOTIFICATIONS',
+      );
+      var sent = 0;
       for (final participantId in participants) {
-        print('🚫 [ActivityCanceledTrigger.execute] Criando notificação para: $participantId');
-        await createNotification(
+        final ok = await createNotification(
           receiverId: participantId,
           type: ActivityNotificationTypes.activityCanceled,
           params: {
@@ -56,19 +54,25 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
           },
           relatedId: activity.id,
         );
-        print('✅ [ActivityCanceledTrigger.execute] Notificação criada para: $participantId');
+        if (ok) sent++;
       }
 
-      print('✅ [ActivityCanceledTrigger.execute] CONCLUÍDO - ${participants.length} notificações enviadas');
+      AppLogger.success(
+        'ActivityCanceledTrigger concluído: $sent/${participants.length} notificações criadas',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityCanceledTrigger.execute] ERRO: $e');
-      print('❌ [ActivityCanceledTrigger.execute] StackTrace: $stackTrace');
+      AppLogger.error(
+        'ActivityCanceledTrigger: erro ao executar',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
   /// Busca IDs dos participantes aprovados do evento
   Future<List<String>> _getActivityParticipants(String activityId) async {
-    print('🚫 [ActivityCanceledTrigger._getActivityParticipants] Buscando aplicações aprovadas para: $activityId');
     try {
       final querySnapshot = await firestore
           .collection('EventApplications')
@@ -76,19 +80,20 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
           .where('status', whereIn: ['approved', 'autoApproved'])
           .get();
 
-      print('🚫 [ActivityCanceledTrigger._getActivityParticipants] Encontradas ${querySnapshot.docs.length} aplicações aprovadas');
-
       if (querySnapshot.docs.isEmpty) return [];
 
       final participantIds = querySnapshot.docs
           .map((doc) => doc.data()['userId'] as String)
           .toList();
 
-      print('🚫 [ActivityCanceledTrigger._getActivityParticipants] ParticipantIds: $participantIds');
       return participantIds;
     } catch (e, stackTrace) {
-      print('❌ [ActivityCanceledTrigger._getActivityParticipants] ERRO: $e');
-      print('❌ [ActivityCanceledTrigger._getActivityParticipants] StackTrace: $stackTrace');
+      AppLogger.error(
+        'ActivityCanceledTrigger: erro ao buscar participantes',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return [];
     }
   }

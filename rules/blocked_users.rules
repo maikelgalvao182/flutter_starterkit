@@ -1,0 +1,35 @@
+/// 🚫 Coleção de usuários bloqueados
+/// Path usado no app:
+/// - blockedUsers/{blockId}
+///   - blockerId: string (userId de quem bloqueou)
+///   - targetId: string (userId de quem foi bloqueado)
+///   - createdAt: timestamp
+///
+/// O blockId é composto: {blockerId}_{targetId}
+
+match /blockedUsers/{blockId} {
+  /// 📖 LEITURA:
+  /// - Usuário pode ler registros onde ele é o bloqueador OU o bloqueado
+  /// - Necessário para verificar se está bloqueado antes de interagir
+  allow read: if isSignedIn() && (
+    resource.data.blockerId == request.auth.uid ||
+    resource.data.targetId == request.auth.uid
+  );
+  
+  /// ✍️ CRIAR bloqueio:
+  /// - Apenas o próprio usuário pode criar bloqueios
+  /// - O blockerId no documento deve ser o usuário autenticado
+  allow create: if isSignedIn() &&
+    request.resource.data.blockerId == request.auth.uid;
+  
+  /// ✏️ ATUALIZAR bloqueio:
+  /// - Apenas o bloqueador pode atualizar
+  allow update: if isSignedIn() &&
+    resource.data.blockerId == request.auth.uid &&
+    request.resource.data.blockerId == request.auth.uid;
+  
+  /// 🗑️ DELETAR bloqueio:
+  /// - Apenas o bloqueador pode remover o bloqueio
+  allow delete: if isSignedIn() &&
+    resource.data.blockerId == request.auth.uid;
+}

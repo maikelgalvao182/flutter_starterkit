@@ -125,10 +125,11 @@ class _EventCardState extends State<EventCard> {
                     pluralLabel: i18n.translate('participant_plural'),
                   ),
                   
-                  // Lista de avatares (stream)
+                  // Lista de avatares (preload + stream)
                   ParticipantsAvatarsList(
                     eventId: _controller.eventId,
                     creatorId: _controller.creatorId,
+                    preloadedParticipants: _controller.approvedParticipants,
                   ),
                   
                   const SizedBox(height: 24),

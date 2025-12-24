@@ -66,6 +66,15 @@ DateTime _parseDateTime(dynamic value, {DateTime? fallback}) {
   return fallback ?? DateTime.now();
 }
 
+/// Filtra URLs do Google OAuth (dados legados)
+/// Essas URLs não devem ser usadas como avatar do app
+String _filterGoogleOAuthUrl(String url) {
+  if (url.contains('googleusercontent.com') || url.contains('lh3.google')) {
+    return '';
+  }
+  return url;
+}
+
 /// Modelo imutável para representar um usuário
 @immutable
 class User {
@@ -204,7 +213,8 @@ class User {
 
     return User(
       userId: doc['userId'] ?? '',
-      photoUrl: doc['photoUrl'] ?? '',
+      // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+      photoUrl: _filterGoogleOAuthUrl(doc['photoUrl'] ?? ''),
       userFullname: doc['fullName'] ?? '',
       userGender: doc['gender'] ?? '',
       userSexualOrientation: doc['sexualOrientation'] ?? '',

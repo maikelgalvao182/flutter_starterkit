@@ -34,7 +34,10 @@ class EventRepository {
       
       // ✅ FILTRAR eventos cancelados ou inativos
       final isCanceled = data['isCanceled'] as bool? ?? false;
-      final isActive = data['isActive'] as bool? ?? false;
+      final status = data['status'] as String?;
+      // Compatibilidade: eventos antigos podem não ter isActive.
+      // Se não existir, consideramos ativo quando status é null ou "active".
+      final isActive = data['isActive'] as bool? ?? (status == null || status == 'active');
       
       if (isCanceled) {
         debugPrint('⚠️ Evento $eventId está CANCELADO, não será carregado');
@@ -86,7 +89,10 @@ class EventRepository {
       
       // ✅ FILTRAR eventos cancelados ou inativos
       final isCanceled = data['isCanceled'] as bool? ?? false;
-      final isActive = data['isActive'] as bool? ?? false;
+      final status = data['status'] as String?;
+      // Compatibilidade: eventos antigos podem não ter isActive.
+      // Se não existir, consideramos ativo quando status é null ou "active".
+      final isActive = data['isActive'] as bool? ?? (status == null || status == 'active');
       
       if (isCanceled) {
         debugPrint('⚠️ Evento $eventId está CANCELADO, não será carregado');
@@ -109,6 +115,8 @@ class EventRepository {
         'emoji': data['emoji'] as String?,
         'activityText': data['activityText'] as String?,
         'locationName': locationData?['locationName'] as String?,
+        'locality': locationData?['locality'] as String?,
+        'state': locationData?['state'] as String?,
         'scheduleDate': dateTimestamp?.toDate(),
         'privacyType': participantsData?['privacyType'] as String?,
         'createdBy': data['createdBy'] as String?,
@@ -150,6 +158,7 @@ class EventRepository {
         'latitude': locationData['latitude'] as double?,
         'longitude': locationData['longitude'] as double?,
         'locality': locationData['locality'] as String?,
+        'state': locationData['state'] as String?,
         'placeId': locationData['placeId'] as String?,
         'photoReferences': data['photoReferences'] as List<dynamic>?,
       };

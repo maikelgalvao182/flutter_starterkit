@@ -272,6 +272,7 @@ class NotificationTemplates {
   /// 
   /// Título (negrito): contador de visualizações
   /// Body: "Novos amigos?" (call-to-action)
+  /// Emoji do avatar: 👀 (eyes)
   /// 
   /// Exemplos de título:
   /// - "1 pessoa visualizou seu perfil 👏"
@@ -291,6 +292,7 @@ class NotificationTemplates {
       preview: "$count ${count == 1 ? 'nova visita' : 'novas visitas'}",
       extra: {
         'count': count,
+        'emoji': '👀', // Emoji para o avatar da notificação
         if (viewerNames != null) 'viewerNames': viewerNames,
         if (lastViewedAt != null) 'lastViewedAt': lastViewedAt,
       },

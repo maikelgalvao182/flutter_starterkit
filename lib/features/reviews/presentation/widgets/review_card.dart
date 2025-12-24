@@ -159,16 +159,9 @@ class ReviewCard extends StatelessWidget {
       onPrimaryAction: () async {
         debugPrint('🎯 [ReviewCard] Abrindo ReviewDialog...');
         
-        // Abre o ReviewDialog
-        final result = await showModalBottomSheet<bool>(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          isDismissible: false,
-          enableDrag: false,
-          builder: (dialogContext) => ReviewDialog(
-            pendingReview: pendingReview,
-          ),
+        final result = await ReviewDialog.show(
+          context,
+          pendingReview: pendingReview,
         );
 
         debugPrint('🔍 [ReviewCard] Dialog retornou: $result');

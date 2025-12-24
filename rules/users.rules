@@ -28,10 +28,20 @@ match /Users/{userId} {
   /// - Qualquer usuário autenticado pode ler perfis públicos
   allow read: if isSignedIn();
   
-  /// ✍️ CRIAR/ATUALIZAR perfil:
-  /// - Apenas o próprio usuário pode criar/atualizar seu perfil
+  /// ✍️ CRIAR perfil (signup):
+  /// - Apenas o próprio usuário pode criar seu perfil
+  /// - NÃO pode definir campos protegidos na criação
+  allow create: if isOwner(userId) &&
+    !request.resource.data.keys()
+      .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate', 
+               'isVerified', 'verifiedAt', 'facialId', 'verificationType',
+               'vipExpiresAt', 'vipProductId', 'vipUpdatedAt', 
+               'user_is_vip', 'user_is_verified', 'user_level']);
+  
+  /// ✏️ ATUALIZAR perfil:
+  /// - Apenas o próprio usuário pode atualizar seu perfil
   /// - NÃO pode alterar campos protegidos (rating, verification, VIP)
-  allow create, update: if isOwner(userId) &&
+  allow update: if isOwner(userId) &&
     !request.resource.data.diff(resource.data).affectedKeys()
       .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate', 
                'isVerified', 'verifiedAt', 'facialId', 'verificationType',
@@ -73,10 +83,20 @@ match /users/{userId} {
   /// - Qualquer usuário autenticado pode ler perfis públicos
   allow read: if isSignedIn();
   
-  /// ✍️ CRIAR/ATUALIZAR perfil:
-  /// - Apenas o próprio usuário pode criar/atualizar seu perfil
+  /// ✍️ CRIAR perfil (signup):
+  /// - Apenas o próprio usuário pode criar seu perfil
+  /// - NÃO pode definir campos protegidos na criação
+  allow create: if isOwner(userId) &&
+    !request.resource.data.keys()
+      .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate',
+               'isVerified', 'verifiedAt', 'facialId', 'verificationType',
+               'vipExpiresAt', 'vipProductId', 'vipUpdatedAt',
+               'user_is_vip', 'user_is_verified', 'user_level']);
+  
+  /// ✏️ ATUALIZAR perfil:
+  /// - Apenas o próprio usuário pode atualizar seu perfil
   /// - NÃO pode alterar campos protegidos
-  allow create, update: if isOwner(userId) &&
+  allow update: if isOwner(userId) &&
     !request.resource.data.diff(resource.data).affectedKeys()
       .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate',
                'isVerified', 'verifiedAt', 'facialId', 'verificationType',

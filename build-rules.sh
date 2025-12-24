@@ -127,6 +127,12 @@ echo "    // ======================================" >> "$OUTPUT_FILE"
 cat "$RULES_DIR/didit.rules" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
+echo "    // ======================================" >> "$OUTPUT_FILE"
+echo "    // 🚫 Bloqueio de Usuários" >> "$OUTPUT_FILE"
+echo "    // ======================================" >> "$OUTPUT_FILE"
+cat "$RULES_DIR/blocked_users.rules" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
 # Fechar o arquivo
 cat >> "$OUTPUT_FILE" << 'EOF'
     // ======================================

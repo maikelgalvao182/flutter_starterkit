@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_country_selector/flutter_country_selector.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:partiu/firebase_options.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/core/managers/session_manager.dart';
 import 'package:partiu/core/services/cache/cache_manager.dart';
 import 'package:partiu/core/services/google_maps_initializer.dart';
@@ -24,100 +28,165 @@ import 'package:partiu/features/home/presentation/viewmodels/people_ranking_view
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
 import 'package:partiu/features/notifications/services/push_notification_manager.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Travar orientação em portrait
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
-  
-  // Inicializar BrazilianLocations
-  await BrazilianLocations.initialize();
-  
-  // Configurar locales para timeago
-  timeago.setLocaleMessages('pt', timeago.PtBrMessages());
-  timeago.setLocaleMessages('es', timeago.EsMessages());
-  
-  // Inicializar Firebase (protegido contra hot reload)
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
-  } catch (e) {
-    debugPrint('Firebase já inicializado: $e');
+bool _shouldSuppressPermissionDeniedAfterLogout(Object error) {
+  if (FirebaseAuth.instance.currentUser != null) return false;
+  if (error is FirebaseException) {
+    final isFirestore = error.plugin == 'cloud_firestore' || (error.message?.contains('cloud_firestore') == true);
+    final isPermissionDenied = error.code == 'permission-denied' || (error.message?.contains('permission-denied') == true);
+    return isFirestore && isPermissionDenied;
   }
+  return false;
+}
 
-  // 🔔 Inicializar Push Notification Manager (ANTES do runApp)
-  await PushNotificationManager.instance.initialize();
-  debugPrint('✅ PushNotificationManager iniciado');
+Future<void> main() async {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar Google Maps
-  await GoogleMapsInitializer.initialize();
+    FlutterError.onError = (FlutterErrorDetails details) {
+      final exception = details.exception;
+      final stack = details.stack ?? StackTrace.current;
 
-  // Inicializar SessionManager
-  await SessionManager.instance.initialize();
+      if (_shouldSuppressPermissionDeniedAfterLogout(exception)) {
+        AppLogger.warning(
+          'Suprimindo cloud_firestore/permission-denied após logout (erro global)',
+          tag: 'AUTH',
+        );
+        return;
+      }
 
-  // Inicializar CacheManager
-  CacheManager.instance.initialize();
+      FlutterError.presentError(details);
+      AppLogger.error(
+        'Unhandled Flutter error',
+        tag: 'APP',
+        error: exception,
+        stackTrace: stack,
+      );
+    };
 
-  // Inicializar Service Locator
-  final serviceLocator = ServiceLocator();
-  await serviceLocator.init();
+    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      if (_shouldSuppressPermissionDeniedAfterLogout(error)) {
+        AppLogger.warning(
+          'Suprimindo cloud_firestore/permission-denied após logout (PlatformDispatcher)',
+          tag: 'AUTH',
+        );
+        return true;
+      }
 
-  // Inicializar LocationSyncScheduler para atualização automática de localização
-  // Isso mantém o Firestore atualizado a cada 10 minutos automaticamente
-  final locationService = serviceLocator.get<LocationService>();
-  LocationSyncScheduler.start(
-    locationService,
-    config: LocationConfig.standard, // Usar configuração padrão (Uber/Tinder)
-  );
-  debugPrint('✅ LocationSyncScheduler iniciado');
-
-  runApp(
-    MultiProvider(
-      providers: [
-        // AuthSyncService como singleton - ÚNICA fonte de verdade para auth
-        ChangeNotifierProvider(
-          create: (_) => AuthSyncService(),
-        ),
-        // MapViewModel
-        ChangeNotifierProvider(
-          create: (_) => MapViewModel(),
-        ),
-        // PeopleRankingViewModel
-        ChangeNotifierProvider(
-          create: (_) => PeopleRankingViewModel(),
-        ),
-        // RankingViewModel (Locations)
-        ChangeNotifierProvider(
-          create: (_) => RankingViewModel(),
-        ),
-        // ConversationsViewModel - gerencia estado das conversas
-        ChangeNotifierProvider(
-          create: (_) => ConversationsViewModel(),
-        ),
-        // SimpleSubscriptionProvider - gerencia estado de assinaturas VIP
-        ChangeNotifierProvider(
-          create: (_) => SimpleSubscriptionProvider(),
-        ),
-        // DependencyProvider via Provider para compatibility
-        Provider<ServiceLocator>.value(
-          value: serviceLocator,
-        ),
-      ],
-      child: DependencyProvider(
-        serviceLocator: serviceLocator,
-        child: const AppRoot(),
-      ),
-    ),
-  );
+      AppLogger.error(
+        'Unhandled async error',
+        tag: 'APP',
+        error: error,
+        stackTrace: stack,
+      );
+      return false;
+    };
   
-  // 🔔 Processar mensagem inicial (se app foi aberto via notificação)
-  // Deve ser APÓS runApp para ter contexto de navegação disponível
-  PushNotificationManager.instance.handleInitialMessageAfterRunApp();
+    // Travar orientação em portrait
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    
+    // Inicializar BrazilianLocations
+    await BrazilianLocations.initialize();
+    
+    // Configurar locales para timeago
+    timeago.setLocaleMessages('pt', timeago.PtBrMessages());
+    timeago.setLocaleMessages('es', timeago.EsMessages());
+    
+    // Inicializar Firebase (protegido contra hot reload)
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
+    } catch (e) {
+      debugPrint('Firebase já inicializado: $e');
+    }
+
+    // 🔔 Inicializar Push Notification Manager (ANTES do runApp)
+    await PushNotificationManager.instance.initialize();
+    debugPrint('✅ PushNotificationManager iniciado');
+
+    // Inicializar Google Maps
+    await GoogleMapsInitializer.initialize();
+
+    // Inicializar SessionManager
+    await SessionManager.instance.initialize();
+
+    // Inicializar CacheManager
+    CacheManager.instance.initialize();
+
+    // Inicializar Service Locator
+    final serviceLocator = ServiceLocator();
+    await serviceLocator.init();
+
+    // Inicializar LocationSyncScheduler para atualização automática de localização
+    // Isso mantém o Firestore atualizado a cada 10 minutos automaticamente
+    final locationService = serviceLocator.get<LocationService>();
+    LocationSyncScheduler.start(
+      locationService,
+      config: LocationConfig.standard, // Usar configuração padrão (Uber/Tinder)
+    );
+    debugPrint('✅ LocationSyncScheduler iniciado');
+
+    runApp(
+      MultiProvider(
+        providers: [
+          // AuthSyncService como singleton - ÚNICA fonte de verdade para auth
+          ChangeNotifierProvider(
+            create: (_) => AuthSyncService(),
+          ),
+          // MapViewModel
+          ChangeNotifierProvider(
+            create: (_) => MapViewModel(),
+          ),
+          // PeopleRankingViewModel
+          ChangeNotifierProvider(
+            create: (_) => PeopleRankingViewModel(),
+          ),
+          // RankingViewModel (Locations)
+          ChangeNotifierProvider(
+            create: (_) => RankingViewModel(),
+          ),
+          // ConversationsViewModel - gerencia estado das conversas
+          ChangeNotifierProvider(
+            create: (_) => ConversationsViewModel(),
+          ),
+          // SimpleSubscriptionProvider - gerencia estado de assinaturas VIP
+          ChangeNotifierProvider(
+            create: (_) => SimpleSubscriptionProvider(),
+          ),
+          // DependencyProvider via Provider para compatibility
+          Provider<ServiceLocator>.value(
+            value: serviceLocator,
+          ),
+        ],
+        child: DependencyProvider(
+          serviceLocator: serviceLocator,
+          child: const AppRoot(),
+        ),
+      ),
+    );
+    
+    // 🔔 Processar mensagem inicial (se app foi aberto via notificação)
+    // Deve ser APÓS runApp para ter contexto de navegação disponível
+    PushNotificationManager.instance.handleInitialMessageAfterRunApp();
+  }, (Object error, StackTrace stack) {
+    if (_shouldSuppressPermissionDeniedAfterLogout(error)) {
+      AppLogger.warning(
+        'Suprimindo cloud_firestore/permission-denied após logout (zone)',
+        tag: 'AUTH',
+      );
+      return;
+    }
+    AppLogger.error(
+      'Uncaught zoned error',
+      tag: 'APP',
+      error: error,
+      stackTrace: stack,
+    );
+  });
 }
 
 class AppRoot extends StatelessWidget {

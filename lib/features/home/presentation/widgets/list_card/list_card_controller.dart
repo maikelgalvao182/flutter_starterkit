@@ -14,6 +14,8 @@ class ListCardController extends ChangeNotifier {
   String? _emoji;
   String? _activityText;
   String? _locationName;
+  String? _locality;
+  String? _state;
   DateTime? _scheduleDate;
   String? _creatorId;
 
@@ -45,6 +47,8 @@ class ListCardController extends ChangeNotifier {
   String? get emoji => _emoji;
   String? get activityText => _activityText;
   String? get locationName => _locationName;
+  String? get locality => _locality;
+  String? get state => _state;
   DateTime? get scheduleDate => _scheduleDate;
   String? get creatorId => _creatorId;
   String? get creatorPhotoUrl => _creatorPhotoUrl;
@@ -72,18 +76,28 @@ class ListCardController extends ChangeNotifier {
 
       // Parse event data
       final eventData = results[0] as Map<String, dynamic>?;
-      if (eventData != null) {
-        _emoji = eventData['emoji'] as String?;
-        _activityText = eventData['activityText'] as String?;
-        _locationName = eventData['locationName'] as String?;
-        _scheduleDate = eventData['scheduleDate'] as DateTime?;
-        _creatorId = eventData['createdBy'] as String?;
-        
-        // Buscar dados do criador (photoUrl)
-        if (_creatorId != null) {
-          final creatorData = await _userRepo.getUserBasicInfo(_creatorId!);
-          _creatorPhotoUrl = creatorData?['photoUrl'] as String?;
-        }
+      if (eventData == null) {
+        _error = 'Atividade indisponível';
+        _loaded = false;
+        _isLoading = false;
+        loadingNotifier.value = false;
+        dataReadyNotifier.value = false;
+        notifyListeners();
+        return;
+      }
+
+      _emoji = eventData['emoji'] as String?;
+      _activityText = eventData['activityText'] as String?;
+      _locationName = eventData['locationName'] as String?;
+      _locality = eventData['locality'] as String?;
+      _state = eventData['state'] as String?;
+      _scheduleDate = eventData['scheduleDate'] as DateTime?;
+      _creatorId = eventData['createdBy'] as String?;
+      
+      // Buscar dados do criador (photoUrl)
+      if (_creatorId != null) {
+        final creatorData = await _userRepo.getUserBasicInfo(_creatorId!);
+        _creatorPhotoUrl = creatorData?['photoUrl'] as String?;
       }
 
       // Parse participants data

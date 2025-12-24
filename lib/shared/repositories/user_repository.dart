@@ -69,14 +69,16 @@ class UserRepository {
         for (final doc in snapshot.docs) {
           final data = doc.data() as Map<String, dynamic>;
           
-          // Normalizar campos para padrão consistente
-          final photoUrl = data['user_photo_link'] as String? ?? 
-                           data['photoUrl'] as String? ??
-                           data['user_profile_photo'] as String?;
+          // Campo oficial do Firestore Users: photoUrl
+          // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+          var rawPhotoUrl = data['photoUrl'] as String? ?? '';
+          if (rawPhotoUrl.contains('googleusercontent.com') || 
+              rawPhotoUrl.contains('lh3.google')) {
+            rawPhotoUrl = '';
+          }
+          final photoUrl = rawPhotoUrl;
           
-          final fullName = data['fullname'] as String? ?? 
-                           data['fullName'] as String? ??
-                           'Usuário';
+          final fullName = data['fullName'] as String? ?? 'Usuário';
           
           results[doc.id] = {
             'id': doc.id,
@@ -108,20 +110,21 @@ class UserRepository {
 
       final data = doc.data() as Map<String, dynamic>;
       
-      // Busca campos com nomes corretos do Firestore
-      // Os campos no Firestore são: 'user_photo_link' e 'fullname'
-      final photoUrl = data['user_photo_link'] as String? ?? 
-                       data['photoUrl'] as String? ??
-                       data['user_profile_photo'] as String?;
+      // Campo oficial do Firestore Users: photoUrl e fullName
+      // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+      var rawPhotoUrl = data['photoUrl'] as String? ?? '';
+      if (rawPhotoUrl.contains('googleusercontent.com') || 
+          rawPhotoUrl.contains('lh3.google')) {
+        rawPhotoUrl = '';
+      }
+      final photoUrl = rawPhotoUrl;
       
-      final fullName = data['fullname'] as String? ?? 
-                       data['fullName'] as String? ??
-                       'Usuário';
+      final fullName = data['fullName'] as String? ?? 'Usuário';
       
       debugPrint('🔍 UserRepository.getUserBasicInfo($userId):');
-      debugPrint('   - fullname: ${data['fullname']}');
-      debugPrint('   - user_photo_link: ${data['user_photo_link']}');
-      debugPrint('   - Resultado: fullName=$fullName, photoUrl=$photoUrl');
+      debugPrint('   - fullName: ${data['fullName']}');
+      debugPrint('   - photoUrl: ${data['photoUrl']}');
+      debugPrint('   - Resultado (filtrado): fullName=$fullName, photoUrl=$photoUrl');
       
       return {
         'userId': userId,

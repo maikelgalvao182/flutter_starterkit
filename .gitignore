@@ -46,3 +46,7 @@ app.*.map.json
 
 # Firestore Rules (gerado automaticamente via build-rules.sh)
 firestore.rules
+
+# Android signing
+android/key.properties
+android/app/*.jks

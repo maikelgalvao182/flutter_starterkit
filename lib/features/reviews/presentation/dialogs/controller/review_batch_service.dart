@@ -140,7 +140,7 @@ class ReviewBatchService {
     final ownerDoc = await firestore.collection('Users').doc(reviewerId).get();
     final ownerData = ownerDoc.data();
     final ownerName = ownerData?['fullName'] as String? ?? 'Organizador';
-    final ownerPhotoUrl = ownerData?['user_photo_link'] as String?;
+    final ownerPhotoUrl = ownerData?['photoUrl'] as String?;
 
     debugPrint('✅ Dados do owner: $ownerName');
     

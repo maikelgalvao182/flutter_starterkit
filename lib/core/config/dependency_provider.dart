@@ -108,10 +108,9 @@ class ServiceLocator {
     );
     
     // Activity Repository
+    // ✅ Notificações agora são criadas via Cloud Functions
     _getIt.registerLazySingleton<ActivityRepository>(
-      () => ActivityRepository(
-        notificationService: _getIt<ActivityNotificationService>(),
-      ),
+      () => ActivityRepository(),
     );
 
     // ViewModels

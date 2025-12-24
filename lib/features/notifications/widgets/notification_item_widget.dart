@@ -37,17 +37,23 @@ class NotificationItemWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = notification.data() ?? {};
     final senderId = (data[N_SENDER_ID] as String?) ?? '';
-    final senderName = (data[N_SENDER_FULLNAME] as String?) ?? '';
-    final senderPhotoUrl = (data['n_sender_photo_link'] as String?) ?? '';
+    // ⚠️ ARQUITETURA: senderName/senderPhotoUrl da notificação são APENAS fallback
+    // Para usuários reais, SEMPRE usar UserStore/StableAvatar que busca do Firestore
+    // Isso evita inconsistências quando o backend mistura dados do Auth Provider
+    final senderNameFromPayload = (data[N_SENDER_FULLNAME] as String?) ?? '';
+    // IGNORADO: senderPhotoUrl - StableAvatar resolve via UserStore
     final nType = NotificationMessageTranslator.extractType(data) ?? '';
     // Se foi marcado como lido localmente, considerar como lido
     final isUnread = isLocallyRead ? false : !((data[N_READ] as bool?) ?? false);
     final timestamp = data['timestamp'];
     
+    // 🔒 REGRA DE OURO: Para usuários reais, nome e avatar vêm do UserStore
+    // Notificação só carrega senderId - igual WhatsApp, Instagram, TikTok
+    final isSystemMessage = senderId.isEmpty || senderId == 'system';
+    
     debugPrint('🔔 [NotificationItem] Building notification:');
     debugPrint('   - senderId: $senderId');
-    debugPrint('   - senderName: $senderName');
-    debugPrint('   - senderPhotoUrl: $senderPhotoUrl');
+    debugPrint('   - isSystemMessage: $isSystemMessage');
     debugPrint('   - nType: $nType');
     
     // Extrair parâmetros e traduzir mensagem
@@ -82,10 +88,12 @@ class NotificationItemWidget extends StatelessWidget {
     if (templateBody != null && templateBody.isNotEmpty) {
       translatedMessage = templateBody;
     } else {
+      // Para mensagens traduzidas, usar senderName do payload como fallback
+      // (ReactiveUserName será usado para exibição visual, mas traduções precisam de texto)
       translatedMessage = NotificationMessageTranslator.translate(
         i18n: i18n,
         type: nType,
-        senderName: senderName,
+        senderName: senderNameFromPayload,
         params: params,
       );
     }
@@ -138,7 +146,7 @@ class NotificationItemWidget extends StatelessWidget {
                   clipBehavior: Clip.none,
                   children: [
                     // Avatar - para mensagens de sistema, mostrar emoji se disponível
-                    if ((senderId.isEmpty || senderId == 'system') && emoji != null && emoji.isNotEmpty)
+                    if (isSystemMessage && emoji != null && emoji.isNotEmpty)
                       Container(
                         width: 52,
                         height: 52,
@@ -154,10 +162,12 @@ class NotificationItemWidget extends StatelessWidget {
                         ),
                       )
                     else
-                      // Avatar normal para mensagens de usuários - redondo
+                      // 🔒 ARQUITETURA CORRETA: StableAvatar resolve avatar via UserStore
+                      // NÃO passar photoUrl da notificação - isso causava inconsistências
+                      // quando backend misturava dados do Auth Provider (Google) com Firestore
+                      // 🔒 DEFENSIVO: Passa '' se isSystemMessage para evitar lookup inválido
                       StableAvatar(
-                        userId: senderId,
-                        photoUrl: senderPhotoUrl.isNotEmpty ? senderPhotoUrl : null,
+                        userId: isSystemMessage ? '' : senderId,
                         size: 52,
                         borderRadius: BorderRadius.circular(999), // Redondo
                         enableNavigation: false,
@@ -187,14 +197,6 @@ class NotificationItemWidget extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Debug log
-                      Builder(
-                        builder: (context) {
-                          debugPrint('   - Rendering with photoUrl: ${senderPhotoUrl.isNotEmpty ? senderPhotoUrl : "null"}');
-                          debugPrint('   - Is system message: ${senderId == "system"}');
-                          return const SizedBox.shrink();
-                        },
-                      ),
                       // Se tiver título (eventTitle ou activityText), mostrar no topo
                       if (displayTitle != null)
                         Row(
@@ -226,15 +228,17 @@ class NotificationItemWidget extends StatelessWidget {
                           ],
                         )
                       else
-                        // Para outros tipos, mostrar nome do remetente
-                        ReactiveUserNameWithBadge(
-                          userId: senderId,
-                          style: GoogleFonts.getFont(
-                            FONT_PLUS_JAKARTA_SANS,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                        // Para outros tipos, mostrar nome do remetente via UserStore
+                        // 🔒 DEFENSIVO: Só renderiza se NÃO for mensagem de sistema
+                        if (!isSystemMessage)
+                          ReactiveUserNameWithBadge(
+                            userId: senderId,
+                            style: GoogleFonts.getFont(
+                              FONT_PLUS_JAKARTA_SANS,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
                       const SizedBox(height: 3),
                       Text(
                         NotificationTextSanitizer.clean(cleanedMessage),

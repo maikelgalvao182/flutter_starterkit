@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/core/services/geo_index_service.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/models/activity_notification_types.dart';
@@ -64,6 +65,7 @@ class ActivityNotificationService {
   final GeoIndexService _geoIndexService;
   final UserAffinityService _affinityService;
   final FirebaseFirestore _firestore;
+  // ignore: unused_field
   final FirebaseAuth _auth;
 
   // Mapa de triggers indexado por tipo
@@ -115,30 +117,35 @@ class ActivityNotificationService {
   /// 
   /// Notifica todos os usuários dentro de FREE_ACCOUNT_MAX_EVENT_DISTANCE_KM (30km)
   Future<void> notifyActivityCreated(ActivityModel activity) async {
-    print('🔔 [ActivityNotificationService.notifyActivityCreated] INICIANDO');
-    print('🔔 [ActivityNotificationService.notifyActivityCreated] Activity: ${activity.id} - ${activity.name} ${activity.emoji}');
-    print('🔔 [ActivityNotificationService.notifyActivityCreated] Localização: (${activity.latitude}, ${activity.longitude})');
-    print('🔔 [ActivityNotificationService.notifyActivityCreated] Criador: ${activity.createdBy}');
-    
     try {
-      print('🔔 [ActivityNotificationService.notifyActivityCreated] Buscando trigger: ${ActivityNotificationTypes.activityCreated}');
       final trigger = _triggers[ActivityNotificationTypes.activityCreated];
       
       if (trigger == null) {
-        print('❌ [ActivityNotificationService.notifyActivityCreated] TRIGGER É NULL!');
-        print('❌ [ActivityNotificationService.notifyActivityCreated] Triggers disponíveis: ${_triggers.keys.toList()}');
+        AppLogger.warning(
+          'notifyActivityCreated: trigger não encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
-      
-      print('✅ [ActivityNotificationService.notifyActivityCreated] Trigger encontrado: ${trigger.runtimeType}');
-      print('🔔 [ActivityNotificationService.notifyActivityCreated] Executando trigger...');
+
+      AppLogger.info(
+        'notifyActivityCreated: executando trigger',
+        tag: 'NOTIFICATIONS',
+      );
       
       await trigger.execute(activity, {});
-      
-      print('✅ [ActivityNotificationService.notifyActivityCreated] Trigger executado com SUCESSO');
+
+      AppLogger.info(
+        'notifyActivityCreated: trigger finalizado',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityNotificationService.notifyActivityCreated] ERRO: $e');
-      print('❌ [ActivityNotificationService.notifyActivityCreated] StackTrace: $stackTrace');
+      AppLogger.error(
+        'notifyActivityCreated: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -158,8 +165,13 @@ class ActivityNotificationService {
         'requesterId': requesterId,
         'requesterName': requesterName,
       });
-    } catch (e) {
-      print('[ActivityNotificationService] Erro ao notificar pedido: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'notifyJoinRequest: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -177,8 +189,13 @@ class ActivityNotificationService {
       await trigger.execute(activity, {
         'approvedUserId': approvedUserId,
       });
-    } catch (e) {
-      print('[ActivityNotificationService] Erro ao notificar aprovação: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'notifyJoinApproved: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -196,8 +213,13 @@ class ActivityNotificationService {
       await trigger.execute(activity, {
         'rejectedUserId': rejectedUserId,
       });
-    } catch (e) {
-      print('[ActivityNotificationService] Erro ao notificar rejeição: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'notifyJoinRejected: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -209,27 +231,33 @@ class ActivityNotificationService {
     required String participantId,
     required String participantName,
   }) async {
-    print('🔔 [ActivityNotificationService.notifyNewParticipant] INICIANDO');
-    print('🔔 [ActivityNotificationService.notifyNewParticipant] Activity: ${activity.id} - ${activity.name}');
-    print('🔔 [ActivityNotificationService.notifyNewParticipant] Participant: $participantId - $participantName');
-    
     try {
       final trigger = _triggers[ActivityNotificationTypes.activityNewParticipant];
       
       if (trigger == null) {
-        print('❌ [ActivityNotificationService.notifyNewParticipant] TRIGGER É NULL!');
+        AppLogger.warning(
+          'notifyNewParticipant: trigger não encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
-      
-      print('✅ [ActivityNotificationService.notifyNewParticipant] Trigger encontrado, executando...');
+
       await trigger.execute(activity, {
         'participantId': participantId,
         'participantName': participantName,
       });
-      print('✅ [ActivityNotificationService.notifyNewParticipant] Trigger executado com SUCESSO');
+
+      AppLogger.info(
+        'notifyNewParticipant: trigger finalizado',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityNotificationService.notifyNewParticipant] ERRO: $e');
-      print('❌ [ActivityNotificationService.notifyNewParticipant] StackTrace: $stackTrace');
+      AppLogger.error(
+        'notifyNewParticipant: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -242,33 +270,49 @@ class ActivityNotificationService {
     required int currentCount,
   }) async {
     try {
-      print('🔥 [ActivityNotificationService.notifyActivityHeatingUp] CHAMADO');
-      print('🔥 [ActivityNotificationService.notifyActivityHeatingUp] Activity: ${activity.id} - ${activity.name}');
-      print('🔥 [ActivityNotificationService.notifyActivityHeatingUp] CurrentCount: $currentCount');
-      print('🔥 [ActivityNotificationService.notifyActivityHeatingUp] Thresholds: ${ActivityNotificationTypes.heatingUpThresholds}');
+      AppLogger.info(
+        'notifyActivityHeatingUp: chamado (count=$currentCount)',
+        tag: 'NOTIFICATIONS',
+      );
       
       // Verifica se atingiu um threshold
       if (!ActivityNotificationTypes.heatingUpThresholds.contains(currentCount)) {
-        print('⏭️ [ActivityNotificationService.notifyActivityHeatingUp] Count $currentCount NÃO é threshold, ignorando');
+        AppLogger.info(
+          'notifyActivityHeatingUp: count não é threshold, ignorando',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
       
-      print('✅ [ActivityNotificationService.notifyActivityHeatingUp] Count $currentCount É THRESHOLD! Disparando trigger...');
+      AppLogger.info(
+        'notifyActivityHeatingUp: threshold atingido, disparando trigger',
+        tag: 'NOTIFICATIONS',
+      );
 
       final trigger = _triggers[ActivityNotificationTypes.activityHeatingUp];
       if (trigger == null) {
-        print('❌ [ActivityNotificationService.notifyActivityHeatingUp] Trigger não encontrado!');
+        AppLogger.warning(
+          'notifyActivityHeatingUp: trigger não encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
       await trigger.execute(activity, {
         'currentCount': currentCount,
       });
-      
-      print('✅ [ActivityNotificationService.notifyActivityHeatingUp] Trigger executado com sucesso');
+
+      AppLogger.info(
+        'notifyActivityHeatingUp: trigger finalizado',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityNotificationService.notifyActivityHeatingUp] ERRO: $e');
-      print('❌ [ActivityNotificationService.notifyActivityHeatingUp] StackTrace: $stackTrace');
+      AppLogger.error(
+        'notifyActivityHeatingUp: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -295,120 +339,30 @@ class ActivityNotificationService {
   /// 
   /// Notifica todos os participantes
   Future<void> notifyActivityCanceled(ActivityModel activity) async {
-    print('🔔 [ActivityNotificationService.notifyActivityCanceled] INICIANDO');
-    print('🔔 [ActivityNotificationService.notifyActivityCanceled] Activity: ${activity.id} - ${activity.name}');
-    
     try {
       final trigger = _triggers[ActivityNotificationTypes.activityCanceled];
       
       if (trigger == null) {
-        print('❌ [ActivityNotificationService.notifyActivityCanceled] TRIGGER É NULL!');
+        AppLogger.warning(
+          'notifyActivityCanceled: trigger não encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
-      
-      print('✅ [ActivityNotificationService.notifyActivityCanceled] Trigger encontrado, executando...');
+
       await trigger.execute(activity, {});
-      print('✅ [ActivityNotificationService.notifyActivityCanceled] Trigger executado com SUCESSO');
+
+      AppLogger.info(
+        'notifyActivityCanceled: trigger finalizado',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityNotificationService.notifyActivityCanceled] ERRO: $e');
-      print('❌ [ActivityNotificationService.notifyActivityCanceled] StackTrace: $stackTrace');
-    }
-  }
-
-  /// Busca usuários dentro do raio de 30km
-  /// 
-  /// Usa geohash para query eficiente no Firestore
-  /// Retorna lista de user IDs (exclui o criador da atividade)
-  Future<List<String>> _findUsersInRadius({
-    required double latitude,
-    required double longitude,
-    required String excludeUserId,
-  }) async {
-    try {
-      // TODO: Implementar query geoespacial otimizada
-      // Por enquanto, retorna lista vazia
-      // Na implementação real, usar geoflutterfire ou similar
-      
-      final radiusInKm = FREE_ACCOUNT_MAX_EVENT_DISTANCE_KM;
-      
-      // Query básica (sem filtro geoespacial)
-      final usersSnapshot = await _firestore
-          .collection('Users')
-          .where(FieldPath.documentId, isNotEqualTo: excludeUserId)
-          .limit(100)
-          .get();
-
-      final nearbyUsers = <String>[];
-
-      for (final doc in usersSnapshot.docs) {
-        final data = doc.data();
-        final userLat = data['latitude'] as double?;
-        final userLng = data['longitude'] as double?;
-
-        if (userLat == null || userLng == null) continue;
-
-        // Calcula distância
-        final distance = Geolocator.distanceBetween(
-          latitude,
-          longitude,
-          userLat,
-          userLng,
-        );
-
-        // Converte para km e compara
-        if (distance / 1000 <= radiusInKm) {
-          nearbyUsers.add(doc.id);
-        }
-      }
-
-      return nearbyUsers;
-    } catch (e) {
-      print('[ActivityNotificationService] Erro ao buscar usuários: $e');
-      return [];
-    }
-  }
-
-  /// Busca participantes de uma atividade
-  Future<List<String>> _getActivityParticipants(String activityId) async {
-    try {
-      // TODO: Ajustar para estrutura real de participantes
-      // Assumindo campo participantIds: [uid1, uid2, ...]
-      
-      final activityDoc = await _firestore
-          .collection('events')
-          .doc(activityId)
-          .get();
-
-      if (!activityDoc.exists) return [];
-
-      final data = activityDoc.data();
-      final participantIds = data?['participantIds'] as List<dynamic>?;
-
-      return participantIds?.map((e) => e.toString()).toList() ?? [];
-    } catch (e) {
-      print('[ActivityNotificationService] Erro ao buscar participantes: $e');
-      return [];
-    }
-  }
-
-  /// Obtém dados básicos de um usuário
-  Future<Map<String, dynamic>?> _getUserData(String userId) async {
-    try {
-      final userDoc = await _firestore
-          .collection('Users')
-          .doc(userId)
-          .get();
-
-      if (!userDoc.exists) return null;
-
-      final data = userDoc.data();
-      return {
-        'fullName': data?['fullname'] ?? 'Usuário',
-        'photoUrl': data?['user_profile_photo'] ?? '',
-      };
-    } catch (e) {
-      print('[ActivityNotificationService] Erro ao buscar dados do usuário: $e');
-      return null;
+      AppLogger.error(
+        'notifyActivityCanceled: erro ao executar trigger',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 }

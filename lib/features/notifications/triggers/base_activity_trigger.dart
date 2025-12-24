@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// Interface base para triggers de notificação de atividades
 /// 
@@ -26,53 +27,55 @@ abstract class BaseActivityTrigger {
 
   /// Helper: Obtém dados do usuário (nome + foto)
   Future<Map<String, String>> getUserInfo(String userId) async {
-    print('🔍 [BaseActivityTrigger.getUserInfo] Buscando user: $userId');
     try {
       final userDoc = await firestore.collection('Users').doc(userId).get();
       if (!userDoc.exists) {
-        print('⚠️ [BaseActivityTrigger.getUserInfo] Usuário não encontrado: $userId');
+        AppLogger.warning(
+          'getUserInfo: usuário não encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return {'fullName': 'Usuário', 'photoUrl': ''};
       }
 
       final data = userDoc.data()!;
       
-      print('📊 [BaseActivityTrigger.getUserInfo] === DADOS DO DOCUMENTO ===');
-      print('📊 [BaseActivityTrigger.getUserInfo] Campos disponíveis: ${data.keys.toList()}');
-      print('📊 [BaseActivityTrigger.getUserInfo] fullName: ${data['fullName']}');
-      print('📊 [BaseActivityTrigger.getUserInfo] fullname: ${data['fullname']}');
-      print('📊 [BaseActivityTrigger.getUserInfo] userName: ${data['userName']}');
-      print('📊 [BaseActivityTrigger.getUserInfo] photoUrl: ${data['photoUrl']}');
+      // Nome do usuário - campo oficial do Firestore Users
+      final fullName = data['fullName'] as String? ?? 'Usuário';
       
-      // Tentar múltiplos campos possíveis para nome
-      final fullName = data['fullName'] as String? ?? 
-                      data['fullname'] as String? ?? 
-                      data['userName'] as String? ?? 
-                      'Usuário';
+      // Foto do usuário - campo oficial do Firestore Users
+      // ⚠️ IMPORTANTE: Filtrar URLs do Google OAuth (lh3.googleusercontent.com)
+      // Essas URLs são do login social e não devem ser usadas como avatar
+      var rawPhotoUrl = data['photoUrl'] as String? ?? '';
       
-      // Tentar múltiplos campos possíveis para foto
-      final photoUrl = data['photoUrl'] as String? ?? 
-                      data['user_profile_photo'] as String? ?? 
-                      data['photoUrl'] as String? ?? 
-                      '';
+      // Ignorar URL se for do Google OAuth (dados legados)
+      if (rawPhotoUrl.contains('googleusercontent.com') || 
+          rawPhotoUrl.contains('lh3.google')) {
+        AppLogger.info(
+          'getUserInfo: photoUrl do Google OAuth ignorada',
+          tag: 'NOTIFICATIONS',
+        );
+        rawPhotoUrl = '';
+      }
       
       final result = {
         'fullName': fullName,
-        'photoUrl': photoUrl,
+        'photoUrl': rawPhotoUrl,
       };
       
-      print('✅ [BaseActivityTrigger.getUserInfo] === RESULTADO FINAL ===');
-      print('   • fullName selecionado: $fullName');
-      print('   • photoUrl selecionado: $photoUrl');
       return result;
     } catch (e, stackTrace) {
-      print('❌ [BaseActivityTrigger.getUserInfo] ERRO: $e');
-      print('❌ [BaseActivityTrigger.getUserInfo] StackTrace: $stackTrace');
+      AppLogger.error(
+        'getUserInfo: erro ao buscar dados do usuário',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return {'fullName': 'Usuário', 'photoUrl': ''};
     }
   }
 
   /// Helper: Cria notificação padronizada
-  Future<void> createNotification({
+  Future<bool> createNotification({
     required String receiverId,
     required String type,
     required Map<String, dynamic> params,
@@ -81,16 +84,7 @@ abstract class BaseActivityTrigger {
     String? senderPhotoUrl,
     String? relatedId,
   }) async {
-    print('📝 [BaseActivityTrigger.createNotification] INICIANDO');
-    print('📝 [BaseActivityTrigger.createNotification] ReceiverId: $receiverId');
-    print('📝 [BaseActivityTrigger.createNotification] Type: $type');
-    print('📝 [BaseActivityTrigger.createNotification] Params: $params');
-    print('📝 [BaseActivityTrigger.createNotification] SenderId: $senderId');
-    print('📝 [BaseActivityTrigger.createNotification] RelatedId: $relatedId');
-    
     try {
-      // Usa o novo método específico para atividades
-      print('📝 [BaseActivityTrigger.createNotification] Chamando notificationRepository.createActivityNotification...');
       await notificationRepository.createActivityNotification(
         receiverId: receiverId,
         type: type,
@@ -100,10 +94,23 @@ abstract class BaseActivityTrigger {
         senderPhotoUrl: senderPhotoUrl,
         relatedId: relatedId,
       );
-      print('✅ [BaseActivityTrigger.createNotification] CONCLUÍDO');
+      return true;
     } catch (e, stackTrace) {
-      print('❌ [BaseActivityTrigger.createNotification] ERRO: $e');
-      print('❌ [BaseActivityTrigger.createNotification] StackTrace: $stackTrace');
+      final isPermissionDenied = e is FirebaseException && e.code == 'permission-denied';
+
+      // permission-denied é esperado quando client tenta escrever notificações
+      // (deve ser feito via Cloud Function). Retorna silenciosamente.
+      if (isPermissionDenied) {
+        return false;
+      }
+
+      AppLogger.error(
+        'Erro ao criar notificação',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 }

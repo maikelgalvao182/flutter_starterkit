@@ -21,22 +21,34 @@ class UserModel {
   });
   
   factory UserModel.fromFirebaseUser(firebase_auth.User user) {
+    // ⚠️ NUNCA usar user.photoURL (avatar do Google)
+    // A foto deve vir do Firestore (photoUrl do documento do usuário)
     return UserModel(
       userId: user.uid,
       fullName: user.displayName,
       email: user.email,
-      photoUrl: user.photoURL,
+      photoUrl: null, // Será preenchido pelo Firestore
     );
   }
   
   /// Cria UserModel a partir de documento Firestore
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    
+    // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+    // Essas URLs não devem ser usadas como avatar do app
+    var rawPhotoUrl = data['photoUrl'] as String?;
+    if (rawPhotoUrl != null && 
+        (rawPhotoUrl.contains('googleusercontent.com') || 
+         rawPhotoUrl.contains('lh3.google'))) {
+      rawPhotoUrl = null;
+    }
+    
     return UserModel(
       userId: doc.id,
       fullName: data['fullName'] as String?,
       email: data['email'] as String?,
-      photoUrl: data['photoUrl'] as String?,
+      photoUrl: rawPhotoUrl,
       userType: data['userType'] as String? ?? 'vendor',
       interests: List<String>.from(data['interests'] ?? []),
     );
@@ -44,11 +56,19 @@ class UserModel {
   
   /// Cria UserModel a partir de Map
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
+    // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+    var rawPhotoUrl = map['photoUrl'] as String?;
+    if (rawPhotoUrl != null && 
+        (rawPhotoUrl.contains('googleusercontent.com') || 
+         rawPhotoUrl.contains('lh3.google'))) {
+      rawPhotoUrl = null;
+    }
+    
     return UserModel(
       userId: id,
       fullName: map['fullName'] as String?,
       email: map['email'] as String?,
-      photoUrl: map['photoUrl'] as String?,
+      photoUrl: rawPhotoUrl,
       userType: map['userType'] as String? ?? 'vendor',
       interests: List<String>.from(map['interests'] ?? []),
     );

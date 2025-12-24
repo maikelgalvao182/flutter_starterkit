@@ -9,7 +9,7 @@
 Connections/{userId}/Conversations/{otherUserId}
   ├─ user_id: string (ID do outro usuário)
   ├─ fullname: string
-  ├─ user_profile_photo: string
+  ├─ photoUrl: string
   ├─ last_message: string
   ├─ message_type: string
   ├─ message_read: boolean

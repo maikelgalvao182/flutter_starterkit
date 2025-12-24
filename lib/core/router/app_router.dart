@@ -85,13 +85,13 @@ GoRouter createAppRouter(BuildContext context) {
         
         debugPrint('✅ [GoRouter] AuthSyncService inicializado, processando redirect...');
 
-        // Se está na splash e já inicializou, decide para onde ir
+        // 🚀 IMPORTANTE: Não redirecionar automaticamente do splash!
+        // O SplashScreen faz o AppInitializerService.initialize() e 
+        // navega manualmente para /home quando estiver pronto.
+        // Isso evita que o usuário veja tela vazia enquanto carrega.
         if (currentPath == AppRoutes.splash) {
-          if (authSync.isLoggedIn) {
-            return AppRoutes.home;
-          } else {
-            return AppRoutes.signIn;
-          }
+          debugPrint('📍 [GoRouter] Splash ativo - SplashScreen controla navegação');
+          return null; // Deixa o SplashScreen controlar
         }
         
         // Rotas públicas (não necessitam autenticação)

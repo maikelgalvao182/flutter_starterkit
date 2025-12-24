@@ -22,10 +22,18 @@ class UserModel {
       lastLogin = null;
     }
 
+    // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+    var rawPhotoUrl = data['photoUrl'] as String?;
+    if (rawPhotoUrl != null && 
+        (rawPhotoUrl.contains('googleusercontent.com') || 
+         rawPhotoUrl.contains('lh3.google'))) {
+      rawPhotoUrl = null;
+    }
+
     return UserModel(
       id: id,
-      name: data['fullname'] as String?,
-      photoUrl: data['user_profile_photo'] as String?,
+      name: data['fullName'] as String? ?? data['fullname'] as String?, // ✅ Priorizar fullName, fallback fullname
+      photoUrl: rawPhotoUrl,
       isOnline: data['user_is_online'] as bool?,
       lastLogin: lastLogin,
     );

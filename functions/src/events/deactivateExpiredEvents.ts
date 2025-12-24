@@ -1,24 +1,31 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
+// Constantes de configuração
+const BATCH_SIZE = 500;
+const MAX_CONCURRENT_NOTIFICATION_DELETES = 10;
+
 /**
  * Desativa eventos expirados automaticamente
  *
  * Trigger: Scheduled function (executa todos os dias à meia-noite)
- * Busca eventos ativos cuja data do evento (schedule.date) já passou
- * (mesmo dia)
+ * Busca eventos ativos cuja data do evento (schedule.date) é do dia atual
  *
  * Comportamento:
  * - Executa à 00:00 (meia-noite) horário de São Paulo
- * - Busca eventos com isActive=true
- * - Verifica se schedule.date é no dia anterior (ou antes)
+ * - Busca eventos com isActive=true (paginado, sem limite)
+ * - Verifica se schedule.date é do dia atual (que acabou de começar)
  * - Atualiza isActive=false
+ * - Deleta todas as notificações relacionadas ao evento (em paralelo)
  * - O Firestore emite automaticamente stream que remove markers no mapa
  *
+ * Requisitos:
+ * - Índice composto no Firestore: events(isActive ASC, schedule.date ASC)
+ *
  * Exemplo:
- * - Hoje: 20/12/2025 00:00
- * - Evento com schedule.date: 19/12/2025 09:26:26
- * - Resultado: isActive = false
+ * - Função roda: 20/12/2025 00:00
+ * - Evento com schedule.date: 20/12/2025 14:00
+ * - Resultado: isActive = false (evento do dia 20 desativado à 00:00)
  */
 export const deactivateExpiredEvents = functions
   .region("us-central1")
@@ -33,8 +40,14 @@ export const deactivateExpiredEvents = functions
     // Definir início do dia atual (00:00:00)
     todayStart.setHours(0, 0, 0, 0);
 
+    // Definir fim do dia atual (23:59:59.999)
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
+
     const todayStartTimestamp = admin.firestore.Timestamp
       .fromDate(todayStart);
+    const todayEndTimestamp = admin.firestore.Timestamp
+      .fromDate(todayEnd);
 
     console.log(
       "🗓️ [DeactivateEvents] Verificando eventos expirados..."
@@ -48,102 +61,150 @@ export const deactivateExpiredEvents = functions
         todayStartTimestamp.toDate().toISOString()}`
     );
     console.log(
+      `📅 [DeactivateEvents] Fim de hoje: ${
+        todayEndTimestamp.toDate().toISOString()}`
+    );
+    console.log(
       "📅 [DeactivateEvents] Desativando eventos com " +
-      `schedule.date < ${todayStartTimestamp.toDate().toISOString()}`
+      `schedule.date entre ${todayStartTimestamp.toDate().toISOString()} ` +
+      `e ${todayEndTimestamp.toDate().toISOString()}`
     );
 
     try {
-      // Buscar eventos ativos cuja data já passou (antes de hoje 00:00)
-      const eventsSnapshot = await admin.firestore()
-        .collection("events")
-        .where("isActive", "==", true)
-        .where("schedule.date", "<", todayStartTimestamp)
-        .limit(500) // Processar até 500 eventos por execução
-        .get();
+      // Contadores globais
+      let totalBatchCount = 0;
+      let totalBatches = 0;
+      let totalNotificationsDeleted = 0;
 
-      console.log(
-        `📅 [DeactivateEvents] ${
-          eventsSnapshot.size} eventos expirados encontrados`
-      );
+      // ✅ Loop paginado para processar TODOS os eventos expirados
+      let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
 
-      if (eventsSnapshot.empty) {
-        console.log(
-          "✅ [DeactivateEvents] Nenhum evento expirado para desativar"
-        );
-        return null;
-      }
+      do {
+        // Construir query paginada
+        // Busca eventos do dia atual (entre 00:00 e 23:59)
+        let query = admin.firestore()
+          .collection("events")
+          .where("isActive", "==", true)
+          .where("schedule.date", ">=", todayStartTimestamp)
+          .where("schedule.date", "<=", todayEndTimestamp)
+          .orderBy("schedule.date", "asc") // Necessário para paginação
+          .limit(BATCH_SIZE);
 
-      // Processar em batch para performance
-      const batch = admin.firestore().batch();
-      let batchCount = 0;
-      const batches: FirebaseFirestore.WriteBatch[] = [batch];
-
-      for (const doc of eventsSnapshot.docs) {
-        const data = doc.data();
-        const eventDate = data.schedule?.date?.toDate?.();
-
-        console.log(`🔍 [DeactivateEvents] Evento ${doc.id}:`);
-        console.log(
-          `   - Título: ${data.title || "Sem título"}`
-        );
-        console.log(
-          `   - Data do evento: ${
-            eventDate?.toISOString() || "Sem data"}`
-        );
-        console.log(`   - isActive: ${data.isActive}`);
-
-        // Pular eventos já deletados
-        if (data.deleted === true) {
-          console.log("   ❌ Pulando - evento deletado");
-          continue;
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
         }
 
-        // Adicionar ao batch
-        const currentBatch = batches[batches.length - 1];
-        currentBatch.update(doc.ref, {
-          isActive: false,
-          status: "inactive",
-          deactivatedAt: now,
-          deactivatedReason: "expired",
-        });
+        const eventsSnapshot = await query.get();
 
-        batchCount++;
+        if (eventsSnapshot.empty) {
+          if (totalBatchCount === 0) {
+            console.log(
+              "✅ [DeactivateEvents] Nenhum evento expirado para desativar"
+            );
+          }
+          break;
+        }
+
+        // Atualizar cursor para próxima página
+        lastDoc = eventsSnapshot.docs[eventsSnapshot.docs.length - 1];
+
         console.log(
-          "   ✅ Marcado para desativação " +
-          `(batch ${batches.length}, item ${batchCount % 500})`
+          `📅 [DeactivateEvents] Página ${totalBatches + 1}: ` +
+          `${eventsSnapshot.size} eventos encontrados`
         );
 
-        // Firestore batch limit é 500 operações
-        // Criar novo batch se necessário
-        if (batchCount % 500 === 0) {
-          batches.push(admin.firestore().batch());
+        // ✅ IDs desta página apenas (não acumula em memória)
+        const pageEventIds: string[] = [];
+
+        // Processar em batch para performance
+        const batch = admin.firestore().batch();
+        let batchCount = 0;
+
+        for (const doc of eventsSnapshot.docs) {
+          const data = doc.data();
+          const eventDate = data.schedule?.date?.toDate?.();
+
+          console.log(`🔍 [DeactivateEvents] Evento ${doc.id}:`);
           console.log(
-            "📦 [DeactivateEvents] Criado novo batch " +
-            `(total: ${batches.length})`
+            `   - Título: ${data.title || data.activityText || "Sem título"}`
+          );
+          console.log(
+            `   - Data do evento: ${
+              eventDate?.toISOString() || "Sem data"}`
+          );
+
+          // Pular eventos já deletados
+          if (data.deleted === true) {
+            console.log("   ❌ Pulando - evento deletado");
+            continue;
+          }
+
+          // Coletar ID do evento para deletar notificações desta página
+          pageEventIds.push(doc.id);
+
+          // Adicionar ao batch
+          batch.update(doc.ref, {
+            isActive: false,
+            status: "inactive",
+            deactivatedAt: now,
+            deactivatedReason: "expired",
+          });
+
+          batchCount++;
+          console.log("   ✅ Marcado para desativação");
+        }
+
+        // Commit batch desta página
+        if (batchCount > 0) {
+          await batch.commit();
+          totalBatchCount += batchCount;
+          totalBatches++;
+          console.log(
+            `💾 [DeactivateEvents] Batch ${totalBatches} commitado ` +
+            `(${batchCount} eventos)`
           );
         }
-      }
 
-      // Commit todos os batches
+        // ✅ Deletar notificações DESTA PÁGINA imediatamente
+        // Evita acúmulo de memória em cenários de escala extrema
+        if (pageEventIds.length > 0) {
+          console.log(
+            "🗑️ [DeactivateEvents] Deletando notificações de " +
+            `${pageEventIds.length} eventos da página ${totalBatches}...`
+          );
+
+          const pageNotificationsDeleted = await deleteNotificationsInParallel(
+            pageEventIds,
+            MAX_CONCURRENT_NOTIFICATION_DELETES
+          );
+
+          totalNotificationsDeleted += pageNotificationsDeleted;
+          console.log(
+            `   ✅ ${pageNotificationsDeleted} notificações deletadas`
+          );
+        }
+
+        // Continuar enquanto houver mais páginas
+      } while (lastDoc !== null);
+
       console.log(
-        `💾 [DeactivateEvents] Commitando ${batches.length} ` +
-        `batch(es) com ${batchCount} atualizações...`
+        `✅ [DeactivateEvents] ${totalBatchCount} eventos desativados ` +
+        `em ${totalBatches} batch(es)`
+      );
+      console.log(
+        `✅ [DeactivateEvents] ${totalNotificationsDeleted} ` +
+        "notificações deletadas no total"
       );
 
-      await Promise.all(batches.map((b) => b.commit()));
-
-      console.log(
-        `✅ [DeactivateEvents] ${batchCount} eventos desativados ` +
-        "com sucesso"
-      );
       console.log(
         "📡 [DeactivateEvents] Firestore streams notificarão " +
         "clientes automaticamente"
       );
 
       return {
-        processed: batchCount,
-        batches: batches.length,
+        processed: totalBatchCount,
+        batches: totalBatches,
+        notificationsDeleted: totalNotificationsDeleted,
         timestamp: now.toDate().toISOString(),
       };
     } catch (error) {
@@ -155,3 +216,94 @@ export const deactivateExpiredEvents = functions
     }
   });
 
+/**
+ * Deleta notificações de múltiplos eventos em paralelo
+ * com controle de concorrência para evitar timeout
+ * @param {string[]} eventIds - IDs dos eventos
+ * @param {number} concurrency - Número máximo de operações simultâneas
+ * @return {Promise<number>} - Total de notificações deletadas
+ */
+async function deleteNotificationsInParallel(
+  eventIds: string[],
+  concurrency: number
+): Promise<number> {
+  let totalDeleted = 0;
+
+  // Processar em chunks de 'concurrency' eventos por vez
+  for (let i = 0; i < eventIds.length; i += concurrency) {
+    const chunk = eventIds.slice(i, i + concurrency);
+
+    const results = await Promise.all(
+      chunk.map((eventId) => deleteEventNotifications(eventId))
+    );
+
+    totalDeleted += results.reduce((sum, count) => sum + count, 0);
+
+    console.log(
+      `   📊 Progresso: ${Math.min(i + concurrency, eventIds.length)}/` +
+      `${eventIds.length} eventos processados`
+    );
+  }
+
+  return totalDeleted;
+}
+
+/**
+ * Deleta todas as notificações relacionadas a um evento específico
+ * Busca por eventId em n_params.eventId e no campo eventId direto
+ * @param {string} eventId - ID do evento
+ * @return {Promise<number>} - Número de notificações deletadas
+ */
+async function deleteEventNotifications(eventId: string): Promise<number> {
+  const db = admin.firestore();
+  let totalDeleted = 0;
+
+  try {
+    // Buscar notificações com eventId no campo direto
+    const directQuery = await db
+      .collection("Notifications")
+      .where("eventId", "==", eventId)
+      .get();
+
+    // Buscar notificações com eventId em n_params
+    const paramsQuery = await db
+      .collection("Notifications")
+      .where("n_params.eventId", "==", eventId)
+      .get();
+
+    // Combinar resultados únicos (evitar duplicatas)
+    const docsToDelete = new Map<string, FirebaseFirestore.DocumentReference>();
+
+    directQuery.docs.forEach((doc) => {
+      docsToDelete.set(doc.id, doc.ref);
+    });
+
+    paramsQuery.docs.forEach((doc) => {
+      docsToDelete.set(doc.id, doc.ref);
+    });
+
+    if (docsToDelete.size === 0) {
+      return 0;
+    }
+
+    // Deletar em batch (máximo 500 por batch)
+    const refs = Array.from(docsToDelete.values());
+
+    for (let i = 0; i < refs.length; i += BATCH_SIZE) {
+      const batchRefs = refs.slice(i, i + BATCH_SIZE);
+      const batch = db.batch();
+
+      batchRefs.forEach((ref) => batch.delete(ref));
+      await batch.commit();
+    }
+
+    totalDeleted = refs.length;
+  } catch (error) {
+    console.error(
+      `   ❌ Erro ao deletar notificações do evento ${eventId}:`,
+      error
+    );
+  }
+
+  return totalDeleted;
+}

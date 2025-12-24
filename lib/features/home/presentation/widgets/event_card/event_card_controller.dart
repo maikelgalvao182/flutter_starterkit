@@ -23,6 +23,7 @@ class EventCardController extends ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _applicationSub;
   StreamSubscription<DocumentSnapshot>? _eventSub;
   StreamSubscription<QuerySnapshot>? _participantsSub;
+  StreamSubscription<User?>? _authSub;
   bool _listenersInitialized = false;
 
   // Dados
@@ -204,6 +205,11 @@ class EventCardController extends ChangeNotifier {
     if (_listenersInitialized) return;
     _listenersInitialized = true;
 
+    _authSub ??= _auth.authStateChanges().listen((user) {
+      if (user != null) return;
+      _cancelRealtimeSubscriptions();
+    });
+
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
 
@@ -224,7 +230,7 @@ class EventCardController extends ChangeNotifier {
       }
 
       notifyListeners();
-    });
+    }, onError: _handleRealtimeStreamError);
 
     // LISTENER DO EVENTO (para detectar mudanças em minAge/maxAge)
     _eventSub = FirebaseFirestore.instance
@@ -273,7 +279,7 @@ class EventCardController extends ChangeNotifier {
       }
 
       notifyListeners();
-    });
+    }, onError: _handleRealtimeStreamError);
     
     // LISTENER DOS PARTICIPANTES APROVADOS
     // ✅ Escutar AMBOS 'approved' E 'autoApproved' para atualizar lista em tempo real
@@ -283,6 +289,7 @@ class EventCardController extends ChangeNotifier {
         .where('status', whereIn: ['approved', 'autoApproved'])
         .snapshots()
         .listen((snapshot) async {
+      // Guard duplo: antes e depois de operações async
       if (_disposed) return;
       
       final uid = _auth.currentUser?.uid;
@@ -305,8 +312,31 @@ class EventCardController extends ChangeNotifier {
       
       // Recarregar participantes com dados do usuário
       _approvedParticipants = await _applicationRepo.getApprovedApplicationsWithUserData(eventId);
+      
+      // Guard pós-async: evita "used after disposed"
+      if (_disposed) return;
       notifyListeners();
-    });
+    }, onError: _handleRealtimeStreamError);
+  }
+
+  void _cancelRealtimeSubscriptions() {
+    _applicationSub?.cancel();
+    _applicationSub = null;
+    _eventSub?.cancel();
+    _eventSub = null;
+    _participantsSub?.cancel();
+    _participantsSub = null;
+  }
+
+  void _handleRealtimeStreamError(Object error) {
+    final isPermissionDenied = error is FirebaseException && error.code == 'permission-denied';
+    final isLoggedOut = _auth.currentUser == null;
+    if (isPermissionDenied && isLoggedOut) {
+      _cancelRealtimeSubscriptions();
+      return;
+    }
+
+    debugPrint('❌ [EventCardController] Erro em stream realtime: $error');
   }
 
   // ---------------------------------------------------------------------------
@@ -590,9 +620,9 @@ class EventCardController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _applicationSub?.cancel();
-    _eventSub?.cancel();
-    _participantsSub?.cancel();
+    _authSub?.cancel();
+    _authSub = null;
+    _cancelRealtimeSubscriptions();
     super.dispose();
   }
 }

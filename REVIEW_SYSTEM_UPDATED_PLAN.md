@@ -406,7 +406,7 @@ async function createPendingReviewsForEvent(
       expires_at: admin.firestore.Timestamp.fromDate(expiresAt),
       dismissed: false,
       reviewee_name: participantData?.fullname || 'Usuário',
-      reviewee_photo_url: participantData?.user_photo_link || null
+      reviewee_photo_url: participantData?.photoUrl || null
     });
     
     // 2. Participante avalia Owner
@@ -429,7 +429,7 @@ async function createPendingReviewsForEvent(
       expires_at: admin.firestore.Timestamp.fromDate(expiresAt),
       dismissed: false,
       reviewee_name: ownerData?.fullname || 'Usuário',
-      reviewee_photo_url: ownerData?.user_photo_link || null
+      reviewee_photo_url: ownerData?.photoUrl || null
     });
   }
   

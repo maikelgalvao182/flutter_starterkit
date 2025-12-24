@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart' as fire_auth;
 import 'package:flutter/foundation.dart';
 
 /// Serviço profissional de bloqueio de usuários (REATIVO)
@@ -31,6 +32,8 @@ class BlockService extends ChangeNotifier {
   
   /// Stream subscriptions ativas
   final Map<String, StreamSubscription> _subscriptions = {};
+
+  StreamSubscription<fire_auth.User?>? _authSubscription;
   
   /// Flag para controlar se já foi inicializado
   bool _isInitialized = false;
@@ -46,6 +49,11 @@ class BlockService extends ChangeNotifier {
     }
     
     debugPrint('🔄 [BlockService] Inicializando cache para $userId');
+
+    _authSubscription ??= fire_auth.FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) return;
+      unawaited(reset());
+    });
     
     // Cancela subscriptions antigas se existirem
     await _cancelSubscriptions();
@@ -59,7 +67,7 @@ class BlockService extends ChangeNotifier {
         .collection(_collection)
         .where('blockerId', isEqualTo: userId)
         .snapshots()
-        .listen((snapshot) {
+      .listen((snapshot) {
       final blockedIds = snapshot.docs
           .map((doc) => doc.data()['targetId'] as String)
           .toSet();
@@ -68,6 +76,15 @@ class BlockService extends ChangeNotifier {
       notifyListeners(); // ⬅️ NOTIFICA UI INSTANTANEAMENTE
       
       debugPrint('✅ [BlockService] Cache atualizado: ${blockedIds.length} bloqueados');
+    }, onError: (error) {
+      final isPermissionDenied = error is FirebaseException && error.code == 'permission-denied';
+      final isLoggedOut = fire_auth.FirebaseAuth.instance.currentUser == null;
+      if (isPermissionDenied && isLoggedOut) {
+        unawaited(reset());
+        return;
+      }
+
+      debugPrint('❌ [BlockService] Erro no stream blockedByMe: $error');
     });
     
     // Carrega quem me bloqueou
@@ -75,7 +92,7 @@ class BlockService extends ChangeNotifier {
         .collection(_collection)
         .where('targetId', isEqualTo: userId)
         .snapshots()
-        .listen((snapshot) {
+      .listen((snapshot) {
       final blockerIds = snapshot.docs
           .map((doc) => doc.data()['blockerId'] as String)
           .toSet();
@@ -84,17 +101,37 @@ class BlockService extends ChangeNotifier {
       notifyListeners(); // ⬅️ NOTIFICA UI INSTANTANEAMENTE
       
       debugPrint('✅ [BlockService] Cache atualizado: ${blockerIds.length} me bloquearam');
+    }, onError: (error) {
+      final isPermissionDenied = error is FirebaseException && error.code == 'permission-denied';
+      final isLoggedOut = fire_auth.FirebaseAuth.instance.currentUser == null;
+      if (isPermissionDenied && isLoggedOut) {
+        unawaited(reset());
+        return;
+      }
+
+      debugPrint('❌ [BlockService] Erro no stream blockedMe: $error');
     });
     
     _isInitialized = true;
   }
+
+  Future<void> reset() async {
+    await _cancelSubscriptions();
+    _blockedByMeCache.clear();
+    _blockedMeCache.clear();
+    _isInitialized = false;
+    notifyListeners();
+  }
   
   /// Libera recursos
+  @override
   Future<void> dispose() async {
     await _cancelSubscriptions();
     _blockedByMeCache.clear();
     _blockedMeCache.clear();
     _isInitialized = false;
+    await _authSubscription?.cancel();
+    _authSubscription = null;
     super.dispose();
   }
   

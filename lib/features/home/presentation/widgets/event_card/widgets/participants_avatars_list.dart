@@ -7,17 +7,20 @@ import 'package:partiu/shared/widgets/AnimatedSlideIn.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 
 /// Widget reativo que exibe lista horizontal de avatares dos participantes
-/// Usa Stream direto do Firestore - atualiza automaticamente ao participar/sair
+/// Usa dados pré-carregados do controller + Stream do Firestore para atualizações
 class ParticipantsAvatarsList extends StatefulWidget {
   const ParticipantsAvatarsList({
     required this.eventId,
     required this.creatorId,
+    this.preloadedParticipants,
     this.maxVisible = 5,
     super.key,
   });
 
   final String eventId;
   final String? creatorId;
+  /// Dados pré-carregados do EventCardController para exibição instantânea
+  final List<Map<String, dynamic>>? preloadedParticipants;
   final int maxVisible;
 
   @override
@@ -28,11 +31,18 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
   /// Flag para saber se já recebemos dados do servidor
   bool _hasReceivedServerData = false;
   
-  /// Flag para animar apenas na primeira renderização
-  bool _hasAnimated = false;
-  
   /// Cache local para exibir enquanto aguarda dados do servidor
-  List<Map<String, dynamic>>? _cachedParticipants;
+  late List<Map<String, dynamic>>? _cachedParticipants;
+  
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Usar dados pré-carregados do controller como estado inicial
+    _cachedParticipants = widget.preloadedParticipants;
+    if (_cachedParticipants != null && _cachedParticipants!.isNotEmpty) {
+      debugPrint('🚀 [ParticipantsAvatarsList] Usando ${_cachedParticipants!.length} participantes pré-carregados');
+    }
+  }
   
   /// Stream de participantes aprovados com dados do usuário
   Stream<List<Map<String, dynamic>>> get _participantsStream {
@@ -129,12 +139,6 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
 
         final visible = participants.take(widget.maxVisible).toList();
         final remaining = participants.length - visible.length;
-        
-        // Anima apenas na primeira vez que exibe avatares
-        final shouldAnimate = !_hasAnimated;
-        if (shouldAnimate && participants.isNotEmpty) {
-          _hasAnimated = true;
-        }
 
         return Column(
           children: [
@@ -144,44 +148,28 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (int i = 0; i < visible.length; i++)
-                  if (shouldAnimate)
-                    AnimatedSlideIn(
-                      key: ValueKey('anim_${visible[i]['userId']}'),
-                      delay: Duration(milliseconds: i * 100),
-                      offsetX: 60.0,
-                      child: Padding(
-                        padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
-                        child: _ParticipantItem(
-                          participant: visible[i],
-                          isCreator: visible[i]['isCreator'] == true,
-                        ),
-                      ),
-                    )
-                  else
-                    Padding(
-                      key: ValueKey(visible[i]['userId']),
+                  AnimatedSlideIn(
+                    key: ValueKey('anim_${visible[i]['userId']}'),
+                    delay: Duration(milliseconds: i * 100),
+                    offsetX: 60.0,
+                    child: Padding(
                       padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
                       child: _ParticipantItem(
                         participant: visible[i],
                         isCreator: visible[i]['isCreator'] == true,
                       ),
                     ),
+                  ),
                 
                 if (remaining > 0)
-                  if (shouldAnimate)
-                    AnimatedSlideIn(
-                      delay: Duration(milliseconds: visible.length * 100),
-                      offsetX: 60.0,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: _RemainingCounter(count: remaining),
-                      ),
-                    )
-                  else
-                    Padding(
+                  AnimatedSlideIn(
+                    delay: Duration(milliseconds: visible.length * 100),
+                    offsetX: 60.0,
+                    child: Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: _RemainingCounter(count: remaining),
                     ),
+                  ),
               ],
             ),
           ],

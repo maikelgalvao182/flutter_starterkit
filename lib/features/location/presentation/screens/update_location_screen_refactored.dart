@@ -130,9 +130,9 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
       
       // 5. Trata o resultado baseado no estado
       if (_viewModel.saveState == LocationSaveState.success) {
-        final message = '${_i18n.translate("location_updated_successfully")}\n${_viewModel.savedLocation}';
         _showSuccessDialog(
-          message,
+          message: _i18n.translate("location_updated_successfully"),
+          location: _viewModel.savedLocation,
           onConfirm: () {
             if (widget.isSignUpProcess) {
               context.go(AppRoutes.home);
@@ -184,7 +184,11 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
     );
   }
   
-  void _showSuccessDialog(String message, {required VoidCallback onConfirm}) {
+  void _showSuccessDialog({
+    required String message,
+    String? location,
+    required VoidCallback onConfirm,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false, // Impede fechar tocando fora
@@ -202,6 +206,40 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
               DialogStyles.buildTitle(_i18n.translate('success')),
               const SizedBox(height: DialogStyles.spacingAfterTitle),
               DialogStyles.buildMessage(message),
+              // Localidade destacada com cor primaryLight
+              if (location != null && location.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: GlimpseColors.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Iconsax.location,
+                        size: 18,
+                        color: GlimpseColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          location,
+                          style: GoogleFonts.getFont(
+                            FONT_PLUS_JAKARTA_SANS,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: GlimpseColors.primaryColorLight,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: DialogStyles.spacingBeforeButtons),
               SizedBox(
                 width: double.infinity,

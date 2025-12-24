@@ -37,19 +37,13 @@ class StableAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('═══════════════════════════════════════════');
-    debugPrint('🎯 [StableAvatar] BUILD');
-    debugPrint('   └─ userId: $userId');
-    debugPrint('   └─ photoUrl param: $photoUrl');
-    
     // UserID vazio → avatar padrão
     if (userId.trim().isEmpty) {
-      debugPrint('⚠️ [StableAvatar] userId VAZIO - usando empty avatar');
       return _AvatarShell(
         size: size,
         borderRadius: borderRadius,
         enableNavigation: false,
-        child: _image(_emptyImage),
+        child: _image(_emptyImage, 'empty'),
       );
     }
 
@@ -58,16 +52,11 @@ class StableAvatar extends StatelessWidget {
     
     // Se photoUrl foi passado explicitamente, preload no UserStore
     final hasValidPhotoUrl = photoUrl != null && photoUrl!.isNotEmpty;
-    debugPrint('🔍 [StableAvatar] hasValidPhotoUrl: $hasValidPhotoUrl');
     
     if (hasValidPhotoUrl) {
-      debugPrint('✅ [StableAvatar] Agendando preloadAvatar com URL: $photoUrl');
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        debugPrint('⏰ [StableAvatar] PostFrameCallback - chamando preloadAvatar');
         UserStore.instance.preloadAvatar(userId, photoUrl!);
       });
-    } else {
-      debugPrint('⚠️ [StableAvatar] photoUrl VAZIO ou NULL - UserStore vai buscar');
     }
 
     return _AvatarShell(
@@ -80,37 +69,29 @@ class StableAvatar extends StatelessWidget {
         child: ValueListenableBuilder(
           valueListenable: notifier,
           builder: (context, entry, _) {
-            final state = entry.state;
             final provider = entry.provider;
             
-            debugPrint('🔄 [StableAvatar] ValueListenableBuilder REBUILD');
-            debugPrint('   └─ userId: $userId');
-            debugPrint('   └─ state: $state');
-            debugPrint('   └─ provider: ${provider.runtimeType}');
-            if (provider is NetworkImage) {
-              debugPrint('   └─ NetworkImage URL: ${(provider as NetworkImage).url}');
+            // 🔒 BLINDAGEM TOTAL: Nunca deixar provider nulo/inválido
+            // Se provider for nulo ou loading placeholder, usa empty image
+            if (provider == null) {
+              return _image(_emptyImage, userId);
             }
             
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: state == AvatarState.loading
-                  ? Container(
-                      key: const ValueKey('skeleton'),
-                      width: size,
-                      height: size,
-                      color: GlimpseColors.lightTextField,
-                    )
-                  : _image(provider),
-            );
+            // ✅ Sempre renderiza a imagem diretamente
+            // Sem AnimatedSwitcher = sem troca de árvore = sem fallback
+            return _image(provider, userId);
           },
         ),
       ),
     );
   }
 
-  Widget _image(ImageProvider provider) {
+  /// ✅ CORREÇÃO: Usar ValueKey(keyId) baseado no userId, NÃO no provider
+  /// Isso evita rebuilds desnecessários quando o provider muda de instância
+  /// mas a imagem é a mesma (mesma URL)
+  Widget _image(ImageProvider provider, String keyId) {
     return Image(
-      key: ValueKey(provider),
+      key: ValueKey(keyId),
       image: provider,
       width: size,
       height: size,

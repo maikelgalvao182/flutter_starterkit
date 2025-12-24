@@ -3,13 +3,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:partiu/features/home/data/models/event_application_model.dart';
-import 'package:partiu/features/home/domain/models/activity_model.dart';
-import 'package:partiu/features/notifications/services/activity_notification_service.dart';
-import 'package:partiu/features/notifications/repositories/notifications_repository.dart';
-import 'package:partiu/core/services/geo_index_service.dart';
-import 'package:partiu/features/notifications/services/user_affinity_service.dart';
-import 'package:partiu/features/notifications/services/notification_targeting_service.dart';
-import 'package:partiu/features/notifications/services/notification_orchestrator.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/common/state/app_state.dart';
@@ -31,32 +24,13 @@ class EventApplicationRepository {
   EventApplicationRepository._internal()
       : _firestore = FirebaseFirestore.instance,
         _functions = FirebaseFunctions.instance,
-        _userRepo = UserRepository() {
-    // Inicializar serviço de notificações com todas as dependências
-    final notificationRepo = NotificationsRepository();
-    final geoService = GeoIndexService(firestore: _firestore);
-    final affinityService = UserAffinityService(firestore: _firestore);
-    final targetingService = NotificationTargetingService(
-      geoService: geoService,
-      affinityService: affinityService,
-      firestore: _firestore,
-    );
-    final orchestrator = NotificationOrchestrator(firestore: _firestore);
-    
-    _notificationService = ActivityNotificationService(
-      notificationRepository: notificationRepo,
-      targetingService: targetingService,
-      orchestrator: orchestrator,
-      geoIndexService: geoService,
-      affinityService: affinityService,
-      firestore: _firestore,
-    );
-  }
+        _userRepo = UserRepository();
+    // ✅ Notificações agora são criadas via Cloud Functions
+    // Removida inicialização do ActivityNotificationService
 
   final FirebaseFirestore _firestore;
   final FirebaseFunctions _functions;
   final UserRepository _userRepo;
-  late final ActivityNotificationService _notificationService;
   final GlobalCacheService _cache = GlobalCacheService.instance;
 
   /// Cria uma nova aplicação para um evento
@@ -110,36 +84,10 @@ class EventApplicationRepository {
       // 🗑️ INVALIDAR cache de participantes do evento
       _cache.remove('event_participants_$eventId');
       
-      // Se foi auto-aprovado, notificar dono e verificar threshold para notificação "heating up"
-      if (status == ApplicationStatus.autoApproved) {
-        // Buscar dados do evento
-        final eventDoc = await _firestore.collection('events').doc(eventId).get();
-        if (eventDoc.exists) {
-          final activity = ActivityModel.fromFirestore(eventDoc);
-          
-          // 🔔 Notificar o dono que alguém entrou
-          final userDoc = await _firestore.collection('Users').doc(userId).get();
-          final userName = userDoc.data()?['fullname'] ?? userDoc.data()?['fullName'] ?? 'Alguém';
-          
-          await _notificationService.notifyNewParticipant(
-            activity: activity,
-            participantId: userId,
-            participantName: userName,
-          );
-          debugPrint('✅ Notificação de novo participante enviada para o dono');
-          
-          // Contar participantes aprovados
-          final approvedCount = await _getApprovedParticipantsCount(eventId);
-          debugPrint('🔥 Contagem de participantes aprovados: $approvedCount');
-          
-          // Verificar threshold para heating up
-          await _notificationService.notifyActivityHeatingUp(
-            activity: activity,
-            currentCount: approvedCount,
-          );
-          debugPrint('✅ Verificação heating up executada para $approvedCount participantes');
-        }
-      }
+      // ✅ Notificações agora são criadas via Cloud Functions:
+      // - onActivityHeatingUp: monitora EventApplications e notifica usuários no raio
+      // - onApplicationApproved (index.ts): já envia push de novo participante
+      // Removidas chamadas diretas que causavam permission-denied
       
       return docRef.id;
     } catch (e) {
@@ -184,27 +132,6 @@ class EventApplicationRepository {
     return application != null;
   }
 
-  /// Conta participantes aprovados de um evento
-  /// 
-  /// IMPORTANTE: Inclui o criador do evento (+1) que não tem EventApplication
-  Future<int> _getApprovedParticipantsCount(String eventId) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('EventApplications')
-          .where('eventId', isEqualTo: eventId)
-          .where('status', whereIn: ['approved', 'autoApproved'])
-          .get();
-      
-      // +1 para incluir o criador do evento (que não tem EventApplication)
-      final count = querySnapshot.docs.length + 1;
-      debugPrint('📊 [_getApprovedParticipantsCount] Evento $eventId: ${querySnapshot.docs.length} aplicações + 1 criador = $count total');
-      return count;
-    } catch (e) {
-      debugPrint('❌ Erro ao contar participantes: $e');
-      return 0;
-    }
-  }
-
   /// Aprova uma aplicação (apenas para eventos privados, apenas pelo criador)
   Future<void> approveApplication(String applicationId) async {
     try {
@@ -219,7 +146,6 @@ class EventApplicationRepository {
       }
       
       final appData = appDoc.data()!;
-      final userId = appData['userId'] as String;
       final eventId = appData['eventId'] as String;
       
       // Atualizar status da aplicação
@@ -236,41 +162,11 @@ class EventApplicationRepository {
       // 🗑️ INVALIDAR cache de participantes do evento
       _cache.remove('event_participants_$eventId');
       
-      // Buscar dados do evento para disparar notificação
-      final eventDoc = await _firestore.collection('events').doc(eventId).get();
-      if (eventDoc.exists) {
-        final activity = ActivityModel.fromFirestore(eventDoc);
-        
-        // 🔔 Notificar o dono que alguém entrou (para eventos privados após aprovação)
-        final userDoc = await _firestore.collection('Users').doc(userId).get();
-        final userName = userDoc.data()?['fullname'] ?? userDoc.data()?['fullName'] ?? 'Alguém';
-        
-        await _notificationService.notifyNewParticipant(
-          activity: activity,
-          participantId: userId,
-          participantName: userName,
-        );
-        debugPrint('✅ Notificação de novo participante enviada para o dono');
-        
-        // Disparar notificação de aprovação para o usuário
-        await _notificationService.notifyJoinApproved(
-          activity: activity,
-          approvedUserId: userId,
-        );
-        
-        debugPrint('✅ Notificação de aprovação disparada para: $userId');
-        
-        // Contar participantes aprovados para verificar heating up
-        final approvedCount = await _getApprovedParticipantsCount(eventId);
-        debugPrint('🔥 Contagem de participantes aprovados após aprovação: $approvedCount');
-        
-        // Disparar notificação heating up se atingiu threshold
-        await _notificationService.notifyActivityHeatingUp(
-          activity: activity,
-          currentCount: approvedCount,
-        );
-        debugPrint('✅ Verificação heating up executada para $approvedCount participantes');
-      }
+      // ✅ Notificações agora são criadas via Cloud Functions:
+      // - onApplicationApproved (index.ts): envia push de novo participante + atualiza chat
+      // - onJoinDecisionNotification: cria notificação in-app de aprovação
+      // - onActivityHeatingUp: verifica threshold e notifica usuários no raio
+      // Removidas chamadas diretas que causavam permission-denied
     } catch (e) {
       debugPrint('❌ Erro ao aprovar aplicação: $e');
       rethrow;
@@ -291,7 +187,6 @@ class EventApplicationRepository {
       }
       
       final appData = appDoc.data()!;
-      final userId = appData['userId'] as String;
       final eventId = appData['eventId'] as String;
       
       // Atualizar status da aplicação
@@ -308,19 +203,9 @@ class EventApplicationRepository {
       // 🗑️ INVALIDAR cache de participantes do evento
       _cache.remove('event_participants_$eventId');
       
-      // Buscar dados do evento para disparar notificação
-      final eventDoc = await _firestore.collection('events').doc(eventId).get();
-      if (eventDoc.exists) {
-        final activity = ActivityModel.fromFirestore(eventDoc);
-        
-        // Disparar notificação de rejeição
-        await _notificationService.notifyJoinRejected(
-          activity: activity,
-          rejectedUserId: userId,
-        );
-        
-        debugPrint('❌ Notificação de rejeição disparada para: $userId');
-      }
+      // ✅ Notificação de rejeição agora é criada via Cloud Function:
+      // - onJoinDecisionNotification: detecta mudança de "pending" para "rejected"
+      // Removida chamada direta que causava permission-denied
     } catch (e) {
       debugPrint('❌ Erro ao rejeitar aplicação: $e');
       rethrow;

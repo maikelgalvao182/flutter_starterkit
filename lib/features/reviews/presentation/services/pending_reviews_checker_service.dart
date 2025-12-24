@@ -110,15 +110,9 @@ class PendingReviewsCheckerService {
     debugPrint('🔍 [PendingReviewsChecker] PendingReview ID: ${pending.pendingReviewId}, Role: ${pending.reviewerRole}');
 
     try {
-      final result = await showModalBottomSheet<bool>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        isDismissible: false,
-        enableDrag: false,
-        builder: (dialogContext) => ReviewDialog(
-          pendingReview: pending,
-        ),
+      final result = await ReviewDialog.show(
+        context,
+        pendingReview: pending,
       );
 
       debugPrint('🔍 [PendingReviewsChecker] Result do dialog: $result');

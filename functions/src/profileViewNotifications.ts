@@ -148,9 +148,9 @@ export const processProfileViewNotifications = functions
         // Formatar título dinâmico baseado no count
         let title: string;
         if (data.count === 1) {
-          title = "1 pessoa visualizou seu perfil 👏";
+          title = "1 pessoa visualizou seu perfil";
         } else {
-          title = `${data.count} pessoas visualizaram seu perfil 👏`;
+          title = `${data.count} pessoas visualizaram seu perfil`;
         }
 
         batch.set(notificationRef, {
@@ -163,7 +163,7 @@ export const processProfileViewNotifications = functions
             count: data.count.toString(),
             lastViewedAt: formatRelativeTime(data.lastViewedAt.toDate()),
             viewerIds: data.viewerIds.join(","),
-            emoji: "👏", // Emoji para exibição no widget
+            emoji: "👀", // Emoji para avatar
           },
           n_related_id: "profile_visits", // Identificador para navegação
           n_read: false,
@@ -194,8 +194,8 @@ export const processProfileViewNotifications = functions
           // Template: profileViewsAggregated com título dinâmico
           const count = data.count;
           const title = count === 1 ?
-            "1 pessoa visualizou seu perfil 👏" :
-            `${count} pessoas visualizaram seu perfil 👏`;
+            "1 pessoa visualizou seu perfil" :
+            `${count} pessoas visualizaram seu perfil`;
 
           // DeepLink: abre tela de visitas ao perfil
           const deepLink = "partiu://profile-visits";
@@ -331,16 +331,24 @@ export const processProfileViewNotificationsHttp = functions.https.onRequest(
           .collection("Notifications")
           .doc();
 
+        // Formatar título dinâmico baseado no count
+        const title = data.count === 1 ?
+          "1 pessoa visualizou seu perfil" :
+          `${data.count} pessoas visualizaram seu perfil`;
+
         batch.set(notificationRef, {
           n_receiver_id: userId, // Campo padrão para queries
           userId: userId, // Campo duplicado para compatibilidade
           n_type: "profile_views_aggregated",
           n_params: {
+            title: title, // ✅ Título para exibição no widget
+            body: "Novos amigos?", // ✅ Call-to-action
             count: data.count.toString(),
             lastViewedAt: formatRelativeTime(data.lastViewedAt.toDate()),
             viewerIds: data.viewerIds.join(","),
+            emoji: "👀", // Emoji para avatar
           },
-          n_related_id: null,
+          n_related_id: "profile_visits", // Identificador para navegação
           n_read: false,
           n_sender_id: "",
           n_sender_fullname: "Sistema",

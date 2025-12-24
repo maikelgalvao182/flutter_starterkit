@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:partiu/common/utils/app_logger.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/conversations/models/conversation_item.dart';
@@ -43,6 +44,8 @@ class ConversationsViewModel extends ChangeNotifier {
   
   // ✅ Stream do Firestore para atualizações em tempo real
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _firestoreSubscription;
+
+  StreamSubscription<User?>? _authSubscription;
   
   // ValueNotifier para badge de conversas não lidas (apenas visíveis)
   final ValueNotifier<int> visibleUnreadCount = ValueNotifier<int>(0);
@@ -104,7 +107,7 @@ class ConversationsViewModel extends ChangeNotifier {
   /// Helper para logs padronizados em debug
   void _log(String msg) {
     if (kDebugMode) {
-      print('🔍 [ConversationsVM] $msg');
+      AppLogger.debug('🔍 [ConversationsVM] $msg');
     }
   }
   
@@ -136,11 +139,15 @@ class ConversationsViewModel extends ChangeNotifier {
     
     // ✅ Iniciar stream do Firestore IMEDIATAMENTE (independente do WebSocket)
     // 🔥 ESCUTAR AUTH para garantir que o stream só inicie quando o usuário estiver logado
-    FirebaseAuth.instance.authStateChanges().listen((user) {
+    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
         _log('✅ Auth detectado, iniciando Firestore stream');
         _initFirestoreStreamSafely();
+        return;
       }
+
+      _log('🚪 Auth null detectado, cancelando Firestore stream');
+      _handleLoggedOut();
     });
     
     _initWebSocketListeners();
@@ -226,11 +233,40 @@ class ConversationsViewModel extends ChangeNotifier {
         _handleFirestoreSnapshot(snapshot);
       },
       onError: (error) {
-        _log('❌ Firestore stream error: $error');
+        _handleFirestoreStreamError(error);
       },
     );
     
     _log('✅ _initFirestoreStream: Stream listener configurado');
+  }
+
+  void _handleLoggedOut() {
+    _stopFirestoreStream();
+    _firestoreStarted = false;
+    _hasReceivedFirstSnapshot = false;
+
+    // Evita UI “presa” em dados antigos após logout.
+    _wsConversations = <ConversationItem>[];
+    visibleUnreadCount.value = 0;
+    notifyListeners();
+  }
+
+  void _stopFirestoreStream() {
+    _firestoreSubscription?.cancel();
+    _firestoreSubscription = null;
+  }
+
+  void _handleFirestoreStreamError(Object error) {
+    final isPermissionDenied = error is FirebaseException && error.code == 'permission-denied';
+    final isLoggedOut = FirebaseAuth.instance.currentUser == null;
+
+    if (isPermissionDenied && isLoggedOut) {
+      _log('⚠️ Firestore stream permission-denied após logout (ignorando)');
+      _handleLoggedOut();
+      return;
+    }
+
+    _log('❌ Firestore stream error: $error');
   }
   
   /// ✅ Processa snapshot do Firestore e atualiza a lista de conversas
@@ -248,7 +284,7 @@ class ConversationsViewModel extends ChangeNotifier {
       try {
         final data = doc.data();
         final otherUserId = (data[USER_ID] ?? doc.id).toString();
-        final rawName = (data['activityText'] ?? data[fullname] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
+        final rawName = (data['activityText'] ?? data['fullName'] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
         final name = _sanitizeText(rawName);
         final photo = _extractPhotoUrl(data);
         final rawLastMessage = (data[LAST_MESSAGE] ?? '').toString();
@@ -453,7 +489,7 @@ class ConversationsViewModel extends ChangeNotifier {
           final data = doc.data();
           final otherUserId = (data[USER_ID] ?? doc.id).toString();
           // ✅ FIX: Check activityText first (for event chats), then fullname variants
-          final rawName = (data['activityText'] ?? data[fullname] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
+          final rawName = (data['activityText'] ?? data['fullName'] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
           final name = _sanitizeText(rawName);
           // ✅ FIX: Extract photo with same logic as ConversationDataProcessor
           final photo = _extractPhotoUrl(data);
@@ -555,7 +591,7 @@ class ConversationsViewModel extends ChangeNotifier {
         try {
           final data = doc.data();
           final otherUserId = (data[USER_ID] ?? doc.id).toString();
-          final rawName = (data['activityText'] ?? data[fullname] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
+          final rawName = (data['activityText'] ?? data['fullName'] ?? data['other_user_name'] ?? data['otherUserName'] ?? '').toString();
           final name = _sanitizeText(rawName);
           final photo = _extractPhotoUrl(data);
           final rawLastMessage = (data[LAST_MESSAGE] ?? '').toString();
@@ -632,19 +668,7 @@ class ConversationsViewModel extends ChangeNotifier {
   /// Extract photo URL with fallback chain (same logic as ConversationDataProcessor)
   String _extractPhotoUrl(Map<String, dynamic> data) {
     final candidates = <dynamic>[
-      data['profileImageURL'],
-      data['emoji'],
-      data['user_profile_photo'],
-      data['photo_url'],
-      data['user_photo_link'],
-      data['user_photo'],
-      data['profile_photo'],
-      data['profile_photo_url'],
-      data['avatar_url'],
-      data['avatar'],
-      data['photo'],
-      data['image_url'],
-      data['profile_image_url'],
+      data['photoUrl'],
     ];
 
     for (final candidate in candidates) {
@@ -898,6 +922,7 @@ class ConversationsViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _authSubscription?.cancel();
     _firestoreSubscription?.cancel(); // ✅ Cancelar stream do Firestore
     BlockService.instance.removeListener(_onBlockedUsersChanged);
     _paginationService.removeListener(_onPaginationChanged);

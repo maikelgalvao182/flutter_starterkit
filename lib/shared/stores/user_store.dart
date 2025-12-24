@@ -156,21 +156,45 @@ class UserStore {
   }
 
   /// ✅ Avatar (com estado: loading/loaded/empty) para evitar flash de fallback
+  /// 🔒 REGRA DE OURO: Uma vez loaded, NUNCA volta para loading
   ValueNotifier<AvatarEntry> getAvatarEntryNotifier(String userId) {
     if (userId.isEmpty) {
       return ValueNotifier<AvatarEntry>(const AvatarEntry(AvatarState.empty, _emptyAvatar));
     }
+    
+    // ✅ Se já existe notifier, retorna ele (NUNCA recria)
+    final existing = _avatarEntryNotifiers[userId];
+    if (existing != null) {
+      _ensureListening(userId);
+      return existing;
+    }
+    
     _ensureListening(userId);
-    return _avatarEntryNotifiers.putIfAbsent(userId, () {
-      final existingUser = _users[userId];
-      if (existingUser != null) {
-        final entryState = existingUser.avatarUrl.isEmpty
-            ? AvatarState.empty
-            : AvatarState.loaded;
-        return ValueNotifier<AvatarEntry>(AvatarEntry(entryState, existingUser.avatarProvider));
-      }
-      return ValueNotifier<AvatarEntry>(AvatarEntry(AvatarState.loading, _loadingPlaceholder));
-    });
+    
+    // Cria novo notifier apenas se não existia
+    final existingUser = _users[userId];
+    if (existingUser != null && existingUser.avatarUrl.isNotEmpty) {
+      // Já temos avatar = já começa como loaded
+      final notifier = ValueNotifier<AvatarEntry>(
+        AvatarEntry(AvatarState.loaded, existingUser.avatarProvider),
+      );
+      _avatarEntryNotifiers[userId] = notifier;
+      return notifier;
+    } else if (existingUser != null) {
+      // User existe mas sem avatar = empty
+      final notifier = ValueNotifier<AvatarEntry>(
+        AvatarEntry(AvatarState.empty, _emptyAvatar),
+      );
+      _avatarEntryNotifiers[userId] = notifier;
+      return notifier;
+    }
+    
+    // Primeiro acesso = loading (só na primeira vez)
+    final notifier = ValueNotifier<AvatarEntry>(
+      AvatarEntry(AvatarState.loading, _loadingPlaceholder),
+    );
+    _avatarEntryNotifiers[userId] = notifier;
+    return notifier;
   }
 
   /// ✅ Nome
@@ -347,6 +371,18 @@ class UserStore {
   void preloadAvatar(String userId, String avatarUrl) {
     if (userId.isEmpty || avatarUrl.isEmpty) return;
     
+    // ✅ PROTEÇÃO: Se já temos a mesma URL, NÃO criar novo NetworkImage
+    final existingEntry = _users[userId];
+    if (existingEntry != null && existingEntry.avatarUrl == avatarUrl) {
+      // URL igual = mantém instância atual (evita rebuild)
+      // Apenas garante que o notifier está em estado loaded
+      final currentNotifier = _avatarEntryNotifiers[userId];
+      if (currentNotifier != null && currentNotifier.value.state != AvatarState.loaded) {
+        currentNotifier.value = AvatarEntry(AvatarState.loaded, existingEntry.avatarProvider);
+      }
+      return;
+    }
+    
     final provider = NetworkImage(avatarUrl);
 
     if (!_users.containsKey(userId)) {
@@ -357,10 +393,9 @@ class UserStore {
       );
     } else {
       final entry = _users[userId]!;
-      if (entry.avatarUrl != avatarUrl) {
-        entry.avatarUrl = avatarUrl;
-        entry.avatarProvider = provider;
-      }
+      // Só atualiza se URL realmente mudou
+      entry.avatarUrl = avatarUrl;
+      entry.avatarProvider = provider;
     }
     
     final avatarEntry = AvatarEntry(AvatarState.loaded, provider);
@@ -509,9 +544,21 @@ class UserStore {
   /// Atualiza entry do usuário quando dados mudam no Firestore
   void _updateUser(String userId, Map<String, dynamic> userData) {
     final oldEntry = _users[userId];
+    
+    // ✅ PROTEÇÃO: Se já temos um avatar loaded, NUNCA permitir voltar para loading
+    final currentNotifier = _avatarEntryNotifiers[userId];
+    final currentState = currentNotifier?.value.state;
+    final hadValidAvatar = currentState == AvatarState.loaded;
 
     // Extrai dados usando as chaves do modelo de cadastro (camelCase)
-    final newAvatarUrl = userData['photoUrl'] as String?;
+    // ⚠️ FILTRAR URLs do Google OAuth (dados legados)
+    var rawAvatarUrl = userData['photoUrl'] as String?;
+    if (rawAvatarUrl != null && 
+        (rawAvatarUrl.contains('googleusercontent.com') || 
+         rawAvatarUrl.contains('lh3.google'))) {
+      rawAvatarUrl = null;
+    }
+    final newAvatarUrl = rawAvatarUrl;
     final name = userData['fullName'] as String?;
     final bio = userData['bio'] as String?;
     final gender = userData['gender'] as String?;
@@ -574,12 +621,33 @@ class UserStore {
     }
 
     // ⭐ Avatar: cria provider estável (SEM cache-buster)
+    // ✅ PROTEÇÃO CRÍTICA: Se já tínhamos um avatar válido, NUNCA sobrescrever com vazio
     final ImageProvider newAvatarProvider;
+    final String effectiveAvatarUrl;
+    
     if (newAvatarUrl == null || newAvatarUrl.isEmpty) {
-      // Empty real: só aqui aplicamos o empty asset
-      newAvatarProvider = _emptyAvatar;
+      // Firestore retornou vazio, mas JÁ tínhamos avatar?
+      if (hadValidAvatar && oldEntry != null && oldEntry.avatarUrl.isNotEmpty) {
+        // ✅ MANTÉM o avatar anterior (proteção contra flash)
+        newAvatarProvider = oldEntry.avatarProvider;
+        effectiveAvatarUrl = oldEntry.avatarUrl;
+      } else {
+        // Realmente não tem avatar
+        newAvatarProvider = _emptyAvatar;
+        effectiveAvatarUrl = '';
+      }
     } else {
-      newAvatarProvider = NetworkImage(newAvatarUrl);
+      // ✅ PROTEÇÃO: Se URL é a mesma, NÃO recriar NetworkImage
+      // Isso evita troca de instância que causa flash
+      if (oldEntry != null && oldEntry.avatarUrl == newAvatarUrl) {
+        // Mesma URL = mantém mesma instância do provider
+        newAvatarProvider = oldEntry.avatarProvider;
+        effectiveAvatarUrl = newAvatarUrl;
+      } else {
+        // URL diferente = cria novo NetworkImage
+        newAvatarProvider = NetworkImage(newAvatarUrl);
+        effectiveAvatarUrl = newAvatarUrl;
+      }
     }
 
     // Cria nova entry
@@ -590,7 +658,7 @@ class UserStore {
       sexualOrientation: sexualOrientation,
       bio: bio,
       jobTitle: jobTitle,
-      avatarUrl: newAvatarUrl ?? '',
+      avatarUrl: effectiveAvatarUrl,
       avatarProvider: newAvatarProvider,
       isVerified: isVerified,
       isOnline: isOnline,
@@ -610,20 +678,32 @@ class UserStore {
     // 🛡️ PROTEÇÃO: Adia notificações para evitar "setState during build"
     void notifyChanges() {
       if (oldEntry == null || oldEntry.avatarUrl != newEntry.avatarUrl) {
-        _avatarNotifiers[userId]?.value = newAvatarProvider;
-        // Atualiza entry notifier com estado correto
-        final entryState = (newEntry.avatarUrl.isEmpty)
+        // ✅ PROTEÇÃO CRÍTICA: Nunca voltar de loaded para empty/loading
+        final currentEntryNotifier = _avatarEntryNotifiers[userId];
+        final wasLoaded = currentEntryNotifier?.value.state == AvatarState.loaded;
+        
+        // Calcula novo estado
+        final newState = (newEntry.avatarUrl.isEmpty)
           ? AvatarState.empty
           : AvatarState.loaded;
-        _avatarEntryNotifiers[userId]?.value = AvatarEntry(entryState, newAvatarProvider);
         
-        if (DebugFlags.logUserStore) {
-          // AppLogger.debug('[UserStore] Updated avatar for $userId: ${newEntry.avatarUrl}');
-        }
-        
-        // Evict old provider
-        if (oldEntry != null && oldEntry.avatarUrl.isNotEmpty) {
-          _evictProvider(oldEntry.avatarProvider);
+        // ✅ Se estava loaded e novo é empty, MANTÉM o avatar anterior
+        if (wasLoaded && newState == AvatarState.empty) {
+          // Não atualiza - mantém o avatar que já estava funcionando
+          if (DebugFlags.logUserStore) {
+            // AppLogger.debug('[UserStore] Skipping avatar update (protecting loaded state)');
+          }
+        } else {
+          _avatarNotifiers[userId]?.value = newAvatarProvider;
+          _avatarEntryNotifiers[userId]?.value = AvatarEntry(newState, newAvatarProvider);
+          
+          if (DebugFlags.logUserStore) {
+            // AppLogger.debug('[UserStore] Updated avatar for $userId: ${newEntry.avatarUrl}');
+          }
+          
+          // ❌ REMOVIDO: _evictProvider() é PERIGOSO em scroll
+          // O Flutter gerencia o cache de imagens automaticamente via LRU
+          // Evict manual durante scroll causa flash do avatar
         }
       }
 
@@ -693,6 +773,9 @@ class UserStore {
   }
 
   /// Evict provider do cache do Flutter
+  /// ⚠️ ATENÇÃO: Usar APENAS em cleanup (logout/disposeAll)
+  /// ❌ NUNCA usar durante scroll ou atualização de dados
+  /// O evict manual durante scroll causa flash do avatar!
   void _evictProvider(ImageProvider provider) {
     try {
       provider.evict().then((_) {

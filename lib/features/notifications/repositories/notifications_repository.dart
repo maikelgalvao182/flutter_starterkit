@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 
 /// Implementação do repositório de notificações com acesso direto ao Firestore
@@ -203,7 +204,9 @@ class NotificationsRepository implements INotificationsRepository {
         'userId': nReceiverId,          // Campo duplicado para compatibilidade
         _fieldSenderId: currentUser.uid,
         _fieldSenderFullname: currentUser.displayName ?? 'Unknown',
-        _fieldSenderPhotoLink: currentUser.photoURL ?? '',
+        // ✅ NUNCA usar FirebaseAuth.photoURL (avatar do Google)
+        // Deixar vazio - o StableAvatar vai buscar no UserStore/Firestore
+        _fieldSenderPhotoLink: '',
         _fieldType: nType,
         _fieldRead: false,
         _fieldTimestamp: FieldValue.serverTimestamp(),
@@ -329,24 +332,27 @@ class NotificationsRepository implements INotificationsRepository {
     String? senderPhotoUrl,
     String? relatedId,
   }) async {
-    print('💾 [NotificationRepository.createActivityNotification] INICIANDO');
-    print('💾 [NotificationRepository.createActivityNotification] ReceiverId: $receiverId');
-    print('💾 [NotificationRepository.createActivityNotification] Type: $type');
-    print('💾 [NotificationRepository.createActivityNotification] Params: $params');
-    print('💾 [NotificationRepository.createActivityNotification] SenderId: $senderId');
-    print('💾 [NotificationRepository.createActivityNotification] RelatedId: $relatedId');
-    
     try {
       final currentUser = _auth.currentUser;
-      print('💾 [NotificationRepository.createActivityNotification] CurrentUser: ${currentUser?.uid}');
+
+      if (currentUser == null) {
+        AppLogger.warning(
+          'createActivityNotification ignorada: usuário deslogado',
+          tag: 'NOTIFICATIONS',
+        );
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+          message: 'Not authenticated',
+        );
+      }
       
       final actualSenderId = senderId ?? currentUser?.uid;
       final actualSenderName = senderName ?? currentUser?.displayName ?? 'Sistema';
-      final actualSenderPhoto = senderPhotoUrl ?? currentUser?.photoURL ?? '';
+      // ✅ NUNCA usar FirebaseAuth.photoURL (avatar do Google)
+      // Se não foi passado senderPhotoUrl, deixar vazio
+      final actualSenderPhoto = senderPhotoUrl ?? '';
 
-      print('💾 [NotificationRepository.createActivityNotification] ActualSenderId: $actualSenderId');
-      print('💾 [NotificationRepository.createActivityNotification] ActualSenderName: $actualSenderName');
-      
       final notificationData = <String, dynamic>{
         _fieldReceiverId: receiverId, // Campo padrão
         'userId': receiverId,          // Campo duplicado para compatibilidade
@@ -364,17 +370,28 @@ class NotificationsRepository implements INotificationsRepository {
         notificationData['n_related_id'] = relatedId;
       }
 
-      print('💾 [NotificationRepository.createActivityNotification] NotificationData: $notificationData');
-      print('💾 [NotificationRepository.createActivityNotification] Salvando em Firestore...');
-      print('💾 [NotificationRepository.createActivityNotification] Path: Notifications (root collection)');
-      
       // Salva na coleção raiz
       final docRef = await _notificationsCollection.add(notificationData);
 
-      print('✅ [NotificationRepository.createActivityNotification] CONCLUÍDO - DocId: ${docRef.id}');
+      AppLogger.success(
+        'Notificação criada (docId=${docRef.id})',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [NotificationRepository.createActivityNotification] ERRO: $e');
-      print('❌ [NotificationRepository.createActivityNotification] StackTrace: $stackTrace');
+      final isPermissionDenied = e is FirebaseException && e.code == 'permission-denied';
+
+      // Escrita de notificações de atividade deve ser feita via Cloud Function.
+      // Silencia graciosamente sem logar (esperado).
+      if (isPermissionDenied) {
+        return;
+      }
+
+      AppLogger.error(
+        'Erro ao criar notificação',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }

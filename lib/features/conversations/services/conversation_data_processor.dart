@@ -35,21 +35,9 @@ class ConversationDataProcessor {
 
   /// Extract photo URL from conversation data with fallback chain
   static String extractPhotoUrl(Map<String, dynamic> data) {
-    // Prioritize fields that typically have valid URLs
+    // Only use photoUrl field
     final candidates = <dynamic>[
-      data['profileImageURL'],
-      data['emoji'],
-      data['user_profile_photo'],
-      data['photo_url'],
-      data['user_photo_link'],
-      data['user_photo'],
-      data['profile_photo'],
-      data['profile_photo_url'],
-      data['avatar_url'],
-      data['avatar'],
-      data['photo'],
-      data['image_url'],
-      data['profile_image_url'],
+      data['photoUrl'],
     ];
 
     // First pass: find any non-empty string

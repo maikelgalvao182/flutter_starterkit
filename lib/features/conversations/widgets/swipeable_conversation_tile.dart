@@ -63,8 +63,8 @@ class SwipeableConversationTile extends StatelessWidget {
         : i18n.translate('delete');
     
     final actionIcon = isEventChat 
-        ? IconsaxPlusBold.logout 
-        : IconsaxPlusBold.trash;
+        ? IconsaxPlusLinear.logout 
+        : IconsaxPlusLinear.trash;
 
     return Slidable(
           key: ValueKey(conversationId),

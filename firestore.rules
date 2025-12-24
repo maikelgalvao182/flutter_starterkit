@@ -89,9 +89,15 @@ match /Users/{userId} {
   /// - Qualquer usuário autenticado pode ler perfis públicos
   allow read: if isSignedIn();
   
-  /// ✍️ CRIAR perfil:
+  /// ✍️ CRIAR perfil (signup):
   /// - Apenas o próprio usuário pode criar seu perfil
-  allow create: if isOwner(userId);
+  /// - NÃO pode definir campos protegidos na criação
+  allow create: if isOwner(userId) &&
+    !request.resource.data.keys()
+      .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate', 
+               'isVerified', 'verifiedAt', 'facialId', 'verificationType',
+               'vipExpiresAt', 'vipProductId', 'vipUpdatedAt', 
+               'user_is_vip', 'user_is_verified', 'user_level']);
   
   /// ✏️ ATUALIZAR perfil:
   /// - Apenas o próprio usuário pode atualizar seu perfil
@@ -114,12 +120,6 @@ match /Users/{userId} {
     request.resource.data.diff(resource.data).affectedKeys()
     .hasOnly(['vipExpiresAt', 'vipProductId', 'vipUpdatedAt', 
               'user_is_vip', 'user_is_verified', 'user_level']);
-  
-  /// 📍 ATUALIZAR localização (apenas o próprio usuário):
-  /// - Permite atualizar latitude, longitude, geohash e locationUpdatedAt
-  allow update: if isOwner(userId) &&
-    request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['latitude', 'longitude', 'geohash', 'locationUpdatedAt']);
   
   /// 🗑️ DELETAR perfil:
   /// - Apenas o próprio usuário pode deletar seu perfil
@@ -144,9 +144,15 @@ match /users/{userId} {
   /// - Qualquer usuário autenticado pode ler perfis públicos
   allow read: if isSignedIn();
   
-  /// ✍️ CRIAR perfil:
+  /// ✍️ CRIAR perfil (signup):
   /// - Apenas o próprio usuário pode criar seu perfil
-  allow create: if isOwner(userId);
+  /// - NÃO pode definir campos protegidos na criação
+  allow create: if isOwner(userId) &&
+    !request.resource.data.keys()
+      .hasAny(['overallRating', 'totalReviews', 'lastRatingUpdate',
+               'isVerified', 'verifiedAt', 'facialId', 'verificationType',
+               'vipExpiresAt', 'vipProductId', 'vipUpdatedAt',
+               'user_is_vip', 'user_is_verified', 'user_level']);
   
   /// ✏️ ATUALIZAR perfil:
   /// - Apenas o próprio usuário pode atualizar seu perfil
@@ -157,12 +163,6 @@ match /users/{userId} {
                'isVerified', 'verifiedAt', 'facialId', 'verificationType',
                'vipExpiresAt', 'vipProductId', 'vipUpdatedAt',
                'user_is_vip', 'user_is_verified', 'user_level']);
-  
-  /// 📍 ATUALIZAR localização (apenas o próprio usuário):
-  /// - Permite atualizar latitude, longitude, geohash e locationUpdatedAt
-  allow update: if isOwner(userId) &&
-    request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['latitude', 'longitude', 'geohash', 'locationUpdatedAt']);
   
   /// ✏️ ATUALIZAR campos protegidos (APENAS Cloud Functions):
   allow update: if request.resource.data.diff(resource.data).affectedKeys()
@@ -368,7 +368,7 @@ match /PendingReviews/{pendingId} {
   
   // Atualizar: apenas o reviewer pode:
   // 1. Marcar como dismissed
-  // 2. Confirmar presença (para owners)
+  // 2. Confirmar presença (para owners) - inclui participant_profiles
   allow update: if isSignedIn() && 
     request.auth.uid == resource.data.reviewer_id &&
     (
@@ -377,9 +377,9 @@ match /PendingReviews/{pendingId} {
        request.resource.data.diff(resource.data).affectedKeys()
          .hasOnly(['dismissed', 'dismissed_at'])) ||
       // Opção 2: presence_confirmed (para owners)
-      // Permite atualizar: confirmed_participant_ids e participant_profiles (nested updates)
-      (request.resource.data.diff(resource.data).affectedKeys()
-         .hasOnly(['presence_confirmed', 'confirmed_participant_ids', 'participant_profiles']))
+      // Permite: presence_confirmed, confirmed_participant_ids, participant_profiles.*
+      request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['presence_confirmed', 'confirmed_participant_ids', 'participant_profiles'])
     );
   
   // Deletar: Permitido se o usuário for o reviewer (ao completar a review)
@@ -489,9 +489,6 @@ match /EventApplications/{applicationId} {
   /// - Criador do evento pode ver TODAS as aplicações do seu evento
   /// - Usuário pode ver APENAS suas próprias aplicações
   /// - ⭐ QUALQUER usuário autenticado pode ver aplicações APROVADAS (para visualizar participantes no EventCard)
-  /// 
-  /// IMPORTANTE: Para queries/snapshots, a regra precisa ser permissiva o suficiente
-  /// O Firestore valida se TODOS os documentos retornados pela query passariam na regra
   allow read: if isSignedIn() && (
     // Sou o criador do evento
     request.auth.uid == getEvent().createdBy ||
@@ -499,12 +496,6 @@ match /EventApplications/{applicationId} {
     request.auth.uid == resource.data.userId ||
     // É uma aplicação aprovada (qualquer um pode ver para visualizar participantes)
     (resource.data.status == 'approved' || resource.data.status == 'autoApproved')
-  );
-  
-  // Permitir list/query explicitamente para queries filtradas por status aprovado
-  allow list: if isSignedIn() && (
-    // Query deve filtrar por status aprovado OU ser do criador do evento
-    request.query.limit <= 100 // Limitar tamanho da query
   );
   
   /// ✍️ CRIAR aplicação:
@@ -667,7 +658,7 @@ match /EventChats/{eventId} {
 /// - Connections/{userId}/Conversations/{withUserId}
 ///   - user_id: string (userId do outro usuário ou event_{eventId})
 ///   - fullname: string
-///   - user_profile_photo: string
+///   - photoUrl: string
 ///   - message_type: string
 ///   - last_message: string
 ///   - message_read: bool
@@ -1056,6 +1047,45 @@ match /DiditWebhooks/{webhookId} {
   /// 🗑️ DELETE:
   /// - Não permitido (auditoria)
   allow delete: if false;
+}
+
+    // ======================================
+    // 🚫 Bloqueio de Usuários
+    // ======================================
+/// 🚫 Coleção de usuários bloqueados
+/// Path usado no app:
+/// - blockedUsers/{blockId}
+///   - blockerId: string (userId de quem bloqueou)
+///   - targetId: string (userId de quem foi bloqueado)
+///   - createdAt: timestamp
+///
+/// O blockId é composto: {blockerId}_{targetId}
+
+match /blockedUsers/{blockId} {
+  /// 📖 LEITURA:
+  /// - Usuário pode ler registros onde ele é o bloqueador OU o bloqueado
+  /// - Necessário para verificar se está bloqueado antes de interagir
+  allow read: if isSignedIn() && (
+    resource.data.blockerId == request.auth.uid ||
+    resource.data.targetId == request.auth.uid
+  );
+  
+  /// ✍️ CRIAR bloqueio:
+  /// - Apenas o próprio usuário pode criar bloqueios
+  /// - O blockerId no documento deve ser o usuário autenticado
+  allow create: if isSignedIn() &&
+    request.resource.data.blockerId == request.auth.uid;
+  
+  /// ✏️ ATUALIZAR bloqueio:
+  /// - Apenas o bloqueador pode atualizar
+  allow update: if isSignedIn() &&
+    resource.data.blockerId == request.auth.uid &&
+    request.resource.data.blockerId == request.auth.uid;
+  
+  /// 🗑️ DELETAR bloqueio:
+  /// - Apenas o bloqueador pode remover o bloqueio
+  allow delete: if isSignedIn() &&
+    resource.data.blockerId == request.auth.uid;
 }
 
     // ======================================

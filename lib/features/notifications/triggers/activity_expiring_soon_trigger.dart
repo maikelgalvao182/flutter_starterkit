@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/models/activity_notification_types.dart';
-import 'package:partiu/features/notifications/repositories/notifications_repository_interface.dart';
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// TRIGGER 7: Atividade quase expirando
 /// 
@@ -19,26 +18,25 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
     ActivityModel activity,
     Map<String, dynamic> context,
   ) async {
-    print('⏰ [ActivityExpiringSoonTrigger.execute] INICIANDO');
-    print('⏰ [ActivityExpiringSoonTrigger.execute] Activity: ${activity.id} - ${activity.name} ${activity.emoji}');
-    print('⏰ [ActivityExpiringSoonTrigger.execute] Context: $context');
-    
     try {
       final hoursRemaining = context['hoursRemaining'] as int?;
-      print('⏰ [ActivityExpiringSoonTrigger.execute] HoursRemaining: $hoursRemaining');
 
       if (hoursRemaining == null) {
-        print('❌ [ActivityExpiringSoonTrigger.execute] hoursRemaining não fornecido');
+        AppLogger.warning(
+          'ActivityExpiringSoonTrigger: hoursRemaining não fornecido',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
       // Busca participantes da atividade
-      print('⏰ [ActivityExpiringSoonTrigger.execute] Buscando participantes da atividade...');
       final participants = await _getActivityParticipants(activity.id);
-      print('⏰ [ActivityExpiringSoonTrigger.execute] Participantes encontrados: ${participants.length}');
       
       if (participants.isEmpty) {
-        print('⚠️ [ActivityExpiringSoonTrigger.execute] Nenhum participante encontrado');
+        AppLogger.info(
+          'ActivityExpiringSoonTrigger: nenhum participante encontrado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
@@ -49,13 +47,14 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
         hoursRemaining: hoursRemaining,
       );
 
-      print('⏰ [ActivityExpiringSoonTrigger.execute] Template gerado: ${template.title}');
-
       // Notifica todos os participantes
-      print('⏰ [ActivityExpiringSoonTrigger.execute] Enviando notificações para ${participants.length} participantes...');
+      AppLogger.info(
+        'ActivityExpiringSoonTrigger: enviando para ${participants.length} participantes',
+        tag: 'NOTIFICATIONS',
+      );
+      var sent = 0;
       for (final participantId in participants) {
-        print('⏰ [ActivityExpiringSoonTrigger.execute] Criando notificação para: $participantId');
-        await createNotification(
+        final ok = await createNotification(
           receiverId: participantId,
           type: ActivityNotificationTypes.activityExpiringSoon,
           params: {
@@ -66,19 +65,25 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
           },
           relatedId: activity.id,
         );
-        print('✅ [ActivityExpiringSoonTrigger.execute] Notificação criada para: $participantId');
+        if (ok) sent++;
       }
 
-      print('✅ [ActivityExpiringSoonTrigger.execute] CONCLUÍDO - ${participants.length} notificações enviadas');
+      AppLogger.success(
+        'ActivityExpiringSoonTrigger concluído: $sent/${participants.length} notificações criadas',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e, stackTrace) {
-      print('❌ [ActivityExpiringSoonTrigger.execute] ERRO: $e');
-      print('❌ [ActivityExpiringSoonTrigger.execute] StackTrace: $stackTrace');
+      AppLogger.error(
+        'ActivityExpiringSoonTrigger: erro ao executar',
+        tag: 'NOTIFICATIONS',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
   /// Busca IDs dos participantes aprovados do evento
   Future<List<String>> _getActivityParticipants(String activityId) async {
-    print('⏰ [ActivityExpiringSoonTrigger._getActivityParticipants] Buscando aplicações aprovadas para: $activityId');
     try {
       final querySnapshot = await firestore
           .collection('EventApplications')
@@ -86,18 +91,19 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
           .where('status', whereIn: ['approved', 'autoApproved'])
           .get();
 
-      print('⏰ [ActivityExpiringSoonTrigger._getActivityParticipants] Encontradas ${querySnapshot.docs.length} aplicações aprovadas');
-
       if (querySnapshot.docs.isEmpty) return [];
 
       final participantIds = querySnapshot.docs
           .map((doc) => doc.data()['userId'] as String)
           .toList();
 
-      print('⏰ [ActivityExpiringSoonTrigger._getActivityParticipants] ParticipantIds: $participantIds');
       return participantIds;
     } catch (e) {
-      print('❌ [ActivityExpiringSoonTrigger._getActivityParticipants] Erro ao buscar participantes: $e');
+      AppLogger.error(
+        'ActivityExpiringSoonTrigger: erro ao buscar participantes',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
       return [];
     }
   }

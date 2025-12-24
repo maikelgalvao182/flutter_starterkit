@@ -7,20 +7,53 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:13564294004:android:48a6bfd9d8fe371dc0f221",
+        "mobilesdk_app_id": "1:13564294004:android:9919ac8251e1e278c0f221",
         "android_client_info": {
-          "package_name": "com.example.partiu"
+          "package_name": "com.maikelgalvao.partiu"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "13564294004-289p5qit2gsntuu73uk9b92s86damooi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.maikelgalvao.partiu",
+            "certificate_hash": "42dc5dacd12ad0a9d2c0c807aad6016cc2e7683c"
+          }
+        },
+        {
+          "client_id": "13564294004-8dg0g8ft1snln36o784k2aj0eu0leoq2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.maikelgalvao.partiu",
+            "certificate_hash": "e7124cb1aa4bb5acd1c88027c6434d39d5e05c1d"
+          }
+        },
+        {
+          "client_id": "13564294004-nvddc415cn467vtps7rlm2jcr077o2ri.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCUkR549yBaSk1MSiPxo_NrKh4sSJrUj4k"
+          "current_key": "AIzaSyD_WdCn19E8sJjtnLXu8i8UnvpffQKkPpo"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "13564294004-nvddc415cn467vtps7rlm2jcr077o2ri.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "13564294004-3edvbujvrqv197n6ttpbus2gibprqsr6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.maikelgalvao.partiu"
+              }
+            }
+          ]
         }
       }
     }
