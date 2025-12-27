@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/core/services/global_cache_service.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 
 /// Controlador de notificações simples inspirado no padrão Chatter.
 /// - Lista única por filtro (source of truth)
@@ -268,6 +269,18 @@ class SimplifiedNotificationController extends ChangeNotifier {
           ...(_notificationsByFilter[key] ?? []),
           ...filteredDocs,
         ];
+      }
+      
+      // ✅ PRELOAD: Carregar avatares dos remetentes antes da UI renderizar
+      for (final doc in filteredDocs) {
+        final data = doc.data();
+        if (data == null) continue;
+        final senderId = data['n_sender_id'] as String?;
+        final senderPhotoUrl = data['n_sender_photo_url'] as String?;
+        if (senderId != null && senderId.isNotEmpty && 
+            senderPhotoUrl != null && senderPhotoUrl.isNotEmpty) {
+          UserStore.instance.preloadAvatar(senderId, senderPhotoUrl);
+        }
       }
 
       if (filteredDocs.isNotEmpty) {

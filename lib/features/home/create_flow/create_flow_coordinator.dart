@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
-import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/features/home/create_flow/activity_draft.dart';
 import 'package:partiu/features/home/data/repositories/event_map_repository.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
 import 'package:partiu/features/home/presentation/widgets/participants/privacy_type_selector.dart';
+import 'package:partiu/features/home/presentation/widgets/category/activity_category.dart';
 
 /// Coordenador do fluxo de criação de atividade
 /// Gerencia o estado do rascunho conforme o usuário navega pelos drawers
@@ -24,6 +24,13 @@ class CreateFlowCoordinator extends ChangeNotifier {
     _draft.emoji = emoji;
     notifyListeners();
     debugPrint('📝 [CreateFlow] Activity info set: $activityText ($emoji)');
+  }
+
+  /// Define a categoria da atividade
+  void setCategory(ActivityCategory category) {
+    _draft.category = category;
+    notifyListeners();
+    debugPrint('🏷️ [CreateFlow] Category set: $category');
   }
 
   /// Define a localização selecionada
@@ -98,6 +105,7 @@ class CreateFlowCoordinator extends ChangeNotifier {
     final buffer = StringBuffer();
     buffer.writeln('📋 Activity Draft Summary:');
     buffer.writeln('  • Activity: ${_draft.activityText} ${_draft.emoji}');
+    buffer.writeln('  • Category: ${_draft.category}');
     buffer.writeln('  • Location: ${_draft.location?.formattedAddress}');
     buffer.writeln('  • Date: ${_draft.selectedDate}');
     buffer.writeln('  • Time Type: ${_draft.timeType}');

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/services/app_cache_service.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -315,6 +316,11 @@ class SessionManager {
     // Garante sincronização imediata do estado reativo
     AppState.currentUser.value = user;
     AppState.isVerified.value = user.userIsVerified == true;
+    
+    // ✅ PRELOAD: Carregar avatar do usuário atual antes da UI renderizar
+    if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+      UserStore.instance.preloadAvatar(user.userId, user.photoUrl!);
+    }
     
     // Salva metadados opcionais
     if (token != null) {

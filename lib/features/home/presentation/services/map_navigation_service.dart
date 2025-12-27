@@ -31,9 +31,12 @@ class MapNavigationService {
 
   /// Evento pendente aguardando o mapa estar pronto
   String? _pendingEventId;
+  
+  /// Flag para indicar que o evento foi recém-criado (mostrar confetti)
+  bool _isNewlyCreated = false;
 
   /// Callback registrado pelo GoogleMapView quando estiver pronto
-  Function(String eventId)? _onEventNavigationCallback;
+  Function(String eventId, {bool showConfetti})? _onEventNavigationCallback;
 
   /// Solicita navegação para um evento
   /// 
@@ -42,19 +45,22 @@ class MapNavigationService {
   /// - Deep link para evento
   /// - Trigger automático
   /// 
+  /// [showConfetti] - Se true, mostra confetti ao abrir o card (usado após criar evento)
+  /// 
   /// Se o mapa estiver pronto (handler registrado), executa imediatamente.
   /// Caso contrário, guarda para executar quando o mapa registrar o handler.
-  void navigateToEvent(String eventId) {
-    debugPrint('🗺️ [MapNavigationService] Solicitando navegação para evento: $eventId');
+  void navigateToEvent(String eventId, {bool showConfetti = false}) {
+    debugPrint('🗺️ [MapNavigationService] Solicitando navegação para evento: $eventId (confetti: $showConfetti)');
     
     if (_onEventNavigationCallback != null) {
       // Mapa está pronto, executar imediatamente
       debugPrint('✅ [MapNavigationService] Mapa pronto, executando navegação agora');
-      _onEventNavigationCallback!(eventId);
+      _onEventNavigationCallback!(eventId, showConfetti: showConfetti);
     } else {
       // Mapa não está pronto, guardar para depois
       debugPrint('⏳ [MapNavigationService] Mapa não pronto, guardando navegação pendente');
       _pendingEventId = eventId;
+      _isNewlyCreated = showConfetti;
     }
   }
 
@@ -63,15 +69,16 @@ class MapNavigationService {
   /// Chamado pelo GoogleMapView quando estiver pronto (no initState ou onMapCreated).
   /// 
   /// Se houver navegação pendente, executa automaticamente.
-  void registerMapHandler(Function(String eventId) handler) {
+  void registerMapHandler(Function(String eventId, {bool showConfetti}) handler) {
     debugPrint('🗺️ [MapNavigationService] Handler do mapa registrado');
     _onEventNavigationCallback = handler;
 
     // Se existe navegação pendente, executar agora
     if (_pendingEventId != null) {
-      debugPrint('✅ [MapNavigationService] Executando navegação pendente: $_pendingEventId');
-      handler(_pendingEventId!);
+      debugPrint('✅ [MapNavigationService] Executando navegação pendente: $_pendingEventId (confetti: $_isNewlyCreated)');
+      handler(_pendingEventId!, showConfetti: _isNewlyCreated);
       _pendingEventId = null;
+      _isNewlyCreated = false;
     }
   }
 
@@ -89,6 +96,7 @@ class MapNavigationService {
   void clear() {
     debugPrint('🗑️ [MapNavigationService] Limpando navegação pendente');
     _pendingEventId = null;
+    _isNewlyCreated = false;
   }
 
   /// Verifica se há navegação pendente

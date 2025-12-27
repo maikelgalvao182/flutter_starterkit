@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/shared/models/user_model.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/features/home/presentation/services/geo_service.dart';
 
 class NearbyButtonController extends ChangeNotifier {
@@ -25,6 +26,11 @@ class NearbyButtonController extends ChangeNotifier {
     try {
       // 1. Carrega usuário mais recente
       recentUser = await _userRepo.getMostRecentUser();
+      
+      // ✅ PRELOAD: Carregar avatar antes da UI renderizar
+      if (recentUser != null && recentUser!.photoUrl != null && recentUser!.photoUrl!.isNotEmpty) {
+        UserStore.instance.preloadAvatar(recentUser!.userId, recentUser!.photoUrl!);
+      }
 
       // 2. Carrega contagem de usuários próximos (30km)
       final location = await _geoService.getCurrentUserLocation();

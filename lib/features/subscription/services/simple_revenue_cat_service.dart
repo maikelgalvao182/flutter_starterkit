@@ -23,6 +23,7 @@
 
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:partiu/common/utils/app_logger.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -266,11 +267,24 @@ class SimpleRevenueCatService {
     try {
       final entId = _entitlementId ?? REVENUE_CAT_ENTITLEMENT_ID;
       
+      print('🔍 [RevenueCat] Verificando acesso ao entitlement: "$entId"');
+      print('   📋 Entitlements ativos disponíveis: ${info.entitlements.active.keys.toList()}');
+      print('   📋 Todos entitlements: ${info.entitlements.all.keys.toList()}');
+      
       final ent = info.entitlements.active[entId];
 
       if (ent == null) {
-        // Log reduzido - só mostra na primeira vez ou quando debugar
-        // print('   ❌ Entitlement "$entId" não ativo');
+        print('   ❌ Entitlement "$entId" NÃO encontrado nos ativos');
+        
+        // Verifica se existe em 'all' mas não está ativo
+        final entAll = info.entitlements.all[entId];
+        if (entAll != null) {
+          print('   ⚠️  Entitlement existe em "all" mas não está ativo');
+          print('       - isActive: ${entAll.isActive}');
+          print('       - expirationDate: ${entAll.expirationDate}');
+          print('       - productIdentifier: ${entAll.productIdentifier}');
+        }
+        
         return false;
       }
       
@@ -309,24 +323,45 @@ class SimpleRevenueCatService {
   static Future<CustomerInfo> purchasePackage(Package package) async {
     if (!_initialized) await initialize();
 
-    print('💳 [RevenueCat] Iniciando compra: ${package.storeProduct.identifier}');
+    print('💳 [RevenueCat] Iniciando compra');
+    print('   Package identifier: ${package.identifier}');
+    print('   Package type: ${package.packageType}');
+    print('   Product ID: ${package.storeProduct.identifier}');
+    print('   Product title: ${package.storeProduct.title}');
+    print('   Product price: ${package.storeProduct.priceString}');
+    print('   ⚠️  ATENÇÃO: Este ID deve existir no Google Play Console!');
+    print('   ⚠️  Verifique se "${package.storeProduct.identifier}" está cadastrado e ATIVO');
+    
     AppLogger.info('Iniciando compra: ${package.storeProduct.identifier}');
     
-    // ignore: deprecated_member_use
-    final result = await Purchases.purchaseStoreProduct(package.storeProduct);
+    try {
+      // ignore: deprecated_member_use
+      final result = await Purchases.purchaseStoreProduct(package.storeProduct);
 
-    print('✅ [RevenueCat] Compra concluída com sucesso!');
-    print('   Entitlements ativos após compra: ${result.customerInfo.entitlements.active.keys.toList()}');
-    print('   Active subscriptions: ${result.customerInfo.activeSubscriptions}');
-    print('   All purchased products: ${result.customerInfo.allPurchasedProductIdentifiers}');
-    
-    AppLogger.success('Compra concluída!');
-    AppLogger.info('  - Entitlements ativos: ${result.customerInfo.entitlements.active.keys.toList()}');
-    AppLogger.info('  - Active subscriptions: ${result.customerInfo.activeSubscriptions}');
+      print('✅ [RevenueCat] Compra concluída com sucesso!');
+      print('   Entitlements ativos após compra: ${result.customerInfo.entitlements.active.keys.toList()}');
+      print('   Active subscriptions: ${result.customerInfo.activeSubscriptions}');
+      print('   All purchased products: ${result.customerInfo.allPurchasedProductIdentifiers}');
+      
+      AppLogger.success('Compra concluída!');
+      AppLogger.info('  - Entitlements ativos: ${result.customerInfo.entitlements.active.keys.toList()}');
+      AppLogger.info('  - Active subscriptions: ${result.customerInfo.activeSubscriptions}');
 
-    _lastInfo = result.customerInfo;
+      _lastInfo = result.customerInfo;
 
-    return result.customerInfo;
+      return result.customerInfo;
+    } catch (e) {
+      print('❌ [RevenueCat] Erro na compra: $e');
+      AppLogger.error('Erro na compra: $e');
+      
+      if (e is PlatformException) {
+        print('   PlatformException code: ${e.code}');
+        print('   PlatformException message: ${e.message}');
+        print('   PlatformException details: ${e.details}');
+      }
+      
+      rethrow;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -469,13 +504,16 @@ class SimpleRevenueCatService {
           ? off
           : REVENUE_CAT_OFFERINGS_ID;
 
-      print('   ✅ Entitlement ID final: $_entitlementId');
-      print('   ✅ Offering ID final: $_offeringId');
+    print('   ✅ Entitlement ID final: $_entitlementId');
+    print('   ✅ Offering ID final: $_offeringId');
+    
+    print('\n⚠️  IMPORTANTE: Verifique no RevenueCat Dashboard:');
+    print('   1. O entitlement "$_entitlementId" está configurado');
+    print('   2. Os produtos Android estão vinculados ao entitlement');
+    print('   3. Formato dos produtos: 01_semanal:semanal, 01_semanal:mensal, 01_semanal:anual');
 
-      AppLogger.info('  - Entitlement ID: $_entitlementId');
-      AppLogger.info('  - Offering ID: $_offeringId');
-
-    } catch (e) {
+    AppLogger.info('  - Entitlement ID: $_entitlementId');
+    AppLogger.info('  - Offering ID: $_offeringId');    } catch (e) {
       print('   ❌ ERRO ao carregar configuração: $e');
       AppLogger.error('Erro ao carregar configuração: $e');
       _entitlementId = REVENUE_CAT_ENTITLEMENT_ID;

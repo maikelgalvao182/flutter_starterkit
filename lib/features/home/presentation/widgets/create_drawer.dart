@@ -5,7 +5,6 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/utils/activity_helper.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/utils/emoji_helper.dart';
-import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/features/home/presentation/widgets/create/suggestion_tags_view.dart';
 import 'package:partiu/features/home/presentation/widgets/controllers/create_drawer_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/helpers/marker_color_helper.dart';
@@ -48,14 +47,15 @@ class _CreateDrawerState extends State<CreateDrawer> {
     // Gera uma cor aleatória ao abrir o drawer
     _containerColor = MarkerColorHelper.getRandomColor();
     
-    // Se estiver em modo de edição, preencher com valores iniciais
-    if (widget.editMode) {
-      if (widget.initialName != null) {
-        _controller.textController.text = widget.initialName!;
-      }
-      if (widget.initialEmoji != null) {
-        _controller.setEmoji(widget.initialEmoji!);
-      }
+    // Preencher com valores do coordinator (se existirem) ou valores iniciais
+    final savedName = widget.initialName ?? _coordinator.draft.activityText;
+    final savedEmoji = widget.initialEmoji ?? _coordinator.draft.emoji;
+    
+    if (savedName != null && savedName.isNotEmpty) {
+      _controller.textController.text = savedName;
+    }
+    if (savedEmoji != null && savedEmoji.isNotEmpty) {
+      _controller.setEmoji(savedEmoji);
     }
   }
 
@@ -120,30 +120,12 @@ class _CreateDrawerState extends State<CreateDrawer> {
       _controller.currentEmoji,
     );
 
-    final navigator = Navigator.of(context);
-    
     // Fechar teclado
     FocusScope.of(context).unfocus();
     
-    // Fechar o drawer imediatamente
-    navigator.pop();
-
-    // Navegar para o LocationPicker passando o coordinator
-    try {
-      final result = await navigator.push<Map<String, dynamic>>(
-        MaterialPageRoute(
-          builder: (_) => LocationPickerPageRefactored(
-            coordinator: _coordinator,
-          ),
-          fullscreenDialog: true,
-        ),
-      );
-
-      if (result != null) {
-        debugPrint(_coordinator.summary);
-      }
-    } catch (e) {
-      debugPrint('Erro na navegação: $e');
+    // Fechar o CreateDrawer e retornar indicação para abrir CategoryDrawer
+    if (mounted) {
+      Navigator.of(context).pop({'action': 'openCategory'});
     }
   }
 

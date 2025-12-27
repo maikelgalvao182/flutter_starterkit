@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Widget que anima a expansão e colapso de seu conteúdo
 /// Útil para mostrar/ocultar seções com transição suave
+/// Combina AnimatedSize (altura) + AnimatedOpacity (fade) para efeito mais suave
 class AnimatedExpandable extends StatelessWidget {
   const AnimatedExpandable({
     required this.isExpanded,
@@ -23,19 +24,27 @@ class AnimatedExpandable extends StatelessWidget {
         duration: duration,
         curve: curve,
         alignment: Alignment.topCenter,
-        child: isExpanded
-            ? LayoutBuilder(
-                builder: (context, constraints) {
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: constraints.maxWidth,
-                      maxWidth: constraints.maxWidth,
-                    ),
-                    child: child,
-                  );
-                },
-              )
-            : const SizedBox.shrink(),
+        child: AnimatedOpacity(
+          duration: duration,
+          curve: curve,
+          opacity: isExpanded ? 1.0 : 0.0,
+          child: isExpanded
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                        maxWidth: constraints.maxWidth,
+                      ),
+                      child: child,
+                    );
+                  },
+                )
+              : SizedBox(
+                  width: double.infinity,
+                  height: 0,
+                ),
+        ),
       ),
     );
   }

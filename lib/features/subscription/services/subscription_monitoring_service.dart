@@ -94,11 +94,24 @@ class SubscriptionMonitoringService {
     _vipListeners.remove(listener);
   }
 
-  /// Força refresh manual — quase nunca necessário
+  /// Força refresh manual — usado após compra/restauração
   static Future<void> refresh() async {
     try {
+      dev.log('[SubscriptionMonitoring] Forçando refresh...');
       final info = await Purchases.getCustomerInfo();
-      _handleUpdate(info);
+      
+      // Atualiza diretamente o estado interno
+      _lastCustomerInfo = info;
+      
+      // Extrai e loga o novo status
+      final newAccess = _extractVip(info);
+      dev.log('[SubscriptionMonitoring] Refresh completo. hasVipAccess = $newAccess');
+      dev.log('  - Entitlements ativos: ${info.entitlements.active.keys.toList()}');
+      
+      // Notifica todos os listeners com o novo estado
+      for (final listener in _vipListeners) {
+        listener(newAccess);
+      }
     } catch (e) {
       dev.log("[SubscriptionMonitoring] Erro no refresh: $e");
     }

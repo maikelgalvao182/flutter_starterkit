@@ -14,7 +14,7 @@ import 'package:partiu/features/home/presentation/screens/location_picker/widget
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/map_center_pin.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/meeting_point_info_card.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/nearby_places_carousel.dart';
-import 'package:partiu/features/home/presentation/widgets/schedule_drawer.dart';
+import 'package:partiu/features/home/presentation/widgets/participants_drawer.dart';
 import 'package:partiu/plugins/locationpicker/entities/localization_item.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 
@@ -110,7 +110,26 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
   /// Carrega localização inicial
   Future<void> _loadInitialLocation() async {
-    final LatLng target = widget.displayLocation ?? await _getCurrentLocation();
+    LatLng target;
+    
+    // Prioridade: 1. displayLocation, 2. coordinator.draft.location, 3. localização atual
+    if (widget.displayLocation != null) {
+      target = widget.displayLocation!;
+    } else if (widget.coordinator?.draft.location?.latLng != null) {
+      target = widget.coordinator!.draft.location!.latLng!;
+      // Atualizar o controller com a localização salva
+      _controller.updateLocationResult(widget.coordinator!.draft.location!);
+      // Atualizar o campo de busca com o nome/endereço
+      final savedLocation = widget.coordinator!.draft.location!;
+      final searchText = savedLocation.name ?? savedLocation.formattedAddress ?? '';
+      if (searchText.isNotEmpty) {
+        _isUpdatingSearchText = true;
+        _searchController.text = searchText;
+        _isUpdatingSearchText = false;
+      }
+    } else {
+      target = await _getCurrentLocation();
+    }
 
     // Aguardar um pouco para garantir que o mapa está pronto
     await Future.delayed(const Duration(milliseconds: 300));
@@ -211,15 +230,26 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
     // Ignorar se estamos atualizando o texto programaticamente
     if (_isUpdatingSearchText) return;
     
-    _controller.clearSearch();
+    // Ignorar se a localização já foi confirmada (usuário selecionou do dropdown)
+    if (_controller.isLocationConfirmed) {
+      _clearOverlay();
+      return;
+    }
 
     if (query.isEmpty) {
+      _controller.clearSearch();
       _clearOverlay();
       return;
     }
 
     _showLoadingOverlay();
     _controller.searchPlace(query).then((_) {
+      // Verificar novamente se não foi confirmado durante a busca
+      if (_controller.isLocationConfirmed) {
+        _clearOverlay();
+        return;
+      }
+      
       if (_controller.suggestions.isNotEmpty) {
         _showSuggestionsOverlay();
       } else {
@@ -236,11 +266,15 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
     // Atualizar input com o nome do lugar selecionado (sem disparar onChange)
     _isUpdatingSearchText = true;
     _searchController.text = placeName;
-    // Aguardar um frame antes de resetar a flag
-    await Future.delayed(Duration.zero);
-    _isUpdatingSearchText = false;
+    
+    // Limpar sugestões para evitar re-exibição do overlay
+    _controller.clearSearch();
 
     final location = await _controller.selectPlaceFromSuggestion(placeId);
+    
+    // Resetar flag após operação completa
+    _isUpdatingSearchText = false;
+    
     if (location != null) {
       _isProgrammaticMove = true; // Marcar como movimento programático
       _mapKey.currentState?.animateToLocation(location);
@@ -354,8 +388,18 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   onChanged: _onSearchChanged,
-                  onBack: () => Navigator.of(context).pop(),
-                  onClose: () => Navigator.of(context).pop(),
+                  onBack: () => Navigator.of(context).pop({'action': 'back'}), // Volta para ScheduleDrawer
+                  onClose: () {
+                    // Limpar o campo de busca e resetar seleção
+                    _isUpdatingSearchText = true; // Evitar que onChange seja disparado durante clear
+                    _searchController.clear();
+                    _isUpdatingSearchText = false;
+                    _clearOverlay();
+                    _controller.clearSearch(); // Limpa _previousSearchTerm para permitir nova busca
+                    _controller.unlockLocation(); // Isso limpa isLocationConfirmed e permite nova busca
+                    _controller.clearPhotos(); // Limpa as fotos do carousel
+                    FocusScope.of(context).unfocus();
+                  },
                 ),
 
                 const SizedBox(height: 12),
@@ -390,21 +434,21 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
                         );
                       }
 
-                      // Abrir drawer de agendamento
-                      final scheduleResult = await showModalBottomSheet<Map<String, dynamic>>(
+                      // Abrir drawer de participantes (último passo)
+                      final participantsResult = await showModalBottomSheet<Map<String, dynamic>>(
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
-                        builder: (_) => ScheduleDrawer(
+                        builder: (_) => ParticipantsDrawer(
                           coordinator: widget.coordinator,
                         ),
                       );
 
-                      if (scheduleResult != null && mounted) {
-                        // Retornar resultado completo com location + schedule
+                      if (participantsResult != null && mounted) {
+                        // Retornar resultado completo com location + participants
                         final result = {
                           'location': _controller.locationResult,
-                          'schedule': scheduleResult,
+                          'participants': participantsResult,
                         };
                         Navigator.of(context).pop(result);
                       }

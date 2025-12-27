@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 
 /// Controller para gerenciar dados do ListCard
 class ListCardController extends ChangeNotifier {
@@ -103,6 +104,18 @@ class ListCardController extends ChangeNotifier {
       // Parse participants data
       _recentParticipants = results[1] as List<Map<String, dynamic>>;
       _totalParticipantsCount = results[2] as int;
+      
+      // ✅ PRELOAD: Carregar avatares antes da UI renderizar
+      if (_creatorId != null && _creatorPhotoUrl != null && _creatorPhotoUrl!.isNotEmpty) {
+        UserStore.instance.preloadAvatar(_creatorId!, _creatorPhotoUrl!);
+      }
+      for (final participant in _recentParticipants) {
+        final pUserId = participant['userId'] as String?;
+        final pPhotoUrl = participant['photoUrl'] as String?;
+        if (pUserId != null && pPhotoUrl != null && pPhotoUrl.isNotEmpty) {
+          UserStore.instance.preloadAvatar(pUserId, pPhotoUrl);
+        }
+      }
 
       _loaded = true;
       _isLoading = false;

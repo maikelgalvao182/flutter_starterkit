@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/features/profile/data/services/profile_visits_service.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 
 /// Controller SINGLETON para visitas ao perfil (padrão LocationQueryService)
 /// 
@@ -87,6 +88,13 @@ class ProfileVisitsController extends ChangeNotifier {
   /// Callback quando visitas mudam no stream
   void _onVisitsChanged(List<User> newVisitors) {
     debugPrint('📥 [ProfileVisitsController] Stream recebeu ${newVisitors.length} visitantes');
+    
+    // ✅ PRELOAD: Carregar avatares antes da UI renderizar
+    for (final visitor in newVisitors.take(20)) {
+      if (visitor.photoUrl != null && visitor.photoUrl!.isNotEmpty) {
+        UserStore.instance.preloadAvatar(visitor.userId, visitor.photoUrl!);
+      }
+    }
     
     _visitors = newVisitors;
     _isLoading = false;

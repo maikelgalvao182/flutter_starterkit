@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/shared/widgets/AnimatedSlideIn.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 
@@ -33,6 +34,12 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
   
   /// Cache local para exibir enquanto aguarda dados do servidor
   late List<Map<String, dynamic>>? _cachedParticipants;
+  
+  /// 🎯 IDs dos participantes que acabaram de entrar (para animar apenas eles)
+  final Set<String> _newlyAddedIds = {};
+  
+  /// Flag para saber se é o primeiro build (nunca anima no primeiro build)
+  bool _isFirstBuild = true;
   
   @override
   void initState() {
@@ -92,31 +99,90 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
               final fullName = userData['fullName'] ?? 'Anônimo';
               final photoUrl = userData['photoUrl'] ?? '';
               
+              // 🔑 Capturar timestamp de aprovação para ordenação estável
+              final approvedAt = doc.data()['approvedAt'] as Timestamp?;
+              
               debugPrint('✅ [ParticipantsAvatarsList] Dados do usuário:');
               debugPrint('   └─ fullName: $fullName');
               debugPrint('   └─ photoUrl: $photoUrl');
               debugPrint('   └─ isCreator: ${userId == widget.creatorId}');
+              debugPrint('   └─ approvedAt: $approvedAt');
               
               participants.add({
                 'userId': userId,
                 'fullName': fullName,
                 'photoUrl': photoUrl,
                 'isCreator': userId == widget.creatorId,
+                'approvedAt': approvedAt, // 👈 ESSENCIAL para ordem estável
               });
             }
           }
           
-          // Ordenar: criador sempre primeiro
+          // 🎯 Ordenação estável: criador primeiro, depois por approvedAt
+          // Isso garante que novos participantes SEMPRE entram à direita
           participants.sort((a, b) {
-            if (a['isCreator'] == true) return -1;
-            if (b['isCreator'] == true) return 1;
-            return 0;
+            // 1️⃣ Criador sempre primeiro
+            if (a['isCreator'] == true && b['isCreator'] != true) return -1;
+            if (b['isCreator'] == true && a['isCreator'] != true) return 1;
+            
+            // 2️⃣ Ambos não são criador → ordenar por approvedAt (mais antigo primeiro)
+            final aTime = a['approvedAt'] as Timestamp?;
+            final bTime = b['approvedAt'] as Timestamp?;
+            
+            // Se algum não tem timestamp, manter posição atual
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1; // Sem timestamp vai pro final
+            if (bTime == null) return -1;
+            
+            return aTime.compareTo(bTime);
           });
           
           debugPrint('📊 [ParticipantsAvatarsList] Total participantes: ${participants.length}');
           for (var p in participants) {
             debugPrint('   └─ ${p['fullName']} (${p['userId']}) - photoUrl: ${p['photoUrl']}');
           }
+          
+          // ✅ PRELOAD: Carregar avatares antes da UI renderizar
+          for (final p in participants) {
+            final pUserId = p['userId'] as String?;
+            final pPhotoUrl = p['photoUrl'] as String?;
+            if (pUserId != null && pPhotoUrl != null && pPhotoUrl.isNotEmpty) {
+              UserStore.instance.preloadAvatar(pUserId, pPhotoUrl);
+            }
+          }
+          
+          // 🎯 DIFF: Calcular quem REALMENTE entrou (para animar apenas eles)
+          final oldIds = (_cachedParticipants ?? [])
+              .map((p) => p['userId'] as String?)
+              .whereType<String>()
+              .toSet();
+          final newIds = participants
+              .map((p) => p['userId'] as String?)
+              .whereType<String>()
+              .toSet();
+          
+          final addedIds = newIds.difference(oldIds);
+          
+          debugPrint('🔍 [ParticipantsAvatarsList] DIFF:');
+          debugPrint('   └─ _isFirstBuild: $_isFirstBuild');
+          debugPrint('   └─ oldIds: $oldIds');
+          debugPrint('   └─ newIds: $newIds');
+          debugPrint('   └─ addedIds: $addedIds');
+          
+          // Só anima se NÃO for primeiro build E tiver novos IDs
+          if (!_isFirstBuild && addedIds.isNotEmpty) {
+            _newlyAddedIds
+              ..clear()
+              ..addAll(addedIds);
+            debugPrint('✨ [ParticipantsAvatarsList] Marcando para animar: $_newlyAddedIds');
+          } else if (_isFirstBuild) {
+            // Primeiro build: não animar ninguém
+            _newlyAddedIds.clear();
+            debugPrint('🏁 [ParticipantsAvatarsList] Primeiro build - sem animação');
+            // ✅ Marcar que primeiro build já passou (para próximas emissões)
+            _isFirstBuild = false;
+          }
+          // Não limpa _newlyAddedIds se addedIds estiver vazio (mantém estado anterior)
           
           // Atualiza cache local
           _cachedParticipants = participants;
@@ -127,55 +193,84 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
 
   @override
   Widget build(BuildContext context) {
+    // Altura fixa para evitar popping durante carregamento
+    // Avatar (40) + spacing (4) + nome (17) + padding top (12) = 73
+    const fixedHeight = 73.0;
+    
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _participantsStream,
       builder: (context, snapshot) {
         // Usa dados do snapshot ou cache local para evitar flicker
         final participants = snapshot.data ?? _cachedParticipants ?? [];
         
-        if (participants.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final visible = participants.take(widget.maxVisible).toList();
-        final remaining = participants.length - visible.length;
-
-        return Column(
-          children: [
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (int i = 0; i < visible.length; i++)
-                  AnimatedSlideIn(
-                    key: ValueKey('anim_${visible[i]['userId']}'),
-                    delay: Duration(milliseconds: i * 100),
-                    offsetX: 60.0,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
-                      child: _ParticipantItem(
-                        participant: visible[i],
-                        isCreator: visible[i]['isCreator'] == true,
-                      ),
-                    ),
-                  ),
-                
-                if (remaining > 0)
-                  AnimatedSlideIn(
-                    delay: Duration(milliseconds: visible.length * 100),
-                    offsetX: 60.0,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: _RemainingCounter(count: remaining),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+        debugPrint('🎨 [ParticipantsAvatarsList] BUILD:');
+        debugPrint('   └─ snapshot.hasData: ${snapshot.hasData}');
+        debugPrint('   └─ participants.length: ${participants.length}');
+        debugPrint('   └─ _newlyAddedIds: $_newlyAddedIds');
+        
+        // Container com altura fixa para evitar layout shift
+        return SizedBox(
+          height: participants.isEmpty ? 0 : fixedHeight,
+          child: participants.isEmpty
+              ? const SizedBox.shrink()
+              : _buildParticipantsList(participants),
         );
       },
     );
+  }
+  
+  Widget _buildParticipantsList(List<Map<String, dynamic>> participants) {
+    final visible = participants.take(widget.maxVisible).toList();
+    final remaining = participants.length - visible.length;
+
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < visible.length; i++)
+              _buildParticipantWidget(visible[i], i),
+            
+            if (remaining > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: _RemainingCounter(count: remaining),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+  
+  /// 🎯 Constrói widget do participante: anima APENAS se acabou de entrar
+  Widget _buildParticipantWidget(Map<String, dynamic> participant, int index) {
+    final userId = participant['userId'] as String;
+    final isNewlyAdded = _newlyAddedIds.contains(userId);
+    
+    final child = Padding(
+      padding: EdgeInsets.only(left: index == 0 ? 0 : 8),
+      child: _ParticipantItem(
+        key: ValueKey('participant_$userId'),
+        participant: participant,
+        isCreator: participant['isCreator'] == true,
+      ),
+    );
+    
+    // ✅ Animar APENAS quem acabou de entrar
+    if (isNewlyAdded) {
+      debugPrint('🎬 [ParticipantsAvatarsList] Animando entrada de: $userId');
+      return AnimatedSlideIn(
+        key: ValueKey('anim_$userId'),
+        delay: Duration(milliseconds: index * 100),
+        offsetX: 60.0,
+        child: child,
+      );
+    }
+    
+    // ✅ Participantes existentes: renderiza estável, sem animação
+    return child;
   }
 }
 
@@ -184,6 +279,7 @@ class _ParticipantItem extends StatelessWidget {
   const _ParticipantItem({
     required this.participant,
     required this.isCreator,
+    super.key,
   });
 
   final Map<String, dynamic> participant;

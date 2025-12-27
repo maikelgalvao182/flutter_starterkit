@@ -199,11 +199,11 @@ class _ListDrawerContent extends StatelessWidget {
                           _buildNearbyEventsList(context, nearbyEventsList),
                         ],
 
-                        // SEÇÃO: photoUrl
+                        // SEÇÃO: Minhas atividades
                         if (hasMyEvents) ...[
                           Padding(
                             padding: const EdgeInsets.only(top: 16, bottom: 16),
-                            child: _buildSectionLabel('photoUrl'),
+                            child: _buildSectionLabel('Minhas atividades'),
                           ),
                           _buildMyEventsList(context, myEventsList),
                         ],

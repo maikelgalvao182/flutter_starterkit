@@ -8,10 +8,12 @@ import 'package:partiu/shared/widgets/pending_participants_stack.dart';
 /// Step de comentário opcional (Step 2)
 class CommentStep extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final List<Map<String, String>> remainingParticipants;
 
   const CommentStep({
     required this.controller,
+    this.focusNode,
     this.remainingParticipants = const [],
     super.key,
   });
@@ -24,6 +26,7 @@ class CommentStep extends StatelessWidget {
         // Campo de texto
         GlimpseTextField(
           controller: controller,
+          focusNode: focusNode,
           hintText: 'Ex: Foi uma experiência incrível! A pessoa é muito...',
           maxLines: 6,
           maxLength: 500,

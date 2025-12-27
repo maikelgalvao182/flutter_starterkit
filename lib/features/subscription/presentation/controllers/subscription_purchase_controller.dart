@@ -179,13 +179,25 @@ class SubscriptionPurchaseController extends ChangeNotifier {
     try {
       await provider.purchase(package);
 
-      // Aqui você não verifica mais CustomerInfo
-      // MonitoringService + provider já fazem isso
-
+      // O provider já faz refresh() do MonitoringService após a compra
+      // Verifica imediatamente o acesso
+      debugPrint('🔍 Verificando acesso VIP após compra: ${provider.hasVipAccess}');
+      
       if (provider.hasVipAccess) {
+        debugPrint('✅ Acesso VIP confirmado!');
         onSuccess();
       } else {
-        onError('Purchase completed but access not active');
+        // Se ainda não sincronizou, aguarda um pouco mais
+        debugPrint('⏳ Acesso não confirmado imediatamente, aguardando sincronização...');
+        final hasAccess = await _waitForAccessSync();
+        
+        if (hasAccess) {
+          debugPrint('✅ Acesso VIP confirmado após aguardar!');
+          onSuccess();
+        } else {
+          debugPrint('❌ Acesso VIP não confirmado após timeout');
+          onError('Purchase completed but access not active');
+        }
       }
     } catch (e) {
       final msg = e.toString();
@@ -201,12 +213,37 @@ class SubscriptionPurchaseController extends ChangeNotifier {
     }
   }
 
+  /// Aguarda até 5 segundos para o RevenueCat sincronizar o entitlement
+  Future<bool> _waitForAccessSync() async {
+    debugPrint('⏳ Aguardando sincronização do RevenueCat...');
+    
+    const maxAttempts = 10; // 10 tentativas
+    const delay = Duration(milliseconds: 500); // 500ms entre tentativas
+    
+    for (int i = 0; i < maxAttempts; i++) {
+      if (provider.hasVipAccess) {
+        debugPrint('✅ Acesso VIP sincronizado após ${i * 500}ms');
+        return true;
+      }
+      
+      if (i < maxAttempts - 1) {
+        await Future.delayed(delay);
+      }
+    }
+    
+    debugPrint('⚠️  Timeout: VIP não sincronizado após 5 segundos');
+    return false;
+  }
+
   /// Restaurar compras
   Future<void> restorePurchases() async {
     try {
       await provider.restorePurchases();
 
-      if (provider.hasVipAccess) {
+      // Aguarda sincronização do RevenueCat (até 5 segundos)
+      final hasAccess = await _waitForAccessSync();
+
+      if (hasAccess) {
         onSuccess();
       } else {
         onError('No previous purchases found');

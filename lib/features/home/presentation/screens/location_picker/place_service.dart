@@ -70,11 +70,8 @@ class PlaceService {
       final List<dynamic> predictions = responseJson['predictions'];
 
       if (predictions.isEmpty) {
-        final aci = AutoCompleteItem()
-          ..text = localization.noResultsFound
-          ..offset = 0
-          ..length = 0;
-        return [RichSuggestion(aci, () {})];
+        // Retornar lista vazia ao invés de item "no results found"
+        return [];
       }
 
       return predictions.map((t) {

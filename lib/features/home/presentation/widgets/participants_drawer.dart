@@ -95,8 +95,8 @@ class _ParticipantsDrawerState extends State<ParticipantsDrawer> {
           // Injetar evento no ViewModel para garantir navegação imediata
           await widget.coordinator!.loadDraftEventIntoViewModel(activityId);
 
-          // Solicitar navegação (será processada quando o mapa aparecer)
-          MapNavigationService.instance.navigateToEvent(activityId);
+          // Solicitar navegação com confetti (será processada quando o mapa aparecer)
+          MapNavigationService.instance.navigateToEvent(activityId, showConfetti: true);
 
           if (mounted) {
             // Retornar sucesso

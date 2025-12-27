@@ -9,7 +9,6 @@ import 'package:partiu/features/home/presentation/widgets/controllers/schedule_d
 import 'package:partiu/features/home/presentation/widgets/schedule/horizontal_week_calendar.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/time_picker_widget.dart';
-import 'package:partiu/features/home/presentation/widgets/participants_drawer.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
@@ -44,17 +43,19 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
     super.initState();
     _controller = ScheduleDrawerController();
     
-    // Inicializar com valores se estiver em modo de edição
-    if (widget.editMode) {
-      if (widget.initialDate != null) {
-        _controller.setDate(widget.initialDate!);
-      }
-      if (widget.initialTimeType != null) {
-        _controller.setTimeType(widget.initialTimeType!);
-      }
-      if (widget.initialTime != null) {
-        _controller.setTime(widget.initialTime!);
-      }
+    // Preencher com valores do coordinator (se existirem) ou valores iniciais
+    final savedDate = widget.initialDate ?? widget.coordinator?.draft.selectedDate;
+    final savedTimeType = widget.initialTimeType ?? widget.coordinator?.draft.timeType;
+    final savedTime = widget.initialTime ?? widget.coordinator?.draft.selectedTime;
+    
+    if (savedDate != null) {
+      _controller.setDate(savedDate);
+    }
+    if (savedTimeType != null) {
+      _controller.setTimeType(savedTimeType);
+    }
+    if (savedTime != null) {
+      _controller.setTime(savedTime);
     }
     
     _controller.addListener(_onControllerChanged);
@@ -76,12 +77,6 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
   void _handleContinue() async {
     if (!_controller.canContinue) return;
 
-    // Se estiver em modo de edição, apenas retornar os valores
-    if (widget.editMode) {
-      Navigator.of(context).pop(_controller.getScheduleData());
-      return;
-    }
-
     // Salvar dados no coordinator
     if (widget.coordinator != null) {
       widget.coordinator!.setSchedule(
@@ -93,28 +88,9 @@ class _ScheduleDrawerState extends State<ScheduleDrawer> {
       );
     }
 
-    final result = _controller.getScheduleData();
-
-    // Abre o drawer de participantes
-    final participantsResult = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => ParticipantsDrawer(
-        coordinator: widget.coordinator,
-      ),
-    );
-
-    if (participantsResult != null) {
-      // Combina os resultados e retorna
-      final combinedResult = {
-        ...result,
-        ...participantsResult,
-      };
-      
-      if (mounted) {
-        Navigator.of(context).pop(combinedResult);
-      }
+    // Retornar resultado (próximo passo é LocationPicker)
+    if (mounted) {
+      Navigator.of(context).pop(_controller.getScheduleData());
     }
   }
 

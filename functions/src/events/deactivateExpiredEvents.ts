@@ -9,12 +9,12 @@ const MAX_CONCURRENT_NOTIFICATION_DELETES = 10;
  * Desativa eventos expirados automaticamente
  *
  * Trigger: Scheduled function (executa todos os dias à meia-noite)
- * Busca eventos ativos cuja data do evento (schedule.date) é do dia atual
+ * Busca eventos ativos cuja data do evento (schedule.date) já passou
  *
  * Comportamento:
  * - Executa à 00:00 (meia-noite) horário de São Paulo
  * - Busca eventos com isActive=true (paginado, sem limite)
- * - Verifica se schedule.date é do dia atual (que acabou de começar)
+ * - Verifica se schedule.date < início do dia atual (00:00 de hoje)
  * - Atualiza isActive=false
  * - Deleta todas as notificações relacionadas ao evento (em paralelo)
  * - O Firestore emite automaticamente stream que remove markers no mapa
@@ -23,9 +23,9 @@ const MAX_CONCURRENT_NOTIFICATION_DELETES = 10;
  * - Índice composto no Firestore: events(isActive ASC, schedule.date ASC)
  *
  * Exemplo:
- * - Função roda: 20/12/2025 00:00
- * - Evento com schedule.date: 20/12/2025 14:00
- * - Resultado: isActive = false (evento do dia 20 desativado à 00:00)
+ * - Função roda: 25/12/2025 00:00
+ * - Evento com schedule.date: 20/12/2025 14:00 ou 24/12/2025 23:59
+ * - Resultado: isActive = false (eventos anteriores a 25/12 desativados)
  */
 export const deactivateExpiredEvents = functions
   .region("us-central1")
@@ -40,14 +40,8 @@ export const deactivateExpiredEvents = functions
     // Definir início do dia atual (00:00:00)
     todayStart.setHours(0, 0, 0, 0);
 
-    // Definir fim do dia atual (23:59:59.999)
-    const todayEnd = new Date(todayStart);
-    todayEnd.setHours(23, 59, 59, 999);
-
     const todayStartTimestamp = admin.firestore.Timestamp
       .fromDate(todayStart);
-    const todayEndTimestamp = admin.firestore.Timestamp
-      .fromDate(todayEnd);
 
     console.log(
       "🗓️ [DeactivateEvents] Verificando eventos expirados..."
@@ -61,13 +55,8 @@ export const deactivateExpiredEvents = functions
         todayStartTimestamp.toDate().toISOString()}`
     );
     console.log(
-      `📅 [DeactivateEvents] Fim de hoje: ${
-        todayEndTimestamp.toDate().toISOString()}`
-    );
-    console.log(
       "📅 [DeactivateEvents] Desativando eventos com " +
-      `schedule.date entre ${todayStartTimestamp.toDate().toISOString()} ` +
-      `e ${todayEndTimestamp.toDate().toISOString()}`
+      `schedule.date < ${todayStartTimestamp.toDate().toISOString()}`
     );
 
     try {
@@ -81,12 +70,11 @@ export const deactivateExpiredEvents = functions
 
       do {
         // Construir query paginada
-        // Busca eventos do dia atual (entre 00:00 e 23:59)
+        // Busca eventos cuja data já passou (schedule.date < início de hoje)
         let query = admin.firestore()
           .collection("events")
           .where("isActive", "==", true)
-          .where("schedule.date", ">=", todayStartTimestamp)
-          .where("schedule.date", "<=", todayEndTimestamp)
+          .where("schedule.date", "<", todayStartTimestamp)
           .orderBy("schedule.date", "asc") // Necessário para paginação
           .limit(BATCH_SIZE);
 

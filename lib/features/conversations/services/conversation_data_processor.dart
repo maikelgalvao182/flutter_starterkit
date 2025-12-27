@@ -1,4 +1,5 @@
 import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 
 /// Model for pre-processed conversation display data
 class ConversationDisplayData {
@@ -278,6 +279,11 @@ class ConversationDataProcessor {
     // For now, if not found in conversation data, default to false
     // TODO: Implement async fetch from Users collection if needed
     var isVerified = isVerifiedExplicit ?? false;
+    
+    // ✅ PRELOAD: Carregar avatar antes da UI renderizar (apenas para chats 1-1)
+    if (!isEventChat && otherUserId.isNotEmpty && photoUrl.isNotEmpty) {
+      UserStore.instance.preloadAvatar(otherUserId, photoUrl);
+    }
 
     return ConversationDisplayData(
       photoUrl: photoUrl,

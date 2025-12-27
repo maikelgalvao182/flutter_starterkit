@@ -185,7 +185,8 @@ class EventMapRepository {
   }
 
   /// Busca um evento específico pelo ID
-  Future<EventModel?> getEventById(String eventId) async {
+  /// Inclui dados do criador como participante para exibição imediata
+  Future<EventModel?> getEventById(String eventId, {bool includeCreatorAsParticipant = true}) async {
     try {
       final doc = await _firestore.collection('events').doc(eventId).get();
       
@@ -205,6 +206,7 @@ class EventMapRepository {
       final participantsData = data['participants'] as Map<String, dynamic>?;
       final scheduleData = data['schedule'] as Map<String, dynamic>?;
       final dateTimestamp = scheduleData?['date'] as Timestamp?;
+      final creatorId = data['createdBy'] as String? ?? '';
       
       List<String>? photoReferences;
       final photoRefs = location['photoReferences'] as List<dynamic>?;
@@ -212,10 +214,39 @@ class EventMapRepository {
         photoReferences = photoRefs.map((e) => e.toString()).toList();
       }
 
+      // Buscar dados do criador para pré-popular lista de participantes
+      String? creatorFullName;
+      String? creatorPhotoUrl;
+      List<Map<String, dynamic>>? participants;
+      
+      if (includeCreatorAsParticipant && creatorId.isNotEmpty) {
+        try {
+          final creatorDoc = await _firestore.collection('Users').doc(creatorId).get();
+          if (creatorDoc.exists) {
+            final creatorData = creatorDoc.data();
+            creatorFullName = creatorData?['fullName'] as String?;
+            creatorPhotoUrl = creatorData?['photoUrl'] as String?;
+            
+            // Criar lista de participantes com o criador
+            participants = [
+              {
+                'userId': creatorId,
+                'fullName': creatorFullName ?? 'Anônimo',
+                'photoUrl': creatorPhotoUrl ?? '',
+                'isCreator': true,
+              }
+            ];
+          }
+        } catch (e) {
+          debugPrint('⚠️ [EventMapRepository] Erro ao buscar dados do criador: $e');
+        }
+      }
+
       return EventModel(
         id: doc.id,
         emoji: data['emoji'] as String? ?? '🎉',
-        createdBy: data['createdBy'] as String? ?? '',
+        createdBy: creatorId,
+        creatorFullName: creatorFullName,
         lat: lat,
         lng: lng,
         title: data['activityText'] as String? ?? '',
@@ -227,6 +258,7 @@ class EventMapRepository {
         privacyType: participantsData?['privacyType'] as String?,
         minAge: participantsData?['minAge'] as int?,
         maxAge: participantsData?['maxAge'] as int?,
+        participants: participants,
       );
     } catch (e) {
       debugPrint('❌ [EventMapRepository] Erro ao buscar evento por ID: $e');

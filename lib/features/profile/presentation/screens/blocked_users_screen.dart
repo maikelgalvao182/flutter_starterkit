@@ -4,6 +4,7 @@ import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
@@ -57,6 +58,15 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
           .collection('Users')
           .where(FieldPath.documentId, whereIn: blockedIds.toList())
           .get();
+      
+      // ✅ PRELOAD: Carregar avatares antes da UI renderizar
+      for (final doc in usersSnapshot.docs) {
+        final data = doc.data();
+        final photoUrl = data['profilePicture'] as String?;
+        if (photoUrl != null && photoUrl.isNotEmpty) {
+          UserStore.instance.preloadAvatar(doc.id, photoUrl);
+        }
+      }
 
       setState(() {
         _blockedUsers = usersSnapshot.docs.map((doc) {

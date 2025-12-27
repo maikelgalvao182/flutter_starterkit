@@ -116,6 +116,7 @@ class ConfettiOverlay {
                 left: 0,
                 right: 0,
                 child: ConfettiCelebration(
+                  duration: const Duration(seconds: 2),
                   numberOfParticles: 80,
                   maxBlastForce: 45,
                   minBlastForce: 20,
@@ -134,7 +135,7 @@ class ConfettiOverlay {
     debugPrint('🎉 Confetti overlay inserido!');
 
     // Remove automaticamente após a duração
-    Future.delayed(const Duration(seconds: 4), () {
+    Future.delayed(const Duration(seconds: 3), () {
       overlayEntry.remove();
       debugPrint('🎉 Confetti overlay removido!');
     });

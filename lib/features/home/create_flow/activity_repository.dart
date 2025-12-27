@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:partiu/features/home/create_flow/activity_draft.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
 import 'package:partiu/features/home/presentation/widgets/participants/privacy_type_selector.dart';
+import 'package:partiu/features/home/presentation/widgets/category/activity_category.dart';
 
 /// Repositório para gerenciar atividades no Firestore
 /// 
@@ -37,6 +38,7 @@ class ActivityRepository {
       // Informações básicas
       'activityText': draft.activityText!.trim(),
       'emoji': draft.emoji!,
+      'category': draft.category != null ? categoryToString(draft.category!) : null,
       'createdBy': userId,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

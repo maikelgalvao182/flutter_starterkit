@@ -47,17 +47,10 @@ class StableAvatar extends StatelessWidget {
       );
     }
 
-    // Usar UserStore para reatividade global
+    // ✅ Usar UserStore para reatividade global
+    // O StableAvatar APENAS consome o cache - NUNCA faz preload
+    // Preload é responsabilidade de controllers/viewmodels/app init
     final notifier = UserStore.instance.getAvatarEntryNotifier(userId);
-    
-    // Se photoUrl foi passado explicitamente, preload no UserStore
-    final hasValidPhotoUrl = photoUrl != null && photoUrl!.isNotEmpty;
-    
-    if (hasValidPhotoUrl) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        UserStore.instance.preloadAvatar(userId, photoUrl!);
-      });
-    }
 
     return _AvatarShell(
       size: size,

@@ -70,8 +70,12 @@ class SimpleSubscriptionProvider extends ChangeNotifier {
 
     try {
       await SimpleRevenueCatService.purchasePackage(package);
+      
+      // 🔥 IMPORTANTE: Força refresh do MonitoringService para sincronizar o estado
+      await SubscriptionMonitoringService.refresh();
+      
       _showingPaywall = false;
-      notifyListeners(); // Porque oferta mudou
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -89,6 +93,10 @@ class SimpleSubscriptionProvider extends ChangeNotifier {
 
     try {
       await SimpleRevenueCatService.restorePurchases();
+      
+      // 🔥 IMPORTANTE: Força refresh do MonitoringService para sincronizar o estado
+      await SubscriptionMonitoringService.refresh();
+      
       _showingPaywall = false;
     } catch (e) {
       _error = e.toString();

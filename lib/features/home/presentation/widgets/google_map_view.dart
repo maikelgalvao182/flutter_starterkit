@@ -16,6 +16,7 @@ import 'package:partiu/features/home/presentation/widgets/event_card/event_card.
 import 'package:partiu/features/home/presentation/widgets/event_card/event_card_controller.dart';
 import 'package:partiu/screens/chat/chat_screen_refactored.dart';
 import 'package:partiu/shared/stores/user_store.dart';
+import 'package:partiu/shared/widgets/confetti_celebration.dart';
 
 /// Widget de mapa Google Maps limpo e performático
 /// 
@@ -81,9 +82,9 @@ class GoogleMapViewState extends State<GoogleMapView> {
 
     debugPrint('🗺️ GoogleMapView didChangeDependencies → registrando handler');
 
-    MapNavigationService.instance.registerMapHandler((eventId) {
-      debugPrint('📍 GoogleMapView recebeu navegação: $eventId');
-      _handleEventNavigation(eventId);
+    MapNavigationService.instance.registerMapHandler((eventId, {bool showConfetti = false}) {
+      debugPrint('📍 GoogleMapView recebeu navegação: $eventId (confetti: $showConfetti)');
+      _handleEventNavigation(eventId, showConfetti: showConfetti);
     });
   }
 
@@ -96,11 +97,13 @@ class GoogleMapViewState extends State<GoogleMapView> {
     
     // Configurar callback de tap no ViewModel recebido
     debugPrint('🔴 GoogleMapView: Configurando callback onMarkerTap');
-    widget.viewModel.onMarkerTap = _onMarkerTap;
+    widget.viewModel.onMarkerTap = (event) => _onMarkerTap(event);
     debugPrint('🔴 GoogleMapView: Callback configurado? ${widget.viewModel.onMarkerTap != null}');
     
     // Registrar handler de navegação no MapNavigationService
-    MapNavigationService.instance.registerMapHandler(_handleEventNavigation);
+    MapNavigationService.instance.registerMapHandler((eventId, {bool showConfetti = false}) {
+      _handleEventNavigation(eventId, showConfetti: showConfetti);
+    });
     debugPrint('🗺️ GoogleMapView: Handler de navegação registrado');
     
     // ✅ Listener para invalidação de avatares do UserStore
@@ -452,8 +455,10 @@ class GoogleMapViewState extends State<GoogleMapView> {
   /// 1. Encontrar o evento na lista de eventos carregados
   /// 2. Mover câmera para o evento
   /// 3. Abrir o EventCard
-  void _handleEventNavigation(String eventId) async {
-    debugPrint('🗺️ [GoogleMapView] Navegando para evento: $eventId');
+  /// 
+  /// [showConfetti] - Se true, mostra confetti ao abrir o card (usado após criar evento)
+  void _handleEventNavigation(String eventId, {bool showConfetti = false}) async {
+    debugPrint('🗺️ [GoogleMapView] Navegando para evento: $eventId (confetti: $showConfetti)');
     
     if (!mounted) return;
     
@@ -484,12 +489,14 @@ class GoogleMapViewState extends State<GoogleMapView> {
     
     if (!mounted) return;
     
-    // Abrir EventCard
-    _onMarkerTap(event);
+    // Abrir EventCard (com confetti se for evento recém-criado)
+    _onMarkerTap(event, showConfetti: showConfetti);
   }
 
   /// Callback quando usuário toca em um marker
-  void _onMarkerTap(EventModel event) {
+  /// 
+  /// [showConfetti] - Se true, mostra confetti ao abrir o card (usado após criar evento)
+  void _onMarkerTap(EventModel event, {bool showConfetti = false}) {
     debugPrint('🔴🔴🔴 GoogleMapView._onMarkerTap CHAMADO! 🔴🔴🔴');
     debugPrint('🔴 GoogleMapView._onMarkerTap called for: ${event.id} - ${event.title}');
     debugPrint('📦 EventModel pré-carregado:');
@@ -512,6 +519,12 @@ class GoogleMapViewState extends State<GoogleMapView> {
     // O controller já tem todos os dados essenciais via preloadedEvent
     
     debugPrint('🔴 Abrindo showModalBottomSheet');
+    
+    // Mostrar confetti se for evento recém-criado
+    if (showConfetti) {
+      ConfettiOverlay.show(context);
+    }
+    
     // Abrir o card imediatamente
     showModalBottomSheet(
       context: context,

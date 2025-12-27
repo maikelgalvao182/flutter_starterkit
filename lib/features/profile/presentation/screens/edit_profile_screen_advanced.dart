@@ -9,6 +9,7 @@ import 'package:partiu/features/profile/presentation/tabs/personal_tab.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/edit_profile_view_model_refactored.dart' as vm;
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/shared/repositories/auth_repository.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/shared/widgets/image_source_bottom_sheet.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/features/auth/presentation/widgets/specialty_selector_widget.dart';
@@ -178,6 +179,12 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
   void _initializeControllers(vm.EditProfileViewModelRefactored viewModel) {
     final formData = (viewModel.state as EditProfileStateLoaded).formData;
     
+    // ✅ PRELOAD: Carregar avatar do usuário atual antes da UI renderizar
+    final userId = viewModel.userId;
+    final photoUrl = viewModel.currentPhotoUrl;
+    if (userId.isNotEmpty && photoUrl.isNotEmpty) {
+      UserStore.instance.preloadAvatar(userId, photoUrl);
+    }
     
     _syncControllersWithFormData(formData);
   }

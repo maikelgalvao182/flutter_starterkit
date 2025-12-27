@@ -71,6 +71,12 @@ class _ProfileTabState extends State<ProfileTab> {
       final serviceLocator = DependencyProvider.of(context).serviceLocator;
       _viewModel = serviceLocator.get<ProfileTabViewModel>();
       
+      // ✅ PRELOAD: Carregar avatar do usuário antes da UI renderizar
+      final user = _viewModel!.currentUser;
+      if (user != null && user.photoUrl != null && user.photoUrl!.isNotEmpty) {
+        UserStore.instance.preloadAvatar(user.userId, user.photoUrl!);
+      }
+      
       // Inicializa completeness check após primeiro frame
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _viewModel!.shouldCheckCompleteness()) {

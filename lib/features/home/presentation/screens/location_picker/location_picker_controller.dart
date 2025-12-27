@@ -199,6 +199,25 @@ class LocationPickerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearPhotos() {
+    _selectedPlacePhotos = [];
+    _selectedPlaceId = null;
+    notifyListeners();
+  }
+
+  /// Atualiza o locationResult diretamente (usado ao restaurar estado salvo)
+  void updateLocationResult(LocationResult location) {
+    _locationResult = location;
+    if (location.latLng != null) {
+      setMarker(location.latLng!);
+    }
+    if (location.placeId != null) {
+      _selectedPlaceId = location.placeId;
+      _isLocationConfirmed = true;
+    }
+    notifyListeners();
+  }
+
   void unlockLocation() {
     _lockOnSelectedPlace = false;
     _isLocationConfirmed = false; // remove confirmação ao mover mapa manualmente

@@ -13,6 +13,7 @@ import 'package:partiu/features/reviews/presentation/components/participant_conf
 import 'package:partiu/features/reviews/presentation/components/rating_criteria_step.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/controller/review_batch_service.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/controller/review_dialog_state.dart';
+import 'package:partiu/shared/widgets/animated_expandable.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_close_button.dart';
 
@@ -687,62 +688,82 @@ class _CommentSheet extends StatefulWidget {
 
 class _CommentSheetState extends State<_CommentSheet> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  bool _hasFocus = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    setState(() {
+      _hasFocus = _focusNode.hasFocus;
+    });
+  }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-
+    // Não reduzir altura - deixar o AnimatedExpandable ajustar o conteúdo
+    // O mainAxisSize.min do Column faz o sheet se ajustar automaticamente
     return _SheetScaffold(
       maxHeight: widget.maxHeight,
       title: widget.title,
       subtitle: null,
       onClose: () => Navigator.of(context, rootNavigator: true).pop<String?>(null),
       body: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            if (!isKeyboardOpen) ...[
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
-                backgroundImage: widget.revieweePhotoUrl != null ? NetworkImage(widget.revieweePhotoUrl!) : null,
-                child: widget.revieweePhotoUrl == null
-                    ? Text(
-                        widget.revieweeName.isNotEmpty ? widget.revieweeName[0].toUpperCase() : '?',
-                        style: GoogleFonts.getFont(
-                          FONT_PLUS_JAKARTA_SANS,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: GlimpseColors.primary,
-                        ),
-                      )
-                    : null,
+            // ✅ Animação dispara imediatamente ao mudar focus (não espera teclado fechar)
+            AnimatedExpandable(
+              isExpanded: !_hasFocus,
+              duration: const Duration(milliseconds: 250),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
+                    backgroundImage: widget.revieweePhotoUrl != null ? NetworkImage(widget.revieweePhotoUrl!) : null,
+                    child: widget.revieweePhotoUrl == null
+                        ? Text(
+                            widget.revieweeName.isNotEmpty ? widget.revieweeName[0].toUpperCase() : '?',
+                            style: GoogleFonts.getFont(
+                              FONT_PLUS_JAKARTA_SANS,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: GlimpseColors.primary,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.revieweeName,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.getFont(
+                      FONT_PLUS_JAKARTA_SANS,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: GlimpseColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                widget.revieweeName,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.getFont(
-                  FONT_PLUS_JAKARTA_SANS,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: GlimpseColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
+            ),
             CommentStep(
               controller: _controller,
+              focusNode: _focusNode,
               remainingParticipants: widget.remainingParticipants,
             ),
           ],
@@ -856,6 +877,9 @@ class _SheetScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    
     return Container(
       constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: const BoxDecoration(
@@ -881,7 +905,8 @@ class _SheetScaffold extends StatelessWidget {
               onPressed: primaryEnabled ? onPrimaryPressed : null,
             ),
           ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          // ✅ Adiciona altura do teclado para manter botão visível
+          SizedBox(height: (keyboardHeight > 0 ? keyboardHeight : bottomPadding) + 16),
         ],
       ),
     );

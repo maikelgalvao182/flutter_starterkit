@@ -43,6 +43,10 @@ class EventCardController extends ChangeNotifier {
   bool _isApplying = false;
   bool _isLeaving = false;
   bool _isDeleting = false;
+  
+  // 🔑 Estado local autoritativo para evitar flash após leave
+  // UI é fonte de verdade no curto prazo, backend no longo prazo
+  bool _forceLeft = false;
 
   // Participants
   List<Map<String, dynamic>> _approvedParticipants = [];
@@ -118,7 +122,7 @@ class EventCardController extends ChangeNotifier {
   bool get hasData => _error == null && _creatorFullName != null && _locationName != null && _activityText != null;
 
   EventApplicationModel? get userApplication => _userApplication;
-  bool get hasApplied => _userApplication != null;
+  bool get hasApplied => !_forceLeft && _userApplication != null;
   bool get isApproved => isCreator || (_userApplication?.isApproved ?? false);
   bool get isPending => _userApplication?.isPending ?? false;
   bool get isRejected => _userApplication?.isRejected ?? false;
@@ -222,6 +226,13 @@ class EventCardController extends ChangeNotifier {
         .snapshots()
         .listen((snapshot) {
       if (_disposed) return;
+      
+      // 🔒 Se o usuário acabou de sair, ignorar re-hidratação tardia do stream
+      // Isso previne o flash quando o snapshot ainda contém dados antigos
+      if (_forceLeft) {
+        debugPrint('🔒 [EventCard] Ignorando snapshot tardio - usuário já saiu do evento');
+        return;
+      }
 
       if (snapshot.docs.isEmpty) {
         _userApplication = null;
@@ -533,6 +544,12 @@ class EventCardController extends ChangeNotifier {
     debugPrint('👤 Current UID: $uid');
 
     _isLeaving = true;
+    
+    // 🔑 PONTO CRÍTICO: Atualizar estado local imediatamente para UX fluida
+    // Isso garante que a UI reaja instantaneamente à intenção do usuário
+    _forceLeft = true;
+    _userApplication = null;
+    
     notifyListeners();
     
     debugPrint('🔄 Chamando removeUserApplication...');

@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:partiu/common/utils/app_logger.dart';
 
 /// 🔔 BadgeService - Controle centralizado do badge do ícone do app
@@ -29,7 +28,9 @@ class BadgeService {
     if (_initialized) return;
     
     try {
-      _isSupported = await FlutterAppBadger.isAppBadgeSupported();
+      // `flutter_app_badger` foi removido (plugin descontinuado e incompatível
+      // com o toolchain Android atual). Mantemos o serviço como no-op.
+      _isSupported = false;
       _initialized = true;
       
       AppLogger.info(
@@ -57,11 +58,9 @@ class BadgeService {
     }
     
     try {
-      if (count > 0) {
-        await FlutterAppBadger.updateBadgeCount(count);
-        AppLogger.info('🔔 [BadgeService] Badge atualizado para: $count');
-      } else {
-        await removeBadge();
+      // no-op
+      if (kDebugMode) {
+        AppLogger.info('🔔 [BadgeService] updateBadge($count) ignorado (no-op)');
       }
     } catch (e, stack) {
       AppLogger.error('❌ [BadgeService] Erro ao atualizar badge', e, stack);
@@ -77,8 +76,10 @@ class BadgeService {
     if (!_isSupported) return;
     
     try {
-      await FlutterAppBadger.removeBadge();
-      AppLogger.info('🔔 [BadgeService] Badge removido');
+      // no-op
+      if (kDebugMode) {
+        AppLogger.info('🔔 [BadgeService] removeBadge() ignorado (no-op)');
+      }
     } catch (e, stack) {
       AppLogger.error('❌ [BadgeService] Erro ao remover badge', e, stack);
     }

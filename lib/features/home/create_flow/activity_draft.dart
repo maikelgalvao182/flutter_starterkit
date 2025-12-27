@@ -1,12 +1,14 @@
 import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/features/home/presentation/widgets/schedule/time_type_selector.dart';
 import 'package:partiu/features/home/presentation/widgets/participants/privacy_type_selector.dart';
+import 'package:partiu/features/home/presentation/widgets/category/activity_category.dart';
 
 /// Rascunho da atividade durante o fluxo de criação
 class ActivityDraft {
   // Informações básicas
   String? activityText;
   String? emoji;
+  ActivityCategory? category;
 
   // Localização
   LocationResult? location;
@@ -26,6 +28,7 @@ class ActivityDraft {
   ActivityDraft({
     this.activityText,
     this.emoji,
+    this.category,
     this.location,
     this.photoReferences,
     this.selectedDate,
@@ -59,6 +62,7 @@ class ActivityDraft {
   ActivityDraft copyWith({
     String? activityText,
     String? emoji,
+    ActivityCategory? category,
     LocationResult? location,
     List<String>? photoReferences,
     DateTime? selectedDate,
@@ -72,6 +76,7 @@ class ActivityDraft {
     return ActivityDraft(
       activityText: activityText ?? this.activityText,
       emoji: emoji ?? this.emoji,
+      category: category ?? this.category,
       location: location ?? this.location,
       photoReferences: photoReferences ?? this.photoReferences,
       selectedDate: selectedDate ?? this.selectedDate,
@@ -88,6 +93,7 @@ class ActivityDraft {
   void clear() {
     activityText = null;
     emoji = null;
+    category = null;
     location = null;
     photoReferences = null;
     selectedDate = null;
@@ -104,6 +110,7 @@ class ActivityDraft {
     return 'ActivityDraft('
         'activityText: $activityText, '
         'emoji: $emoji, '
+        'category: $category, '
         'location: ${location?.formattedAddress}, '
         'date: $selectedDate, '
         'timeType: $timeType, '
