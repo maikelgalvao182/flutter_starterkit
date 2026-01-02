@@ -65,14 +65,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
-  brazilian_locations:
-    dependency: "direct main"
-    description:
-      name: brazilian_locations
-      sha256: "52986b9e9487ba1e720ae21ce358dc78183b351f9befbd467ac7843a47827c11"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.4.1"
   build:
     dependency: transitive
     description:
@@ -1029,14 +1021,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.8"
-  hive:
-    dependency: transitive
-    description:
-      name: hive
-      sha256: "8dcf6db979d7933da8217edcec84e9df1bdb4e4edc7fc77dbd5aa74356d6d941"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.3"
   html:
     dependency: transitive
     description:

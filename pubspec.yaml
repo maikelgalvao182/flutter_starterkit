@@ -2,7 +2,7 @@ name: partiu
 description: Boora - Não vá sozinho!
 publish_to: 'none'
 
-version: 1.0.5+6
+version: 1.0.6+7
 
 environment:
   sdk: ">=3.7.0 <4.0.0"
@@ -100,7 +100,7 @@ dependencies:
   # Router
   go_router: ^17.0.0
   circle_flags: ^5.0.1
-  brazilian_locations: ^3.4.1
+  # brazilian_locations: ^3.4.1
   webview_flutter: ^4.13.0
   webview_flutter_android: ^4.10.11
   webview_flutter_wkwebview: ^3.23.5

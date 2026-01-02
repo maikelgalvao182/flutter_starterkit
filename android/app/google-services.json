@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "13564294004-vqcbadtur6f6rhaql8lgjchuuicchee8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.maikelgalvao.partiu",
+            "certificate_hash": "f28ed3a9ed6ffa2b3ec0dd99447cdf3c5c23684d"
+          }
+        },
+        {
           "client_id": "13564294004-nvddc415cn467vtps7rlm2jcr077o2ri.apps.googleusercontent.com",
           "client_type": 3
         }

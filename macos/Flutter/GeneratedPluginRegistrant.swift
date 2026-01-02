@@ -5,7 +5,6 @@
 import FlutterMacOS
 import Foundation
 
-import brazilian_locations
 import cloud_firestore
 import cloud_functions
 import device_info_plus
@@ -33,7 +32,6 @@ import url_launcher_macos
 import webview_flutter_wkwebview
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  BrazilianLocationsPlugin.register(with: registry.registrar(forPlugin: "BrazilianLocationsPlugin"))
   FLTFirebaseFirestorePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseFirestorePlugin"))
   FirebaseFunctionsPlugin.register(with: registry.registrar(forPlugin: "FirebaseFunctionsPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))

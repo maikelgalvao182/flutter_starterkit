@@ -10,6 +10,8 @@ class UserModel {
   final String? photoUrl;
   final String userType; // 'vendor' ou 'bride'
   final List<String> interests;
+  final String? locality;
+  final String? state;
   
   const UserModel({
     required this.userId,
@@ -18,6 +20,8 @@ class UserModel {
     this.photoUrl,
     this.userType = 'vendor',
     this.interests = const [],
+    this.locality,
+    this.state,
   });
   
   factory UserModel.fromFirebaseUser(firebase_auth.User user) {
@@ -51,6 +55,8 @@ class UserModel {
       photoUrl: rawPhotoUrl,
       userType: data['userType'] as String? ?? 'vendor',
       interests: List<String>.from(data['interests'] ?? []),
+      locality: data['locality'] as String?,
+      state: data['state'] as String?,
     );
   }
   
@@ -69,8 +75,8 @@ class UserModel {
       fullName: map['fullName'] as String?,
       email: map['email'] as String?,
       photoUrl: rawPhotoUrl,
-      userType: map['userType'] as String? ?? 'vendor',
-      interests: List<String>.from(map['interests'] ?? []),
+      locality: map['locality'] as String?,
+      state: map['state'] as String?,
     );
   }
   
@@ -81,6 +87,8 @@ class UserModel {
     String? email,
     String? photoUrl,
     String? userType,
+    String? locality,
+    String? state,
   }) {
     return UserModel(
       userId: userId ?? this.userId,
@@ -88,6 +96,8 @@ class UserModel {
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
       userType: userType ?? this.userType,
+      locality: locality ?? this.locality,
+      state: state ?? this.state,
     );
   }
   
@@ -101,6 +111,8 @@ class UserModel {
       'email': email,
       'photoUrl': photoUrl,
       'userType': userType,
+      'locality': locality,
+      'state': state,
     };
   }
   

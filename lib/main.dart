@@ -21,7 +21,7 @@ import 'package:partiu/core/services/location_service.dart';
 import 'package:partiu/core/services/location_background_updater.dart'; // LocationSyncScheduler
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/features/subscription/providers/simple_subscription_provider.dart';
-import 'package:brazilian_locations/brazilian_locations.dart';
+// import 'package:brazilian_locations/brazilian_locations.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
@@ -87,7 +87,7 @@ Future<void> main() async {
     ]);
     
     // Inicializar BrazilianLocations
-    await BrazilianLocations.initialize();
+    // await BrazilianLocations.initialize();
     
     // Configurar locales para timeago
     timeago.setLocaleMessages('pt', timeago.PtBrMessages());
