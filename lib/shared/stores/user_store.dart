@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/debug/debug_flags.dart';
 import 'package:flutter/foundation.dart';
@@ -383,7 +384,7 @@ class UserStore {
       return;
     }
     
-    final provider = NetworkImage(avatarUrl);
+    final provider = CachedNetworkImageProvider(avatarUrl);
 
     if (!_users.containsKey(userId)) {
       _users[userId] = UserEntry(
@@ -410,6 +411,25 @@ class UserStore {
       _avatarNotifiers[userId]!.value = provider;
     } else {
       _avatarNotifiers[userId] = ValueNotifier<ImageProvider>(provider);
+    }
+
+    // ✅ Warm-up do ImageCache (sem precisar de BuildContext)
+    // Isso dispara o download/resolução agora, para o StableAvatar renderizar rápido.
+    try {
+      final stream = provider.resolve(ImageConfiguration.empty);
+      late final ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (imageInfo, synchronousCall) {
+          stream.removeListener(listener);
+        },
+        onError: (error, stackTrace) {
+          stream.removeListener(listener);
+          debugPrint('⚠️ [UserStore] Falha ao preload avatar ($userId): $error');
+        },
+      );
+      stream.addListener(listener);
+    } catch (e) {
+      debugPrint('⚠️ [UserStore] Erro ao iniciar preload do avatar ($userId): $e');
     }
     
     _avatarInvalidationNotifier.value = userId;
@@ -645,7 +665,7 @@ class UserStore {
         effectiveAvatarUrl = newAvatarUrl;
       } else {
         // URL diferente = cria novo NetworkImage
-        newAvatarProvider = NetworkImage(newAvatarUrl);
+        newAvatarProvider = CachedNetworkImageProvider(newAvatarUrl);
         effectiveAvatarUrl = newAvatarUrl;
       }
     }

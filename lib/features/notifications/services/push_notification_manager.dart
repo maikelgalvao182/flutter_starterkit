@@ -25,6 +25,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('║ Notification: ${message.notification?.toMap()}');
   print('╚═══════════════════════════════════════════════════════');
 
+  // 🔒 Evitar duplicação:
+  // O backend (PushDispatcher) envia push híbrido com `notification` + `data`
+  // e marca `n_origin=push`. Nesse caso, o SO já exibe a notificação.
+  // Se exibirmos uma notificação local aqui, vira DUPLICADO.
+  final origin = (message.data['n_origin'] ?? '').toString();
+  if (origin == 'push') {
+    print(
+      '🔕 [PushManager] Background push do servidor (n_origin=push). '
+      'SO já exibiu. Não duplicar.'
+    );
+    return;
+  }
+
   // Inicializa Firebase se necessário
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(

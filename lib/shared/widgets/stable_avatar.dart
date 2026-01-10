@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/core/services/cache/avatar_cache_service.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/shared/stores/user_store.dart';
@@ -37,13 +36,15 @@ class StableAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+
     // UserID vazio → avatar padrão
     if (userId.trim().isEmpty) {
       return _AvatarShell(
         size: size,
         borderRadius: borderRadius,
         enableNavigation: false,
-        child: _image(_emptyImage, 'empty'),
+        child: _image(_emptyImage, 'empty', devicePixelRatio: devicePixelRatio),
       );
     }
 
@@ -64,15 +65,9 @@ class StableAvatar extends StatelessWidget {
           builder: (context, entry, _) {
             final provider = entry.provider;
             
-            // 🔒 BLINDAGEM TOTAL: Nunca deixar provider nulo/inválido
-            // Se provider for nulo ou loading placeholder, usa empty image
-            if (provider == null) {
-              return _image(_emptyImage, userId);
-            }
-            
             // ✅ Sempre renderiza a imagem diretamente
             // Sem AnimatedSwitcher = sem troca de árvore = sem fallback
-            return _image(provider, userId);
+            return _image(provider, userId, devicePixelRatio: devicePixelRatio);
           },
         ),
       ),
@@ -82,14 +77,23 @@ class StableAvatar extends StatelessWidget {
   /// ✅ CORREÇÃO: Usar ValueKey(keyId) baseado no userId, NÃO no provider
   /// Isso evita rebuilds desnecessários quando o provider muda de instância
   /// mas a imagem é a mesma (mesma URL)
-  Widget _image(ImageProvider provider, String keyId) {
+  Widget _image(
+    ImageProvider provider,
+    String keyId, {
+    required double devicePixelRatio,
+  }) {
+    // ResizeImage usa pixels físicos; isso reduz uso de memória e evita evictions.
+    final cacheSize = (size * devicePixelRatio).round().clamp(1, 4096);
+    final resizedProvider = ResizeImage(provider, width: cacheSize, height: cacheSize);
+
     return Image(
       key: ValueKey(keyId),
-      image: provider,
+      image: resizedProvider,
       width: size,
       height: size,
       fit: BoxFit.cover,
       gaplessPlayback: true,
+      filterQuality: FilterQuality.low,
     );
   }
 }

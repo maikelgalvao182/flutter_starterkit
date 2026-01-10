@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:developer' show unawaited;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
-import 'package:partiu/services/location/geo_utils.dart';
+import 'package:partiu/features/home/data/models/map_bounds.dart';
 import 'package:partiu/core/models/user.dart';
-import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/services/location/location_query_service.dart';
 import 'package:partiu/services/location/distance_isolate.dart';
 import 'package:partiu/services/location/interests_isolate.dart';
@@ -14,6 +12,7 @@ import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/shared/services/user_data_service.dart';
 import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:partiu/shared/stores/user_store.dart';
+import 'package:partiu/core/constants/constants.dart';
 
 /// Controller para gerenciar a lista de pessoas próximas
 /// 
@@ -74,7 +73,7 @@ class FindPeopleController {
   final Map<String, _CachedRating> _cachedRatings = {}; // userId -> {rating, timestamp}
   
   // Filtros atuais (para acessar radiusKm)
-  UserFilterOptions _currentFilters = UserFilterOptions();
+  final UserFilterOptions _currentFilters = UserFilterOptions();
   
   // 🚀 OTIMIZAÇÃO 1: Debounce de queries Firestore (reduz até 40% de leituras)
   List<UserWithDistance>? _lastUsersCached;
@@ -155,6 +154,7 @@ class FindPeopleController {
     debugPrint('🔍 [FindPeopleController] Configurando stream de usuários...');
     
     // Escutar stream de atualizações automáticas
+    await _usersSubscription?.cancel();
     _usersSubscription = _locationService.usersStream.listen(
       _onUsersChanged,
       onError: _onUsersError,
@@ -346,14 +346,60 @@ class FindPeopleController {
       if (userId == null) return 10.0; // Padrão: 10km
       
       final doc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection('Users')
           .doc(userId)
           .get();
-      
-      return (doc.data()?['radius'] as num?)?.toDouble() ?? 10.0;
+
+      final data = doc.data();
+      if (data == null) return 10.0;
+
+      final settings = data['advancedSettings'] as Map<String, dynamic>?;
+      final rawRadius = (settings?['radiusKm'] as num?) ?? (data['radiusKm'] as num?);
+
+      if (rawRadius == null) return 10.0;
+
+      final maxAllowed = ENABLE_RADIUS_LIMIT ? MAX_RADIUS_KM : MAX_RADIUS_KM_EXTENDED;
+      final r = rawRadius.toDouble();
+
+      // Normalizar dados legados em METROS (ex.: 3000) → KM (3.0)
+      final normalized = r > (maxAllowed * 10) ? (r / 1000.0) : r;
+
+      return normalized.clamp(MIN_RADIUS_KM, maxAllowed);
     } catch (e) {
       debugPrint('⚠️ Erro ao buscar raio: $e');
       return 10.0;
+    }
+  }
+
+  /// Atualiza a lista de usuários com base no bounding box visível do mapa.
+  ///
+  /// Usado para manter a tela sincronizada com pan/zoom (mesmo comportamento do ListDrawer com eventos).
+  Future<void> refreshForBounds(MapBounds bounds) async {
+    try {
+      isLoading.value = true;
+      error.value = null;
+
+      final usersWithDistance = await _locationService.getUsersWithinBoundsOnce(
+        boundingBox: {
+          'minLat': bounds.minLat,
+          'maxLat': bounds.maxLat,
+          'minLng': bounds.minLng,
+          'maxLng': bounds.maxLng,
+        },
+        filters: _currentFilters,
+      );
+
+      // Atualiza UI rápido
+      final quickUsers = await _buildUserList(usersWithDistance, heavyProcessing: false);
+      _updateUsersList(quickUsers);
+      isLoading.value = false;
+
+      // Enriquecer em background (ratings/interesses)
+      _enrichUsersInBackground(usersWithDistance);
+    } catch (e) {
+      debugPrint('❌ FindPeopleController.refreshForBounds: $e');
+      error.value = 'Erro ao carregar pessoas na região';
+      isLoading.value = false;
     }
   }
   

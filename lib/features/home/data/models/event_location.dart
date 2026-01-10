@@ -34,6 +34,12 @@ class EventLocation {
   String get title => eventData['title'] ?? '';
   String get emoji => eventData['emoji'] ?? '🎉';
   String get createdBy => eventData['createdBy'] ?? '';
+
+  String? get category {
+    final raw = eventData['category'];
+    if (raw is String) return raw;
+    return null;
+  }
   
   DateTime? get scheduleDate {
     final timestamp = eventData['scheduleDate'];

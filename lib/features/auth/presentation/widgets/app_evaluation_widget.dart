@@ -25,6 +25,7 @@ class AppEvaluationWidget extends StatefulWidget {
 class _AppEvaluationWidgetState extends State<AppEvaluationWidget> {
   late AppLocalizations _i18n;
   bool _hasRequestedReview = false;
+  bool _hasShownAutoPrompt = false;
 
   final List<String> _avatarPaths = const [
     'assets/images/avatar/avatar3.jpg',
@@ -37,8 +38,14 @@ class _AppEvaluationWidgetState extends State<AppEvaluationWidget> {
   @override
   void initState() {
     super.initState();
-    if (widget.shouldAutoRequestReview) {
-      Future.delayed(const Duration(milliseconds: 250), _requestReview);
+    _scheduleAutoPromptIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppEvaluationWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shouldAutoRequestReview && !oldWidget.shouldAutoRequestReview) {
+      _scheduleAutoPromptIfNeeded();
     }
   }
 
@@ -48,11 +55,29 @@ class _AppEvaluationWidgetState extends State<AppEvaluationWidget> {
     _i18n = AppLocalizations.of(context);
   }
 
+  void _scheduleAutoPromptIfNeeded() {
+    if (!widget.shouldAutoRequestReview) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Future.delayed(const Duration(milliseconds: 250), _maybeShowReviewPrompt);
+    });
+  }
+
+  Future<void> _maybeShowReviewPrompt() async {
+    if (_hasShownAutoPrompt) return;
+    _hasShownAutoPrompt = true;
+
+    // Sem dialog Material: tenta abrir direto o prompt nativo (iOS/Android).
+    await _requestReview();
+  }
+
   Future<void> _requestReview() async {
     if (_hasRequestedReview) return;
     _hasRequestedReview = true;
     
     try {
+      if (!mounted) return;
       final inAppReview = InAppReview.instance;
       
       if (await inAppReview.isAvailable()) {

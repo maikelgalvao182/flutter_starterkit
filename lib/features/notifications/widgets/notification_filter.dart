@@ -23,6 +23,8 @@ class NotificationFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveSelectedIndex = selectedIndex < 0 ? 0 : selectedIndex;
+
     return SizedBox(
       height: 48,
       child: ListView.separated(
@@ -33,7 +35,7 @@ class NotificationFilter extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 4),
         itemBuilder: (_, i) => _NotificationChipButton(
           title: items[i],
-          selected: selectedIndex == i,
+          selected: effectiveSelectedIndex == i,
           onTap: () => onSelected(i),
         ),
       ),
@@ -55,7 +57,7 @@ class _NotificationChipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = selected 
-        ? GlimpseColors.primaryColorLight 
+        ? GlimpseColors.primary 
         : GlimpseColors.lightTextField;
     final fg = selected ? Colors.white : Colors.black;
 

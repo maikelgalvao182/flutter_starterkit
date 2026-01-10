@@ -78,8 +78,9 @@ function removeUndefinedFields(obj: Record<string, unknown>):
  * firebase functions:secrets:set REVENUECAT_WEBHOOK_SECRET
  */
 
-export const revenueCatWebhook = functions.https.onRequest(
-  async (req, res) => {
+export const revenueCatWebhook = functions
+  .runWith({secrets: ["REVENUECAT_WEBHOOK_SECRET"]})
+  .https.onRequest(async (req, res) => {
     // CORS headers for preflight requests
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "POST");
@@ -102,10 +103,27 @@ export const revenueCatWebhook = functions.https.onRequest(
       // console.log('Body:', JSON.stringify(req.body, null, 2));
 
       // 1. Validate Authorization Header
-      const authHeader = req.headers.authorization;
       const expectedSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
 
-      if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+      if (!expectedSecret) {
+        console.error(
+          "❌ [RevenueCat Webhook] Server misconfigured - missing secret"
+        );
+        res.status(500).send("Server misconfigured");
+        return;
+      }
+
+      const authHeader = req.headers.authorization?.trim();
+
+      const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
+      const bearerToken = bearerMatch?.[1];
+
+      const isAuthorized = Boolean(authHeader) && (
+        authHeader === expectedSecret ||
+        bearerToken === expectedSecret
+      );
+
+      if (!isAuthorized) {
         console.error(
           "❌ [RevenueCat Webhook] Unauthorized - Invalid auth header"
         );
@@ -220,8 +238,7 @@ export const revenueCatWebhook = functions.https.onRequest(
       // Return 500 for unexpected errors so RevenueCat retries
       res.status(500).send("Internal Server Error");
     }
-  }
-);
+  });
 
 /**
  * Process RevenueCat event and update Firestore
@@ -495,9 +512,6 @@ async function processSubscriptionEvent(event: RevenueCatEvent): Promise<void> {
         user_level: finalIsActive ? "vip" : "free",
         vip_priority: finalIsActive ? 1 : 2,
 
-        // Verified badge
-        user_is_verified: finalIsActive,
-
         // Legacy fields for compatibility
         // ✅ FIX: vipExpiresAt só é setado se finalIsActive = true
         vipExpiresAt: vipExpiresAtValue,
@@ -507,7 +521,6 @@ async function processSubscriptionEvent(event: RevenueCatEvent): Promise<void> {
       console.log(
         `✅ [RevenueCat Webhook] Updated user status for ${userId}:`, {
           user_is_vip: finalIsActive,
-          user_is_verified: finalIsActive,
           user_level: finalIsActive ? "vip" : "free",
           vipExpiresAt: vipExpiresAtValue ? "set" : "null",
         }
@@ -536,8 +549,7 @@ async function processSubscriptionEvent(event: RevenueCatEvent): Promise<void> {
       admin.firestore.Timestamp.fromMillis(event.expiration_at_ms) :
       null;
 
-    // Create/update subscription status document with all relevant data
-    await subscriptionStatusRef.set({
+    const subscriptionStatusDataRaw = {
       // Core identification
       user_id: userId,
       userId: userId, // Compatibility
@@ -625,7 +637,14 @@ async function processSubscriptionEvent(event: RevenueCatEvent): Promise<void> {
 
       // Raw event (only in SANDBOX for debugging)
       raw_event: event.environment === "SANDBOX" ? event : null,
-    }, {merge: true});
+    };
+
+    const subscriptionStatusData = removeUndefinedFields(
+      subscriptionStatusDataRaw as Record<string, unknown>
+    );
+
+    // Create/update subscription status document with all relevant data
+    await subscriptionStatusRef.set(subscriptionStatusData, {merge: true});
 
     console.log(
       "✅ [RevenueCat Webhook] Updated SubscriptionStatus for " + userId
@@ -647,7 +666,7 @@ async function processSubscriptionEvent(event: RevenueCatEvent): Promise<void> {
   }
 
   // Send notification to user (optional)
-  if (shouldNotifyUser(eventType)) {
+  if (shouldNotifyUser()) {
     await sendUserNotification(userId, eventType, finalIsActive);
   }
 }
@@ -695,21 +714,12 @@ function determineActiveStatus(
 
 
 /**
- * Check if user should be notified about this event
- * @param {string} eventType Type of the event
+ * Check if user should be notified about subscription events
  * @return {boolean} True if user should be notified
  */
-function shouldNotifyUser(eventType: string): boolean {
-  // Only notify for subscription events, not one-time payments
-  const notifyEvents = [
-    "INITIAL_PURCHASE", // First subscription purchase
-    "RENEWAL", // Subscription renewed
-    "BILLING_ISSUE", // Payment problem
-    "EXPIRATION", // Subscription expired
-    "CANCELLATION", // User cancelled subscription
-    // Note: NON_RENEWING_PURCHASE is handled separately and doesn't notify
-  ];
-  return notifyEvents.includes(eventType);
+function shouldNotifyUser(): boolean {
+  // ❌ Push de assinatura DESATIVADO - webhook só atualiza Firestore
+  return false;
 }
 
 /**
@@ -728,7 +738,7 @@ async function sendUserNotification(
     // Only send notifications for specific events
     const notifiableEvents = [
       "INITIAL_PURCHASE",
-      "RENEWAL",
+      // "RENEWAL", // DESATIVADO
       "BILLING_ISSUE",
       "EXPIRATION",
       "CANCELLATION",

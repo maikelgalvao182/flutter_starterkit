@@ -15,17 +15,19 @@ class SocketService {
   io.Socket? _socket;
   bool _isConnected = false;
   String? _wsUrl;
+  bool _isConnecting = false;
 
   /// URL do WebSocket Service
   /// IMPORTANTE: Detecta automaticamente emulador Android vs iOS Simulator
   static String get _devUrl {
     if (Platform.isAndroid) {
-      return 'ws://10.0.2.2:8080'; // ✅ Emulador Android
+      return 'http://10.0.2.2:8080'; // ✅ Emulador Android (Socket.IO usa HTTP/HTTPS)
     }
-    return 'ws://127.0.0.1:8080'; // ✅ iOS Simulator
+    return 'http://127.0.0.1:8080'; // ✅ iOS Simulator
   }
   
-  static const String _prodUrl = 'wss://partiu-websocket-13564294004.us-central1.run.app';
+  // Socket.IO client espera base URL HTTP/HTTPS; ele mesmo negocia WebSocket.
+  static const String _prodUrl = 'https://partiu-websocket-13564294004.us-central1.run.app';
 
   bool get isConnected => _isConnected;
 
@@ -43,9 +45,16 @@ class SocketService {
 
   /// Conecta ao WebSocket Service
   Future<void> connect({bool useProduction = true}) async {
-    if (_isConnected) {
+    if (_isConnected || _isConnecting) {
       return;
     }
+
+    // Evita abrir múltiplos sockets em paralelo enquanto ainda está conectando.
+    if (_socket != null) {
+      return;
+    }
+
+    _isConnecting = true;
 
     _wsUrl = useProduction ? _prodUrl : _devUrl;
     
@@ -112,6 +121,7 @@ class SocketService {
       // Listeners de conexão
       _socket!.onConnect((_) {
         _isConnected = true;
+        _isConnecting = false;
         print('✅ WebSocket connected to $_wsUrl');
         
         // 🔥 AUTO-SUBSCRIBE: Subscrever IMEDIATAMENTE após conectar
@@ -123,6 +133,7 @@ class SocketService {
 
       _socket!.onDisconnect((reason) {
         _isConnected = false;
+        _isConnecting = false;
         
         // 🔥 REGRA CRÍTICA: Desconexão NÃO deve limpar nenhum estado da UI
         // O WebSocket é apenas para eventos incrementais (novos/updates)
@@ -141,10 +152,12 @@ class SocketService {
 
       _socket!.onConnectError((error) {
         _isConnected = false;
+        _isConnecting = false;
         print('❌ WebSocket connection error: $error');
       });
 
       _socket!.onError((error) {
+        _isConnecting = false;
         print('❌ WebSocket error: $error');
       });
 
@@ -171,6 +184,7 @@ class SocketService {
       _socket!.onReconnectFailed((_) {
         print('❌ WebSocket reconnection FAILED after all attempts');
         _isConnected = false;
+        _isConnecting = false;
       });
 
       // Conecta manualmente
@@ -181,9 +195,11 @@ class SocketService {
       Future.delayed(const Duration(seconds: 5), () {
         if (!_isConnected && _socket != null) {
           print('⏱️ WebSocket not connected after 5 seconds - check backend');
+          _isConnecting = false;
         }
       });
     } catch (e, stackTrace) {
+      _isConnecting = false;
       print('❌ Error connecting to WebSocket: $e\n$stackTrace');
     }
   }
@@ -195,6 +211,7 @@ class SocketService {
       _socket!.dispose();
       _socket = null;
       _isConnected = false;
+      _isConnecting = false;
     }
   }
 

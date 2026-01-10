@@ -52,13 +52,9 @@ match /Users/{userId} {
   /// - Campos de rating (updateUserRating Cloud Function)
   /// - Campos de verificação Didit (após webhook)
   /// - Campos VIP (após purchase/subscription)
-  allow update: if request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['overallRating', 'totalReviews', 'lastRatingUpdate']) ||
-    request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['isVerified', 'verifiedAt', 'facialId', 'verificationType']) ||
-    request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['vipExpiresAt', 'vipProductId', 'vipUpdatedAt', 
-              'user_is_vip', 'user_is_verified', 'user_level']);
+  /// ℹ️ Observação: Cloud Functions usando Admin SDK bypassam as rules.
+  /// Então NÃO precisamos liberar isso para o client (seria uma brecha).
+  allow update: if false;
   
   /// 🗑️ DELETAR perfil:
   /// - Apenas o próprio usuário pode deletar seu perfil
@@ -104,13 +100,9 @@ match /users/{userId} {
                'user_is_vip', 'user_is_verified', 'user_level']);
   
   /// ✏️ ATUALIZAR campos protegidos (APENAS Cloud Functions):
-  allow update: if request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['overallRating', 'totalReviews', 'lastRatingUpdate']) ||
-    request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['isVerified', 'verifiedAt', 'facialId', 'verificationType']) ||
-    request.resource.data.diff(resource.data).affectedKeys()
-    .hasOnly(['vipExpiresAt', 'vipProductId', 'vipUpdatedAt',
-              'user_is_vip', 'user_is_verified', 'user_level']);
+  /// ℹ️ Observação: Cloud Functions usando Admin SDK bypassam as rules.
+  /// Então NÃO precisamos liberar isso para o client (seria uma brecha).
+  allow update: if false;
   
   /// 🗑️ DELETAR perfil:
   allow delete: if isOwner(userId);

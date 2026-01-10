@@ -11,6 +11,7 @@ import 'package:partiu/features/conversations/state/conversations_viewmodel.dart
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/core/services/global_cache_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -104,6 +105,15 @@ class AppInitializerService {
           final userRepo = UserRepository();
           final currentUserData = await userRepo.getUserById(currentUserId);
           if (currentUserData != null) {
+            // ✅ Preload do nome no UserStore para evitar "pop" no HomeAppBar
+            final rawName = currentUserData['fullName'] ??
+                currentUserData['full_name'] ??
+                currentUserData['name'];
+            final fullName = rawName is String ? rawName : rawName?.toString();
+            if (fullName != null && fullName.trim().isNotEmpty) {
+              UserStore.instance.preloadName(currentUserId, fullName);
+            }
+
             // Avatar será carregado pelo StableAvatar usando o photoUrl
             debugPrint('✅ [AppInitializer] Avatar do usuário pré-carregado');
             debugPrint('   - Nome: ${currentUserData['full_name'] ?? 'N/A'}');

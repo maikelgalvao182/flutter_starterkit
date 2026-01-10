@@ -5,14 +5,24 @@ import 'package:partiu/screens/chat/models/reply_snapshot.dart';
 import 'package:partiu/screens/chat/widgets/image_lightbox.dart';
 import 'package:partiu/screens/chat/widgets/reply_bubble_widget.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
+import 'package:partiu/shared/stores/user_store.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
+import 'dart:convert';
 
 /// Componente de bolha de mensagem no estilo do Glimpse
 class GlimpseChatBubble extends StatelessWidget {
+
+  static final Map<String, Future<_LinkPreviewData?>> _linkPreviewCache = {};
 
   const GlimpseChatBubble({
     required this.message, required this.isUserSender, required this.time, super.key,
@@ -81,6 +91,406 @@ class GlimpseChatBubble extends StatelessWidget {
     return spans.isNotEmpty ? spans : [TextSpan(text: text, style: baseStyle)];
   }
 
+  String? _extractFirstUrl(String text) {
+    final urlPattern = RegExp(
+      r'(?:(?:https?:\/\/)|(?:www\.))[^\s<>()]+',
+      caseSensitive: false,
+    );
+    final match = urlPattern.firstMatch(text);
+    if (match == null) return null;
+    final raw = match.group(0)?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    return raw;
+  }
+
+  Uri? _toLaunchableUri(String rawUrl) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) return null;
+    final hasScheme = RegExp(r'^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/').hasMatch(trimmed);
+    final normalized = hasScheme ? trimmed : 'https://$trimmed';
+    return Uri.tryParse(normalized);
+  }
+
+  Future<_LinkPreviewData?> _fetchLinkPreview(Uri url) async {
+    try {
+      final applePreview = await _tryFetchAppleAppStorePreview(url);
+      if (applePreview != null) return applePreview;
+
+      final response = await http
+          .get(
+            url,
+            headers: const {
+              'User-Agent': 'Mozilla/5.0 (Mobile; Partiu) AppleWebKit/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+          )
+          .timeout(const Duration(seconds: 6));
+
+      if (response.statusCode < 200 || response.statusCode >= 400) return null;
+    final html = _decodeHtmlResponse(response);
+      if (html.isEmpty) return null;
+
+      String? metaContent(String propertyOrName) {
+        final escaped = RegExp.escape(propertyOrName);
+
+        final propertyRegex = RegExp(
+          '<meta[^>]+property=["\']$escaped["\'][^>]+content=["\']([^"\']+)["\'][^>]*>',
+          caseSensitive: false,
+        );
+        final nameRegex = RegExp(
+          '<meta[^>]+name=["\']$escaped["\'][^>]+content=["\']([^"\']+)["\'][^>]*>',
+          caseSensitive: false,
+        );
+
+        final propertyMatch = propertyRegex.firstMatch(html);
+        if (propertyMatch != null) return propertyMatch.group(1)?.trim();
+        final nameMatch = nameRegex.firstMatch(html);
+        return nameMatch?.group(1)?.trim();
+      }
+
+      String? title = metaContent('og:title') ?? metaContent('twitter:title');
+      String? description = metaContent('og:description') ?? metaContent('twitter:description');
+      String? image = metaContent('og:image') ?? metaContent('twitter:image');
+
+      if (title != null && title.isNotEmpty) {
+        title = _repairMojibake(_decodeHtmlEntities(title));
+      }
+      if (description != null && description.isNotEmpty) {
+        description = _repairMojibake(_decodeHtmlEntities(description));
+      }
+
+      if ((title == null || title.isEmpty)) {
+        final titleRegex = RegExp('<title[^>]*>([^<]+)<\\/title>', caseSensitive: false);
+        title = titleRegex.firstMatch(html)?.group(1)?.trim();
+        if (title != null && title.isNotEmpty) {
+          title = _repairMojibake(_decodeHtmlEntities(title));
+        }
+      }
+
+      Uri? resolvedImage;
+      final imageUri = image != null ? Uri.tryParse(image) : null;
+      if (imageUri != null) {
+        resolvedImage = imageUri.hasScheme ? imageUri : url.resolveUri(imageUri);
+      }
+
+      if ((title == null || title.isEmpty) &&
+          (description == null || description.isEmpty) &&
+          resolvedImage == null) {
+        return null;
+      }
+
+      return _LinkPreviewData(
+        url: url,
+        title: title,
+        description: description,
+        imageUrl: resolvedImage?.toString(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _decodeHtmlEntities(String input) {
+    var value = input;
+    value = value
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#34;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&#39;', "'")
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&nbsp;', ' ');
+
+    // Entidades numéricas: &#123; e &#x1F60A;
+    value = value.replaceAllMapped(RegExp(r'&#(\d+);'), (m) {
+      final code = int.tryParse(m.group(1) ?? '');
+      if (code == null) return m.group(0) ?? '';
+      return String.fromCharCode(code);
+    });
+    value = value.replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (m) {
+      final code = int.tryParse(m.group(1) ?? '', radix: 16);
+      if (code == null) return m.group(0) ?? '';
+      return String.fromCharCode(code);
+    });
+
+    return value;
+  }
+
+  String _repairMojibake(String value) {
+    final looksBroken = value.contains('Ã') ||
+        value.contains('Â') ||
+        value.contains('â€') ||
+        value.contains('â™') ||
+        value.contains('â€“') ||
+        value.contains('â€”');
+    if (!looksBroken) return value;
+
+    try {
+      return utf8.decode(latin1.encode(value), allowMalformed: true);
+    } catch (_) {
+      return value;
+    }
+  }
+
+  Future<_LinkPreviewData?> _tryFetchAppleAppStorePreview(Uri url) async {
+    final host = url.host.toLowerCase();
+    if (host != 'apps.apple.com') return null;
+
+    final parsed = _extractAppleAppIdAndCountry(url);
+    if (parsed == null) return null;
+
+    final (appId, country) = parsed;
+    final lookupUrl = Uri.parse('https://itunes.apple.com/lookup?id=$appId&country=$country');
+
+    try {
+      final res = await http
+          .get(
+            lookupUrl,
+            headers: const {
+              'User-Agent': 'Mozilla/5.0 (Mobile; Partiu) AppleWebKit/537.36',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 6));
+
+      if (res.statusCode < 200 || res.statusCode >= 400) return null;
+
+      final decoded = jsonDecode(utf8.decode(res.bodyBytes, allowMalformed: true));
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final results = decoded['results'];
+      if (results is! List || results.isEmpty) return null;
+      final first = results.first;
+      if (first is! Map) return null;
+
+      final trackName = (first['trackName'] as String?)?.trim();
+      final sellerName = (first['sellerName'] as String?)?.trim();
+      final artworkUrl = (first['artworkUrl512'] as String?)?.trim() ??
+          (first['artworkUrl100'] as String?)?.trim() ??
+          (first['artworkUrl60'] as String?)?.trim();
+      final trackViewUrl = (first['trackViewUrl'] as String?)?.trim();
+
+      final openUrl = Uri.tryParse(trackViewUrl ?? '') ?? url;
+
+      return _LinkPreviewData(
+        url: openUrl,
+        title: trackName,
+        description: sellerName,
+        imageUrl: artworkUrl,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  (String appId, String country)? _extractAppleAppIdAndCountry(Uri url) {
+    final idMatch = RegExp(r'\bid(\d+)\b', caseSensitive: false).firstMatch(url.path);
+    final appId = idMatch?.group(1);
+    if (appId == null || appId.isEmpty) return null;
+
+    // apps.apple.com/{country}/app/.../id123
+    String country = 'br';
+    if (url.pathSegments.isNotEmpty) {
+      final candidate = url.pathSegments.first.toLowerCase();
+      if (RegExp(r'^[a-z]{2}$').hasMatch(candidate)) {
+        country = candidate;
+      }
+    }
+
+    return (appId, country);
+  }
+
+  String _decodeHtmlResponse(http.Response response) {
+    try {
+      // ✅ Força decode UTF-8 (evita AppÂ / â€¦ em links comuns)
+      return utf8.decode(response.bodyBytes, allowMalformed: true);
+    } catch (_) {
+      return utf8.decode(response.bodyBytes, allowMalformed: true);
+    }
+  }
+
+  Future<_LinkPreviewData?> _getLinkPreview(Uri url) {
+    final key = url.toString();
+    if (kDebugMode) {
+      // Evita cache enganando durante hot reload.
+      _linkPreviewCache.remove(key);
+    }
+    return _linkPreviewCache.putIfAbsent(key, () => _fetchLinkPreview(url));
+  }
+
+  Future<void> _openUrl(Uri url) async {
+    if (!await canLaunchUrl(url)) return;
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _showMessageActionsSheet(
+    BuildContext context, {
+    required AppLocalizations i18n,
+    required String messageText,
+    required bool canReply,
+    required VoidCallback? onReply,
+  }) async {
+    final rootContext = context;
+    final resolvedText = messageText.trim();
+    final canCopy = resolvedText.isNotEmpty;
+
+    if (!canReply && !canCopy) return;
+
+    final replyLabel = i18n.translate('reply');
+    final copyLabel = i18n.translate('copy');
+    final copiedLabel = i18n.translate('copied');
+
+    await showCupertinoModalPopup<void>(
+      context: rootContext,
+      builder: (sheetContext) {
+        return CupertinoActionSheet(
+          actions: [
+            if (canReply)
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  onReply?.call();
+                },
+                child: Text(replyLabel.isNotEmpty ? replyLabel : 'Responder'),
+              ),
+            if (canCopy)
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  final navigator = Navigator.of(sheetContext);
+
+                  await Clipboard.setData(ClipboardData(text: resolvedText));
+
+                  if (!sheetContext.mounted || !rootContext.mounted) return;
+                  navigator.pop();
+
+                  ToastService.showInfo(
+                    message: copiedLabel.isNotEmpty ? copiedLabel : 'Copiado',
+                    duration: const Duration(seconds: 2),
+                  );
+                },
+                child: Text(copyLabel.isNotEmpty ? copyLabel : 'Copiar'),
+              ),
+          ],
+          // Sem botão "Cancelar" (pedido do usuário). Dismiss ao tocar fora.
+          cancelButton: null,
+        );
+      },
+    );
+  }
+
+  Widget _buildLinkPreviewCard(BuildContext context, Uri url) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final titleStyle = GoogleFonts.getFont(
+      FONT_PLUS_JAKARTA_SANS,
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      color: isDarkMode
+          ? (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white)
+          : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black),
+    );
+    final descStyle = GoogleFonts.getFont(
+      FONT_PLUS_JAKARTA_SANS,
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      color: GlimpseColors.textSubTitle,
+    );
+    final urlStyle = GoogleFonts.getFont(
+      FONT_PLUS_JAKARTA_SANS,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: GlimpseColors.textHint,
+    );
+
+    return FutureBuilder<_LinkPreviewData?>(
+      future: _getLinkPreview(url),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        if (data == null) return const SizedBox.shrink();
+
+        final hasImage = (data.imageUrl ?? '').trim().isNotEmpty;
+        final resolvedTitle = (data.title ?? '').trim();
+        final resolvedDesc = (data.description ?? '').trim();
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _openUrl(data.url),
+            child: Container(
+              decoration: BoxDecoration(
+                color: GlimpseColors.bgColorLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasImage)
+                    SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: CachedNetworkImage(
+                        imageUrl: data.imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, _) => Container(
+                          color: GlimpseColors.bgColorLight,
+                          child: Center(
+                            child: CupertinoActivityIndicator(
+                              radius: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, _, __) => Container(
+                          color: GlimpseColors.bgColorLight,
+                          child: Center(
+                            child: Icon(Icons.link, color: Colors.grey[600], size: 28),
+                          ),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (resolvedTitle.isNotEmpty)
+                          Text(
+                            resolvedTitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: titleStyle,
+                          ),
+                        if (resolvedTitle.isNotEmpty && resolvedDesc.isNotEmpty)
+                          const SizedBox(height: 6),
+                        if (resolvedDesc.isNotEmpty)
+                          Text(
+                            resolvedDesc,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: descStyle,
+                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          data.url.host.isNotEmpty ? data.url.host : data.url.toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: urlStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSenderName(BuildContext context) {
     if (isUserSender) return const SizedBox.shrink();
 
@@ -91,26 +501,51 @@ class GlimpseChatBubble extends StatelessWidget {
       color: GlimpseColors.textSubTitle,
     );
 
-    if (fullName != null && fullName!.isNotEmpty) {
-      return Text(fullName!, style: style);
+    final resolvedFullName = fullName?.trim() ?? '';
+    if (resolvedFullName.isNotEmpty && !_isPlaceholderName(resolvedFullName)) {
+      return Text(resolvedFullName, style: style);
     }
 
-    if (senderId != null && senderId!.isNotEmpty) {
-      return FutureBuilder<Map<String, dynamic>?>(
-        future: UserRepository().getUserById(senderId!),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
-            final name = snapshot.data!['fullName'] as String? ?? '';
-            if (name.isNotEmpty) {
-              return Text(name, style: style);
-            }
+    final resolvedSenderId = senderId?.trim() ?? '';
+    if (resolvedSenderId.isNotEmpty) {
+      final notifier = UserStore.instance.getNameNotifier(resolvedSenderId);
+      return ValueListenableBuilder<String?>(
+        valueListenable: notifier,
+        builder: (context, name, _) {
+          final resolvedName = name?.trim() ?? '';
+          if (resolvedName.isEmpty) {
+            // Fallback raro: tenta query direta apenas se ainda não temos nada.
+            return FutureBuilder<Map<String, dynamic>?>(
+              future: UserRepository().getUserById(resolvedSenderId),
+              builder: (context, snapshot) {
+                final data = snapshot.data;
+                final fetched = (data?['fullName'] as String?)?.trim() ??
+                    (data?['fullname'] as String?)?.trim() ??
+                    '';
+                if (fetched.isEmpty) return const SizedBox.shrink();
+                return Text(fetched, style: style);
+              },
+            );
           }
-          return const SizedBox.shrink();
+
+          if (_isPlaceholderName(resolvedName)) {
+            return const SizedBox.shrink();
+          }
+
+          return Text(resolvedName, style: style);
         },
       );
     }
     
     return const SizedBox.shrink();
+  }
+
+  bool _isPlaceholderName(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'unknown user' ||
+        normalized == 'unknow user' ||
+        normalized == 'usuário' ||
+        normalized == 'usuario';
   }
 
   @override
@@ -153,6 +588,21 @@ class GlimpseChatBubble extends StatelessWidget {
         ? Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black
         : Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
     
+    final rawUrlInMessage = _extractFirstUrl(displayMessage);
+    final launchableUri = rawUrlInMessage != null ? _toLaunchableUri(rawUrlInMessage) : null;
+    final hasLinkPreview = !isSystem && (imageUrl == null || imageUrl!.isEmpty) && launchableUri != null;
+
+    final isLinkMessage = launchableUri != null;
+    final messageStyle = GoogleFonts.getFont(
+      FONT_PLUS_JAKARTA_SANS,
+      fontSize: isSystem ? 13 : 16,
+      fontWeight: isSystem
+          ? FontWeight.w600
+          : (isLinkMessage ? FontWeight.w700 : FontWeight.w400),
+      letterSpacing: isSystem ? 0.2 : 0.0,
+      color: isLinkMessage ? GlimpseColors.primaryDarker : textColor,
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
@@ -199,7 +649,17 @@ class GlimpseChatBubble extends StatelessWidget {
                   ),
                 // Bolha de mensagem com long press para reply
                 GestureDetector(
-                  onLongPress: isSystem ? null : onLongPress, // 🆕 Long press para reply (não para system messages)
+                  onLongPress: isSystem
+                      ? null
+                      : () {
+                          _showMessageActionsSheet(
+                            context,
+                            i18n: i18n,
+                            messageText: displayMessage,
+                            canReply: onLongPress != null,
+                            onReply: onLongPress,
+                          );
+                        },
                   onTap: (imageUrl != null && imageUrl!.isNotEmpty)
                       ? () {
                           Navigator.of(context).push(
@@ -322,20 +782,24 @@ class GlimpseChatBubble extends StatelessWidget {
                           ),
                         )
                       else
-                        Text.rich(
-                          TextSpan(
-                            children: _parseMarkdown(
-                              displayMessage,
-                              GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
-                                fontSize: isSystem ? 13 : 16,
-                                fontWeight:
-                                    isSystem ? FontWeight.w600 : FontWeight.w400,
-                                letterSpacing: isSystem ? 0.2 : 0.0,
-                                color: textColor,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap: (launchableUri != null) ? () => _openUrl(launchableUri) : null,
+                              child: Text.rich(
+                                TextSpan(
+                                  children: _parseMarkdown(
+                                    displayMessage,
+                                    messageStyle,
+                                  ),
+                                ),
+                                textAlign: isSystem ? TextAlign.center : TextAlign.left,
                               ),
                             ),
-                          ),
-                          textAlign: isSystem ? TextAlign.center : TextAlign.left,
+                            if (hasLinkPreview) _buildLinkPreviewCard(context, launchableUri),
+                          ],
                         ),
                     ],
                   ),
@@ -364,4 +828,18 @@ class GlimpseChatBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LinkPreviewData {
+  const _LinkPreviewData({
+    required this.url,
+    this.title,
+    this.description,
+    this.imageUrl,
+  });
+
+  final Uri url;
+  final String? title;
+  final String? description;
+  final String? imageUrl;
 }

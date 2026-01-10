@@ -77,10 +77,13 @@ class ConversationNavigationService {
     debugPrint('   - data keys: ${data.keys.toList()}');
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // Para chats de eventos, os dados já vêm corretos do backend
-    // Backend salva como: fullname (activityText) e photoUrl (emoji)
-    final userName = data['fullname'] ?? 'Unknown User';
-    final userPhoto = data['photoUrl'] ?? '';
+    // Para chats de eventos, o backend costuma salvar como: fullname (activityText) e photoUrl (emoji)
+    // Para chats 1:1, podemos receber fullName (padrão Users).
+    final rawName = data['fullName'] ?? data['fullname'] ?? data['full_name'] ?? data['name'];
+    final userName = (rawName is String) ? rawName.trim() : '';
+
+    final rawPhoto = data['photoUrl'] ?? data['photo_url'] ?? data['avatarUrl'] ?? data['avatar_url'];
+    final userPhoto = (rawPhoto is String) ? rawPhoto : '';
     
     debugPrint('✅ User criado: userName="$userName", userPhoto="$userPhoto"');
     

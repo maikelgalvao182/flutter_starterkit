@@ -34,6 +34,38 @@ class ConversationDataProcessor {
   static const int _maxMessageLength = 30;
   static const int _truncateLength = 30;
 
+  static bool _isPlaceholderName(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized.isEmpty ||
+        normalized == 'unknown user' ||
+        normalized == 'unknow user' ||
+        normalized == 'usuário' ||
+        normalized == 'usuario';
+  }
+
+  static String _cleanDisplayName(dynamic value) {
+    if (value == null) return '';
+    final text = value.toString().trim();
+    if (_isPlaceholderName(text)) return '';
+    return text;
+  }
+
+  static String _extractFullNameRaw(Map<String, dynamic> data) {
+    final candidates = <dynamic>[
+      data['activityText'],
+      data['fullname'],
+      data['other_user_name'],
+      data['otherUserName'],
+      data['user_name'],
+    ];
+
+    for (final candidate in candidates) {
+      final cleaned = _cleanDisplayName(candidate);
+      if (cleaned.isNotEmpty) return cleaned;
+    }
+    return '';
+  }
+
   /// Extract photo URL from conversation data with fallback chain
   static String extractPhotoUrl(Map<String, dynamic> data) {
     // Only use photoUrl field
@@ -220,14 +252,7 @@ class ConversationDataProcessor {
     required bool isVipEffective,
     required AppLocalizations i18n,
   }) async {
-    final fullNameRaw = (data['activityText'] ??
-            data['fullname'] ??
-            data['other_user_name'] ??
-            data['otherUserName'] ??
-            data['user_name'] ??
-            '')
-        .toString()
-        .trim();
+    final fullNameRaw = _extractFullNameRaw(data);
     final photoUrl = extractPhotoUrl(data);
     // Para eventos, usar event_id. Para conversas normais, user_id
     final isEventChat = data['is_event_chat'] == true || data['event_id'] != null;
@@ -306,14 +331,7 @@ class ConversationDataProcessor {
     required bool isVipEffective,
     required AppLocalizations i18n,
   }) {
-    final fullNameRaw = (data['activityText'] ??
-            data['fullname'] ??
-            data['other_user_name'] ??
-            data['otherUserName'] ??
-            data['user_name'] ??
-            '')
-        .toString()
-        .trim();
+    final fullNameRaw = _extractFullNameRaw(data);
     final photoUrl = extractPhotoUrl(data);
     // Para eventos, usar event_id. Para conversas normais, user_id
     final isEventChat = data['is_event_chat'] == true || data['event_id'] != null;

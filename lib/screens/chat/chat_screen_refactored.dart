@@ -12,7 +12,6 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/chat/components/glimpse_chat_input.dart';
 import 'package:partiu/screens/chat/models/message.dart';
 import 'package:partiu/screens/chat/models/reply_snapshot.dart';
-import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 import 'package:partiu/shared/widgets/image_source_bottom_sheet.dart';
 import 'package:partiu/screens/chat/services/application_removal_service.dart';
 import 'package:partiu/screens/chat/services/chat_service.dart';
@@ -21,9 +20,6 @@ import 'package:partiu/screens/chat/widgets/chat_app_bar_widget.dart';
 import 'package:partiu/screens/chat/widgets/confirm_presence_widget.dart';
 import 'package:partiu/screens/chat/widgets/dummy_presence_header.dart';
 import 'package:partiu/screens/chat/widgets/message_list_widget.dart';
-import 'package:partiu/screens/chat/widgets/user_presence_status_widget.dart';
-import 'package:partiu/features/conversations/utils/conversation_styles.dart';
-import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:partiu/features/notifications/services/push_notification_manager.dart';
@@ -80,15 +76,6 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
     }
   }
 
-  void _confirmDeleteChat() {
-    _chatService.confirmDeleteChat(
-      context: context,
-      userId: widget.user.userId,
-      i18n: _i18n,
-      progressDialog: _pr,
-    );
-  }
-
   /// Get image from camera / gallery
   Future<void> _getImage() async {
     try {
@@ -117,35 +104,26 @@ class ChatScreenRefactoredState extends State<ChatScreenRefactored>
 
   // 🆕 Método para iniciar reply após long press
   Future<void> _handleReplyMessage(Message message) async {
-    // Mostrar dialog de confirmação usando GlimpseCupertinoDialog
-    final confirmed = await GlimpseCupertinoDialog.show(
-      context: context,
-      title: _i18n.translate('reply_message'),
-      message: _i18n.translate('do_you_want_to_reply_to_this_message'),
-      confirmText: _i18n.translate('reply'),
-      cancelText: _i18n.translate('cancel'),
-    );
-    
-    if (confirmed == true && mounted) {
-      // Criar snapshot com nome do sender
-      final senderName = message.senderId == AppState.currentUserId
-          ? _i18n.translate('you')
-          : (widget.user.fullName ?? 'Usuário');
-      
-      setState(() {
-        _replySnapshot = ReplySnapshot(
-          messageId: message.id,
-          senderId: message.senderId ?? '',
-          senderName: senderName,
-          text: message.text,
-          imageUrl: message.imageUrl,
-          type: message.type,
-        );
-      });
-      
-      // Haptic feedback
-      HapticFeedback.mediumImpact();
-    }
+    if (!mounted) return;
+
+    // Inicia reply direto (sem abrir um segundo Cupertino).
+    final remoteName = widget.user.fullName.trim();
+    final senderName = message.senderId == AppState.currentUserId
+      ? _i18n.translate('you')
+      : (remoteName.isNotEmpty ? remoteName : 'Usuário');
+
+    setState(() {
+      _replySnapshot = ReplySnapshot(
+        messageId: message.id,
+        senderId: message.senderId ?? '',
+        senderName: senderName,
+        text: message.text,
+        imageUrl: message.imageUrl,
+        type: message.type,
+      );
+    });
+
+    HapticFeedback.mediumImpact();
   }
   
   // 🆕 Método para cancelar reply

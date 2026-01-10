@@ -62,7 +62,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
     try {
       // Carregar API key do Firebase
       final configService = GoogleMapsConfigService();
-      _apiKey = await configService.getGoogleMapsApiKey();
+      _apiKey = await configService.getGooglePlacesApiKey();
 
       _controller = LocationPickerController(
         placeService: PlaceService(apiKey: _apiKey),
@@ -290,6 +290,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
     _clearOverlay();
 
     final searchBarBox = _searchBarKey.currentContext?.findRenderObject() as RenderBox?;
+    if (searchBarBox == null) return;
     final searchBarPosition = searchBarBox?.localToGlobal(Offset.zero);
     final top = (searchBarPosition?.dy ?? 0) + (searchBarBox?.size.height ?? 0) + 8;
 
@@ -300,7 +301,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
       ),
     );
 
-    Overlay.of(context).insert(_overlayEntry!);
+    Overlay.of(context, rootOverlay: true).insert(_overlayEntry!);
   }
 
   /// Mostra overlay com sugestões
@@ -308,6 +309,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
     _clearOverlay();
 
     final searchBarBox = _searchBarKey.currentContext?.findRenderObject() as RenderBox?;
+    if (searchBarBox == null) return;
     final searchBarPosition = searchBarBox?.localToGlobal(Offset.zero);
     final top = (searchBarPosition?.dy ?? 0) + (searchBarBox?.size.height ?? 0) + 8;
 
@@ -323,7 +325,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
       ),
     );
 
-    Overlay.of(context).insert(_overlayEntry!);
+    Overlay.of(context, rootOverlay: true).insert(_overlayEntry!);
   }
 
   /// Remove overlay
@@ -381,25 +383,27 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
             left: 16,
             right: 16,
             child: Column(
-              key: _searchBarKey,
               children: [
                 // Barra de busca
-                LocationSearchBar(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  onChanged: _onSearchChanged,
-                  onBack: () => Navigator.of(context).pop({'action': 'back'}), // Volta para ScheduleDrawer
-                  onClose: () {
-                    // Limpar o campo de busca e resetar seleção
-                    _isUpdatingSearchText = true; // Evitar que onChange seja disparado durante clear
-                    _searchController.clear();
-                    _isUpdatingSearchText = false;
-                    _clearOverlay();
-                    _controller.clearSearch(); // Limpa _previousSearchTerm para permitir nova busca
-                    _controller.unlockLocation(); // Isso limpa isLocationConfirmed e permite nova busca
-                    _controller.clearPhotos(); // Limpa as fotos do carousel
-                    FocusScope.of(context).unfocus();
-                  },
+                KeyedSubtree(
+                  key: _searchBarKey,
+                  child: LocationSearchBar(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchChanged,
+                    onBack: () => Navigator.of(context).pop({'action': 'back'}), // Volta para ScheduleDrawer
+                    onClose: () {
+                      // Limpar o campo de busca e resetar seleção
+                      _isUpdatingSearchText = true; // Evitar que onChange seja disparado durante clear
+                      _searchController.clear();
+                      _isUpdatingSearchText = false;
+                      _clearOverlay();
+                      _controller.clearSearch(); // Limpa _previousSearchTerm para permitir nova busca
+                      _controller.unlockLocation(); // Isso limpa isLocationConfirmed e permite nova busca
+                      _controller.clearPhotos(); // Limpa as fotos do carousel
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
                 ),
 
                 const SizedBox(height: 12),

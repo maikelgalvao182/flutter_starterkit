@@ -53,6 +53,17 @@ class _UserCardState extends State<UserCard> {
   UserCardController? _controller;
   bool _needsRatingFromController = false;
 
+  String? _formatDistanceText(double? rawDistance) {
+    if (rawDistance == null || !rawDistance.isFinite || rawDistance < 0) {
+      return null;
+    }
+
+    // Heurística: em alguns fluxos o valor vem em METROS (ex.: Geolocator.distanceBetween)
+    // mas a UI do card sempre assume KM. Se vier muito grande, converte para km.
+    final distanceKm = rawDistance >= 1000 ? (rawDistance / 1000.0) : rawDistance;
+    return '${distanceKm.toStringAsFixed(1)} km';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -175,13 +186,17 @@ class _UserCardState extends State<UserCard> {
     double? overallRating,
     DateTime? visitedAt,
   }) {
-    final distanceText = distanceKm != null 
-        ? '${distanceKm.toStringAsFixed(1)} km' 
-        : null;
+    final distanceText = _formatDistanceText(distanceKm);
+    final locationText = from.trim().isEmpty
+        ? ''
+        : from
+            .trim()
+            // Normaliza separadores comuns para usar vírgula ("Cidade, UF")
+            .replaceAll(RegExp(r'\s*-\s*'), ', ');
 
     // Process common interests
-    String commonInterestsText = '0 matchs';
-    String commonInterestsEmojis = '';
+    String commonInterestsText = '0 matchs ';
+    String commonInterestsEmojis = '🔍';
     if (commonInterests.isNotEmpty) {
       final count = commonInterests.length;
       final emojis = commonInterests
@@ -195,6 +210,7 @@ class _UserCardState extends State<UserCard> {
         commonInterestsEmojis = emojis;
       } else {
         commonInterestsText = '$count matchs';
+        commonInterestsEmojis = '';
       }
     }
 
@@ -260,52 +276,28 @@ class _UserCardState extends State<UserCard> {
                     ],
                   ),
 
-                  // Interesses em comum + Distância + Trailing na mesma linha
-                  if (commonInterestsText.isNotEmpty || distanceText != null || widget.trailingWidget != null) ...[
+                  // Locality/State (esquerda) + Distância (direita)
+                  if (locationText.isNotEmpty || distanceText != null || widget.trailingWidget != null) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        // Interesses em comum
-                        if (commonInterestsText.isNotEmpty)
+                        if (locationText.isNotEmpty)
                           Expanded(
-                            child: commonInterestsEmojis.isEmpty
-                                ? Text(
-                                    commonInterestsText,
-                                    style: GoogleFonts.getFont(
-                                      FONT_PLUS_JAKARTA_SANS,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: GlimpseColors.textSubTitle,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: commonInterestsText,
-                                          style: GoogleFonts.getFont(
-                                            FONT_PLUS_JAKARTA_SANS,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: GlimpseColors.textSubTitle,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: commonInterestsEmojis,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                          ),
-                        
-                        // Distância alinhada à direita
+                            child: Text(
+                              locationText,
+                              style: GoogleFonts.getFont(
+                                FONT_PLUS_JAKARTA_SANS,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: GlimpseColors.textSubTitle,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )
+                        else
+                          const Spacer(),
+
                         if (distanceText != null)
                           Text(
                             distanceText,
@@ -316,14 +308,52 @@ class _UserCardState extends State<UserCard> {
                               color: GlimpseColors.textSubTitle,
                             ),
                           ),
-                        
-                        // Trailing widget na mesma linha (direita)
+
                         if (widget.trailingWidget != null) ...[
                           const SizedBox(width: 8),
                           widget.trailingWidget!,
                         ],
                       ],
                     ),
+                  ],
+
+                  // Interesses em comum (linha de baixo)
+                  if (commonInterestsText.isNotEmpty) ...[
+                    commonInterestsEmojis.isEmpty
+                        ? Text(
+                            commonInterestsText,
+                            style: GoogleFonts.getFont(
+                              FONT_PLUS_JAKARTA_SANS,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: GlimpseColors.textSubTitle,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: commonInterestsText,
+                                  style: GoogleFonts.getFont(
+                                    FONT_PLUS_JAKARTA_SANS,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: GlimpseColors.textSubTitle,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: commonInterestsEmojis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                   ],
                 ],
               ),

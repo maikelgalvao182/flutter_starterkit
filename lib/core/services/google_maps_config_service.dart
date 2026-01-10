@@ -18,7 +18,40 @@ class GoogleMapsConfigService {
   // Cache das chaves
   String? _androidMapsKey;
   String? _iosMapsKey;
+  String? _placesWebServiceKey;
   bool _isInitialized = false;
+
+  String? _extractApiKeyFromData(Map<String, dynamic>? data) {
+    if (data == null) return null;
+
+    final candidates = <String?>[
+      (data['Api_key'] as String?)?.trim(),
+      (data['api_key'] as String?)?.trim(),
+      (data['API_KEY'] as String?)?.trim(),
+      (data['key'] as String?)?.trim(),
+    ];
+
+    for (final value in candidates) {
+      if (value != null && value.isNotEmpty) return value;
+    }
+
+    return null;
+  }
+
+  Future<String?> _tryLoadKeyFromDoc(String docId) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection(C_APP_INFO).doc(docId).get();
+      if (!doc.exists) return null;
+      final data = doc.data();
+      return _extractApiKeyFromData(data);
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        print('⚠️ [GoogleMapsConfig] Sem permissão para ler AppInfo/$docId (ok).');
+        return null;
+      }
+      rethrow;
+    }
+  }
 
   /// Inicializa e carrega as chaves do Firebase
   Future<void> initialize() async {
@@ -28,69 +61,91 @@ class GoogleMapsConfigService {
       print('🔑 [GoogleMapsConfig] Carregando API Keys do Firebase...');
       
       // Buscar chave Android do documento GoogleAndroidMaps
-      final androidDoc = await FirebaseFirestore.instance
-          .collection(C_APP_INFO)
-          .doc('GoogleAndroidMaps')
-          .get();
+      try {
+        final androidDoc = await FirebaseFirestore.instance
+            .collection(C_APP_INFO)
+            .doc('GoogleAndroidMaps')
+            .get();
 
-      print('🔑 [GoogleMapsConfig] AndroidDoc exists: ${androidDoc.exists}');
-      if (androidDoc.exists) {
-        final data = androidDoc.data();
-        print('🔑 [GoogleMapsConfig] AndroidDoc data keys: ${data?.keys}');
-        print('🔑 [GoogleMapsConfig] AndroidDoc full data: $data');
-        // Tenta buscar com diferentes variações do nome do campo
-        // Prioriza Api_key (formato usado no Firebase)
-        String? key = (data?['Api_key'] as String?)?.trim();
-        if (key == null || key.isEmpty) {
-          key = (data?['api_key'] as String?)?.trim();
-        }
-        if (key == null || key.isEmpty) {
-          key = (data?['API_KEY'] as String?)?.trim();
-        }
-        _androidMapsKey = (key != null && key.isNotEmpty) ? key : null;
-        
-        final androidPreview = _androidMapsKey != null && _androidMapsKey!.length > 10 ? _androidMapsKey!.substring(0, 10) : _androidMapsKey;
-        print('🔑 [GoogleMapsConfig] Android key loaded: ${_androidMapsKey != null ? "✅ ($androidPreview...)" : "❌ null"}');
-        if (_androidMapsKey != null) {
-          print('🔑 [GoogleMapsConfig] Android key length: ${_androidMapsKey!.length}');
+        print('🔑 [GoogleMapsConfig] AndroidDoc exists: ${androidDoc.exists}');
+        if (androidDoc.exists) {
+          final data = androidDoc.data();
+          print('🔑 [GoogleMapsConfig] AndroidDoc data keys: ${data?.keys}');
+          print('🔑 [GoogleMapsConfig] AndroidDoc full data: $data');
+          _androidMapsKey = _extractApiKeyFromData(data);
         } else {
-          print('❌ [GoogleMapsConfig] Android key não encontrada. Campos disponíveis: ${data?.keys.join(", ")}');
+          print('❌ [GoogleMapsConfig] AndroidDoc NOT FOUND! Path: AppInfo/GoogleAndroidMaps');
         }
-      } else {
-        print('❌ [GoogleMapsConfig] AndroidDoc NOT FOUND! Path: AppInfo/GoogleAndroidMaps');
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          print('⚠️ [GoogleMapsConfig] Sem permissão para ler AppInfo/GoogleAndroidMaps (antes do login). Vai usar fallback nativo.');
+        } else {
+          rethrow;
+        }
       }
+
+      // Fallback: ler do AndroidManifest via MethodChannel
+      if (Platform.isAndroid && (_androidMapsKey == null || _androidMapsKey!.isEmpty)) {
+        try {
+          final key = await _androidChannel.invokeMethod<String>('getManifestApiKey');
+          _androidMapsKey = (key != null && key.trim().isNotEmpty) ? key.trim() : null;
+        } catch (e) {
+          print('⚠️ [GoogleMapsConfig] Falha ao obter API key do AndroidManifest via channel: $e');
+        }
+      }
+
+      final androidPreview = _androidMapsKey != null && _androidMapsKey!.length > 10
+          ? _androidMapsKey!.substring(0, 10)
+          : _androidMapsKey;
+      print('🔑 [GoogleMapsConfig] Android key loaded: ${_androidMapsKey != null ? "✅ ($androidPreview...)" : "❌ null"}');
 
       // Buscar chave iOS do documento GoogleMapsApiKey
-      final iosDoc = await FirebaseFirestore.instance
-          .collection(C_APP_INFO)
-          .doc('GoogleMapsApiKey')
-          .get();
+      try {
+        final iosDoc = await FirebaseFirestore.instance
+            .collection(C_APP_INFO)
+            .doc('GoogleMapsApiKey')
+            .get();
 
-      print('🔑 [GoogleMapsConfig] iOSDoc exists: ${iosDoc.exists}');
-      if (iosDoc.exists) {
-        final data = iosDoc.data();
-        print('🔑 [GoogleMapsConfig] iOSDoc data keys: ${data?.keys}');
-        print('🔑 [GoogleMapsConfig] iOSDoc full data: $data');
-        // Tenta buscar com diferentes variações do nome do campo
-        _iosMapsKey = (data?['api_key'] as String?)?.trim() ?? 
-                     (data?['Api_key'] as String?)?.trim() ??
-                     (data?['API_KEY'] as String?)?.trim();
-        final iosPreview = _iosMapsKey != null && _iosMapsKey!.length > 10 ? _iosMapsKey!.substring(0, 10) : _iosMapsKey;
-        print('🔑 [GoogleMapsConfig] iOS key loaded: ${_iosMapsKey != null ? "✅ ($iosPreview...)" : "❌ null"}');
-        if (_iosMapsKey != null) {
-          print('🔑 [GoogleMapsConfig] iOS key length: ${_iosMapsKey!.length}');
+        print('🔑 [GoogleMapsConfig] iOSDoc exists: ${iosDoc.exists}');
+        if (iosDoc.exists) {
+          final data = iosDoc.data();
+          print('🔑 [GoogleMapsConfig] iOSDoc data keys: ${data?.keys}');
+          print('🔑 [GoogleMapsConfig] iOSDoc full data: $data');
+          _iosMapsKey = _extractApiKeyFromData(data);
         } else {
-          print('❌ [GoogleMapsConfig] iOS key não encontrada. Campos disponíveis: ${data?.keys.join(", ")}');
+          print('❌ [GoogleMapsConfig] iOSDoc NOT FOUND! Path: AppInfo/GoogleMapsApiKey');
         }
-      } else {
-        print('❌ [GoogleMapsConfig] iOSDoc NOT FOUND! Path: AppInfo/GoogleMapsApiKey');
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          print('⚠️ [GoogleMapsConfig] Sem permissão para ler AppInfo/GoogleMapsApiKey (antes do login).');
+        } else {
+          rethrow;
+        }
       }
+
+      final iosPreview = _iosMapsKey != null && _iosMapsKey!.length > 10
+          ? _iosMapsKey!.substring(0, 10)
+          : _iosMapsKey;
+      print('🔑 [GoogleMapsConfig] iOS key loaded: ${_iosMapsKey != null ? "✅ ($iosPreview...)" : "⚠️ null"}');
 
       _isInitialized = true;
 
+        // Buscar chave do Places Web Service (mesma para iOS/Android)
+        // Observação: para chamadas HTTP do Places API, uma chave restrita por app (Android/iOS) costuma falhar.
+        // Tentamos nomes comuns de documento para não quebrar installs existentes.
+        _placesWebServiceKey ??= await _tryLoadKeyFromDoc('GooglePlacesApiKey');
+        _placesWebServiceKey ??= await _tryLoadKeyFromDoc('GooglePlacesWebService');
+        _placesWebServiceKey ??= await _tryLoadKeyFromDoc('GooglePlacesWebServiceKey');
+        _placesWebServiceKey ??= await _tryLoadKeyFromDoc('GooglePlaces');
+
+        final placesPreview = _placesWebServiceKey != null && _placesWebServiceKey!.length > 10
+          ? _placesWebServiceKey!.substring(0, 10)
+          : _placesWebServiceKey;
+        print('🔑 [GoogleMapsConfig] Places WebService key loaded: ${_placesWebServiceKey != null ? "✅ ($placesPreview...)" : "⚠️ null (vai usar fallback)"}');
+
       if (_androidMapsKey == null && _iosMapsKey == null) {
-        print('❌ [GoogleMapsConfig] Nenhuma chave encontrada no Firebase!');
-        throw Exception('Google Maps API keys not found in Firebase AppInfo collection');
+        // Não falhar aqui: Android pode estar configurado via AndroidManifest e iOS via AppDelegate.
+        print('⚠️ [GoogleMapsConfig] Nenhuma chave carregada do Firebase (ok se chaves estiverem no nativo).');
       }
       
       // Configurar as API keys nativas após carregar do Firebase
@@ -143,11 +198,16 @@ class GoogleMapsConfigService {
   }
 
   /// Retorna a Google Places API Key (HTTP Web Service)
-  /// Usa a chave apropriada para cada plataforma:
-  /// - iOS: GoogleMapsApiKey (restrita por bundle ID)
-  /// - Android: GoogleAndroidMaps (restrita por package name)
+  /// Preferencialmente usa uma chave dedicada ao Places Web Service (sem restrição por app).
+  /// Se não existir no Firebase, faz fallback para a chave do Maps da plataforma (pode falhar no Android).
   Future<String> getGooglePlacesApiKey() async {
-    // Reutiliza a mesma lógica de getGoogleMapsApiKey
+    await initialize();
+
+    if (_placesWebServiceKey != null && _placesWebServiceKey!.isNotEmpty) {
+      return _placesWebServiceKey!;
+    }
+
+    print('⚠️ [GoogleMapsConfig] Places WebService key ausente. Fazendo fallback para Maps key (pode causar REQUEST_DENIED no Places HTTP).');
     return getGoogleMapsApiKey();
   }
 

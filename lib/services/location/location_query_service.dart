@@ -1,13 +1,13 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:partiu/features/subscription/services/vip_access_service.dart';
-import 'package:partiu/services/location/advanced_filters_controller.dart';
 import 'package:partiu/services/location/geo_utils.dart';
 import 'package:partiu/services/location/distance_isolate.dart';
 import 'package:partiu/services/location/location_stream_controller.dart';
 import 'package:partiu/services/location/people_cloud_service.dart';
+import 'package:partiu/core/constants/constants.dart';
 
 /// Serviço principal para queries de localização com filtro de raio
 /// 
@@ -142,7 +142,8 @@ class LocationQueryService {
       debugPrint('📍 LocationQueryService: User Location: ${userLocation.latitude}, ${userLocation.longitude}');
 
       // 2. Obter raio (prioridade: customRadiusKm → filters.radiusKm → Firestore)
-      final radiusKm = customRadiusKm ?? activeFilters.radiusKm ?? await _getUserRadius();
+      final radiusKmRaw = customRadiusKm ?? activeFilters.radiusKm ?? await _getUserRadius();
+      final radiusKm = _normalizeRadiusKm(radiusKmRaw);
       debugPrint('🔍 getUsersWithinRadiusOnce: radiusKm FINAL = $radiusKm (custom=$customRadiusKm, filters=${activeFilters.radiusKm})');
       debugPrint('📍 LocationQueryService: Radius: ${radiusKm}km');
 
@@ -222,6 +223,59 @@ class LocationQueryService {
       debugPrint('❌ LocationQueryService: StackTrace: $stackTrace');
       rethrow; // Propaga o erro para o controller tratar
     }
+  }
+
+  /// Busca usuários dentro de um bounding box (região visível do mapa).
+  ///
+  /// Diferença vs. getUsersWithinRadiusOnce:
+  /// - Não calcula bounding box a partir do raio: o caller já fornece o bounds.
+  /// - Calcula um radiusKm grande o suficiente para NÃO filtrar fora do bounds,
+  ///   porque o filtro principal é o bounding box.
+  /// - Mantém o cálculo de distância relativo ao usuário (para exibição no card).
+  Future<List<UserWithDistance>> getUsersWithinBoundsOnce({
+    required Map<String, double> boundingBox,
+    UserFilterOptions? filters,
+  }) async {
+    final activeFilters = filters ?? _currentFilters;
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (currentUserId == null) {
+      debugPrint('❌ LocationQueryService: Usuário não autenticado (bounds)');
+      return [];
+    }
+
+    // 1. Carregar localização do usuário (para distância no card)
+    final userLocation = await _getUserLocation();
+
+    // 2. Calcular um raio suficiente para cobrir o bounds a partir da localização do usuário
+    final radiusKm = _radiusKmToCoverBoundingBox(
+      centerLat: userLocation.latitude,
+      centerLng: userLocation.longitude,
+      boundingBox: boundingBox,
+    );
+
+    // 3. Chamar Cloud Function com o bounding box fornecido
+    final result = await _cloudService.getPeopleNearby(
+      userLatitude: userLocation.latitude,
+      userLongitude: userLocation.longitude,
+      radiusKm: radiusKm,
+      boundingBox: boundingBox,
+      filters: UserCloudFilters(
+        gender: activeFilters.gender,
+        minAge: activeFilters.minAge,
+        maxAge: activeFilters.maxAge,
+        isVerified: activeFilters.isVerified,
+        interests: activeFilters.interests,
+        sexualOrientation: activeFilters.sexualOrientation,
+      ),
+    );
+
+    final finalUsers = result.users;
+
+    // Cloud Function já ordena por VIP e rating. Distância só como desempate.
+    finalUsers.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+    return finalUsers;
   }
 
   /// Busca usuários dentro do raio - versão stream (atualização automática)
@@ -311,14 +365,64 @@ class LocationQueryService {
           .get();
 
       if (userDoc.exists && userDoc.data() != null) {
-        final radiusKm = userDoc.data()!['radiusKm'] as double?;
-        return radiusKm ?? 25.0;
+        final data = userDoc.data()!;
+
+        // Fonte preferida: advancedSettings.radiusKm (padrão atual do app)
+        final settings = data['advancedSettings'] as Map<String, dynamic>?;
+        final fromSettings = settings?['radiusKm'] as num?;
+        if (fromSettings != null) {
+          return fromSettings.toDouble();
+        }
+
+        // Fallback legado: campo top-level radiusKm
+        final fromTopLevel = data['radiusKm'] as num?;
+        return fromTopLevel?.toDouble() ?? 25.0;
       }
     } catch (e) {
       debugPrint('❌ LocationQueryService: Erro ao buscar raio: $e');
     }
 
     return 25.0; // Default
+  }
+
+  double _normalizeRadiusKm(double radiusKm) {
+    if (!radiusKm.isFinite || radiusKm <= 0) {
+      return DEFAULT_RADIUS_KM.clamp(MIN_RADIUS_KM, ENABLE_RADIUS_LIMIT ? MAX_RADIUS_KM : MAX_RADIUS_KM_EXTENDED);
+    }
+
+    // Alguns dados legados podem ter sido salvos em METROS (ex.: 3000) mas lidos como km.
+    // Como o slider atual vai no máximo até 30km (ou 100km no modo extended),
+    // qualquer valor muito acima disso é tratado como metros.
+    final maxAllowed = ENABLE_RADIUS_LIMIT ? MAX_RADIUS_KM : MAX_RADIUS_KM_EXTENDED;
+    final normalized = radiusKm > (maxAllowed * 10) ? (radiusKm / 1000.0) : radiusKm;
+
+    return normalized.clamp(MIN_RADIUS_KM, maxAllowed);
+  }
+
+  double _radiusKmToCoverBoundingBox({
+    required double centerLat,
+    required double centerLng,
+    required Map<String, double> boundingBox,
+  }) {
+    final minLat = boundingBox['minLat'];
+    final maxLat = boundingBox['maxLat'];
+    final minLng = boundingBox['minLng'];
+    final maxLng = boundingBox['maxLng'];
+
+    if (minLat == null || maxLat == null || minLng == null || maxLng == null) {
+      // Fallback conservador: 100km
+      return 100.0;
+    }
+
+    final d1 = GeoUtils.calculateDistance(lat1: centerLat, lng1: centerLng, lat2: minLat, lng2: minLng);
+    final d2 = GeoUtils.calculateDistance(lat1: centerLat, lng1: centerLng, lat2: minLat, lng2: maxLng);
+    final d3 = GeoUtils.calculateDistance(lat1: centerLat, lng1: centerLng, lat2: maxLat, lng2: minLng);
+    final d4 = GeoUtils.calculateDistance(lat1: centerLat, lng1: centerLng, lat2: maxLat, lng2: maxLng);
+
+    // +1km de margem para evitar cortes por precisão
+    final maxDist = math.max(math.max(d1, d2), math.max(d3, d4)) + 1.0;
+    // Limite físico aproximado (meia circunferência terrestre)
+    return maxDist.clamp(0.5, 20037.0);
   }
 
   /// Inicializa dados de localização do usuário no Firestore

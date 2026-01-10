@@ -11,8 +11,9 @@ function isOwner(userId) {
 
 function isVip(userId) {
   let user = get(/databases/$(database)/documents/Users/$(userId));
-  return user.data.vipExpiresAt != null && 
-         user.data.vipExpiresAt > request.time;
+  return user.data.user_is_vip == true ||
+         (user.data.vipExpiresAt != null && 
+          user.data.vipExpiresAt > request.time);
 }
 
 function isEventCreator(eventId) {

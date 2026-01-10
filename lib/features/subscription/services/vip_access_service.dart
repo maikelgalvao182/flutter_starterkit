@@ -60,7 +60,7 @@ class VipAccessService {
 
   /// Verificação híbrida: combina dados do Firestore com monitoramento em tempo real
   /// Usa o serviço de monitoramento para detectar mudanças automaticamente
-  static Future<bool> hasVipAccess(BuildContext context, {String? traceId, String? source}) async {
+  static Future<bool> hasVipAccess({String? traceId, String? source}) async {
     _log('→ hasVipAccess (RevenueCat only) source=${source ?? 'unspecified'}', traceId: traceId);
     
     try {
@@ -142,6 +142,10 @@ class VipAccessService {
     final user = AppState.currentUser.value;
     return user?.hasActiveVip ?? false;
   }
+
+  /// Status VIP em tempo real (RevenueCat) sem await.
+  /// Útil para UI reagir imediatamente após compra, sem depender do Firestore.
+  static bool get hasVipAccessRealtime => SubscriptionMonitoringService.hasVipAccess;
 
   /// Limite de perfis gratuitos na lista de descoberta
   static const int freePeopleLimit = FREE_PEOPLE_LIMIT;

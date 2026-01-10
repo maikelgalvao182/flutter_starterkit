@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/features/home/presentation/widgets/google_map_view.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
 
 /// Tela de descoberta de atividades com mapa interativo
 /// 
@@ -21,6 +23,7 @@ class DiscoverScreen extends StatefulWidget {
 
 class DiscoverScreenState extends State<DiscoverScreen> {
   final GlobalKey<GoogleMapViewState> _mapKey = GlobalKey<GoogleMapViewState>();
+  bool _platformMapCreated = false;
 
   @override
   void initState() {
@@ -33,12 +36,34 @@ class DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: GoogleMapView(
-        key: _mapKey,
-        viewModel: widget.mapViewModel,
-      ),
+    return Stack(
+      children: [
+        ColoredBox(
+          color: Colors.white,
+          child: GoogleMapView(
+            key: _mapKey,
+            viewModel: widget.mapViewModel,
+            onPlatformMapCreated: () {
+              if (!mounted || _platformMapCreated) return;
+              setState(() {
+                _platformMapCreated = true;
+              });
+            },
+          ),
+        ),
+
+        if (!_platformMapCreated)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Colors.white,
+              child: Center(
+                child: CupertinoActivityIndicator(
+                  color: GlimpseColors.textSubTitle,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

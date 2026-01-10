@@ -1,7 +1,10 @@
 /**
  * Cloud Function: deleteUserAccount
  *
- * Deleta todos os registros do usuário no Firestore, EXCETO na coleção Events.
+ * Deleta todos os registros do usuário no Firestore, incluindo:
+ * - eventos criados pelo usuário (coleção "events")
+ * - coleções relacionadas a eventos (EventChats/Messages, EventApplications,
+ *   conversas em Connections/Conversations, Notifications ligadas ao evento)
  *
  * Coleções afetadas:
  * - Users (documento principal)
@@ -14,9 +17,10 @@
  * - ranking (documentos de ranking do usuário)
  * - UserLocations (localização do usuário)
  * - blocked_users (bloqueios feitos ou recebidos)
+ * - events (eventos criados pelo usuário)
+ * - EventChats (+ subcoleção Messages) (chats dos eventos)
+ * - EventApplications (aplicações/participações)
  *
- * NÃO DELETA:
- * - events (mantém eventos criados pelo usuário para histórico)
  * - Firebase Auth (deve ser deletado manualmente pelo usuário ou admin)
  */
 
@@ -24,6 +28,453 @@ import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
 const db = admin.firestore();
+
+const BATCH_SIZE = 500;
+
+type EventDeletionStats = {
+  events: number;
+  eventChats: number;
+  eventChatMessages: number;
+  eventApplications: number;
+  eventConversations: number;
+  eventNotifications: number;
+};
+
+/**
+ * Deleta notificações relacionadas a um evento.
+ * Busca por `eventId` no campo direto e também em `n_params.eventId`.
+ * @param {string} eventId ID do evento
+ * @return {Promise<number>} quantidade de notificações deletadas
+ */
+async function deleteEventNotifications(eventId: string): Promise<number> {
+  let totalDeleted = 0;
+
+  try {
+    const directQuery = await db
+      .collection("Notifications")
+      .where("eventId", "==", eventId)
+      .get();
+
+    const paramsQuery = await db
+      .collection("Notifications")
+      .where("n_params.eventId", "==", eventId)
+      .get();
+
+    const docsToDelete = new Map<
+      string,
+      FirebaseFirestore.DocumentReference
+    >();
+
+    directQuery.docs.forEach((doc) => {
+      docsToDelete.set(doc.id, doc.ref);
+    });
+
+    paramsQuery.docs.forEach((doc) => {
+      docsToDelete.set(doc.id, doc.ref);
+    });
+
+    if (docsToDelete.size === 0) {
+      return 0;
+    }
+
+    const refs = Array.from(docsToDelete.values());
+
+    for (let i = 0; i < refs.length; i += BATCH_SIZE) {
+      const batchRefs = refs.slice(i, i + BATCH_SIZE);
+      const batch = db.batch();
+      batchRefs.forEach((ref) => batch.delete(ref));
+      await batch.commit();
+    }
+
+    totalDeleted = refs.length;
+  } catch (error) {
+    console.error(
+      "🗑️ [DELETE_ACCOUNT] ❌ Erro ao deletar notificações do evento",
+      eventId,
+      error
+    );
+  }
+
+  return totalDeleted;
+}
+
+/**
+ * Tenta deletar arquivos do Storage associados ao evento.
+ * É best-effort: falhas são logadas e não interrompem a deleção de conta.
+ * @param {string} eventId ID do evento
+ * @param {Record<string, unknown>|null|undefined} eventData dados do evento
+ * @return {Promise<void>}
+ */
+async function deleteEventStorage(
+  eventId: string,
+  eventData: Record<string, unknown> | null | undefined
+): Promise<void> {
+  const storage = admin.storage();
+  const bucket = storage.bucket();
+
+  const paths = [
+    `events/${eventId}`,
+    `event_images/${eventId}`,
+    `event_media/${eventId}`,
+  ];
+
+  for (const path of paths) {
+    try {
+      await bucket.deleteFiles({
+        prefix: path,
+      });
+      console.log(`🗑️ [DELETE_ACCOUNT] Deleted files at ${path}`);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.warn(
+        `🗑️ [DELETE_ACCOUNT] ⚠️ Could not delete ${path}: ${error.message}`
+      );
+    }
+  }
+
+  const coverPhoto = eventData?.coverPhoto;
+  if (typeof coverPhoto === "string" && coverPhoto.includes("firebase")) {
+    try {
+      const pathMatch = coverPhoto.match(/\/o\/(.+?)\?/);
+      if (pathMatch) {
+        const filePath = decodeURIComponent(pathMatch[1]);
+        await bucket.file(filePath).delete();
+        console.log(`🗑️ [DELETE_ACCOUNT] Deleted cover photo: ${filePath}`);
+      }
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.warn(
+        `🗑️ [DELETE_ACCOUNT] ⚠️ Could not delete cover photo: ${error.message}`
+      );
+    }
+  }
+
+  const photos = eventData?.photos;
+  if (Array.isArray(photos)) {
+    for (const photoUrl of photos) {
+      if (typeof photoUrl === "string" && photoUrl.includes("firebase")) {
+        try {
+          const pathMatch = photoUrl.match(/\/o\/(.+?)\?/);
+          if (pathMatch) {
+            const filePath = decodeURIComponent(pathMatch[1]);
+            await bucket.file(filePath).delete();
+            console.log(
+              `🗑️ [DELETE_ACCOUNT] Deleted gallery photo: ${filePath}`
+            );
+          }
+        } catch (err: unknown) {
+          const error = err as Error;
+          console.warn(
+            "🗑️ [DELETE_ACCOUNT] ⚠️ Could not delete gallery photo:",
+            error.message
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Deleta um evento do usuário e os dados relacionados (chats, aplicações,
+ * conversas e notificações), além de tentar limpar Storage.
+ * @param {string} eventId ID do evento
+ * @param {string} userId ID do usuário (deve ser o createdBy)
+ * @return {Promise<EventDeletionStats>} estatísticas da deleção
+ */
+async function deleteOwnedEventAndRelatedData(
+  eventId: string,
+  userId: string
+): Promise<EventDeletionStats> {
+  const stats: EventDeletionStats = {
+    events: 0,
+    eventChats: 0,
+    eventChatMessages: 0,
+    eventApplications: 0,
+    eventConversations: 0,
+    eventNotifications: 0,
+  };
+
+  const firestore = db;
+
+  // 1) Validar evento e autoria
+  const eventDoc = await firestore.collection("events").doc(eventId).get();
+  if (!eventDoc.exists) {
+    return stats;
+  }
+
+  const eventData = eventDoc.data();
+  const createdBy = eventData?.createdBy;
+  if (createdBy !== userId) {
+    // Segurança: só deletar eventos do próprio usuário
+    return stats;
+  }
+
+  // 2) Descobrir participantes (para remover conversas)
+  const participantIds = new Set<string>();
+  participantIds.add(userId);
+
+  // participants do documento do evento
+  const participantsObj = eventData?.participants as
+    | {
+        participantIds?: unknown;
+        pendingApprovalIds?: unknown;
+      }
+    | undefined;
+
+  const rawParticipantIds = participantsObj?.participantIds;
+  if (Array.isArray(rawParticipantIds)) {
+    rawParticipantIds.forEach((id) => {
+      if (typeof id === "string") participantIds.add(id);
+    });
+  }
+
+  const rawPendingIds = participantsObj?.pendingApprovalIds;
+  if (Array.isArray(rawPendingIds)) {
+    rawPendingIds.forEach((id) => {
+      if (typeof id === "string") participantIds.add(id);
+    });
+  }
+
+  // EventChat participants (se existir)
+  const eventChatDoc = await firestore
+    .collection("EventChats")
+    .doc(eventId)
+    .get();
+  if (eventChatDoc.exists) {
+    const rawChatParticipants = (
+      eventChatDoc.data() as {participants?: unknown}
+    )?.participants;
+    if (Array.isArray(rawChatParticipants)) {
+      rawChatParticipants.forEach((id) => {
+        if (typeof id === "string") participantIds.add(id);
+      });
+    }
+  }
+
+  // EventApplications (participantes por aplicação)
+  const applicationsSnapshot = await firestore
+    .collection("EventApplications")
+    .where("eventId", "==", eventId)
+    .get();
+
+  applicationsSnapshot.docs.forEach((doc) => {
+    const appUserId = doc.data().userId;
+    if (typeof appUserId === "string" && appUserId.length > 0) {
+      participantIds.add(appUserId);
+    }
+  });
+
+  // 3) Deletar mensagens do chat (subcoleção)
+  const messagesDeleted = await batchDelete(
+    "EventChats.Messages",
+    firestore.collection("EventChats").doc(eventId).collection("Messages")
+  );
+  stats.eventChatMessages += messagesDeleted;
+
+  // 4) Deletar notificações relacionadas ao evento
+  stats.eventNotifications += await deleteEventNotifications(eventId);
+
+  // 5) Operações em batch para deletar docs principais e referências
+  const batches: FirebaseFirestore.WriteBatch[] = [];
+  let currentBatch = firestore.batch();
+  let operationCount = 0;
+  const MAX_BATCH_SIZE = 500;
+
+  const addToBatch = (
+    operation: (batch: FirebaseFirestore.WriteBatch) => void
+  ) => {
+    if (operationCount >= MAX_BATCH_SIZE) {
+      batches.push(currentBatch);
+      currentBatch = firestore.batch();
+      operationCount = 0;
+    }
+    operation(currentBatch);
+    operationCount++;
+  };
+
+  // Deletar evento
+  addToBatch((batch) => batch.delete(eventDoc.ref));
+  stats.events += 1;
+
+  // Deletar EventChats doc
+  addToBatch((batch) =>
+    batch.delete(firestore.collection("EventChats").doc(eventId))
+  );
+  stats.eventChats += 1;
+
+  // Deletar EventApplications docs
+  applicationsSnapshot.docs.forEach((doc) => {
+    addToBatch((batch) => batch.delete(doc.ref));
+    stats.eventApplications += 1;
+  });
+
+  // Deletar conversas do evento para todos os participantes
+  const eventUserId = `event_${eventId}`;
+  for (const participantId of participantIds) {
+    const conversationRef = firestore
+      .collection("Connections")
+      .doc(participantId)
+      .collection("Conversations")
+      .doc(eventUserId);
+    addToBatch((batch) => batch.delete(conversationRef));
+    stats.eventConversations += 1;
+  }
+
+  if (operationCount > 0) {
+    batches.push(currentBatch);
+  }
+
+  if (batches.length > 0) {
+    await Promise.all(batches.map((batch) => batch.commit()));
+  }
+
+  // 6) Storage cleanup (best effort)
+  try {
+    await deleteEventStorage(
+      eventId,
+      (eventData ?? null) as Record<string, unknown> | null
+    );
+  } catch (error) {
+    console.warn(
+      `🗑️ [DELETE_ACCOUNT] ⚠️ Storage cleanup failed for event ${eventId}:`,
+      error
+    );
+  }
+
+  return stats;
+}
+
+/**
+ * Remove vínculos do usuário com eventos de terceiros:
+ * - deleta EventApplications do usuário
+ * - remove conversa event_{eventId}
+ * - remove userId de EventChats.participants e ajusta participantCount
+ * - remove userId de events.participants
+ * - ajusta currentCount quando aplicável
+ * @param {string} userId ID do usuário
+ * @return {Promise<void>}
+ */
+async function removeUserFromOtherEvents(userId: string): Promise<void> {
+  // Remove o usuário de eventos em que ele tem aplicação.
+  // Isso evita sobrar referência do userId em
+  // EventApplications/EventChats/events.
+  const firestore = db;
+
+  const applicationsSnapshot = await firestore
+    .collection("EventApplications")
+    .where("userId", "==", userId)
+    .get();
+
+  if (applicationsSnapshot.empty) {
+    return;
+  }
+
+  const eventIds = new Set<string>();
+  applicationsSnapshot.docs.forEach((doc) => {
+    const eventId = doc.data().eventId;
+    if (typeof eventId === "string" && eventId.length > 0) {
+      eventIds.add(eventId);
+    }
+  });
+
+  // 1) Deletar todas as aplicações do usuário
+  // (já remove pelo menos o vínculo principal)
+  for (let i = 0; i < applicationsSnapshot.docs.length; i += BATCH_SIZE) {
+    const batch = firestore.batch();
+    const chunk = applicationsSnapshot.docs.slice(i, i + BATCH_SIZE);
+    chunk.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+  }
+
+  // 2) Remover conversa e remover do EventChat + limpar event.participants
+  for (const eventId of eventIds) {
+    // Conversa
+    const eventUserId = `event_${eventId}`;
+    await firestore
+      .collection("Connections")
+      .doc(userId)
+      .collection("Conversations")
+      .doc(eventUserId)
+      .delete()
+      .catch(() => undefined);
+
+    // EventChat: remove do array e decrementa participantCount com segurança
+    const eventChatRef = firestore.collection("EventChats").doc(eventId);
+    const eventChatDoc = await eventChatRef.get();
+    if (eventChatDoc.exists) {
+      const eventChatData = eventChatDoc.data() as
+        | {participants?: unknown; participantCount?: unknown}
+        | undefined;
+      const participants = Array.isArray(eventChatData?.participants) ?
+        (eventChatData?.participants as unknown[]) :
+        [];
+      const currentCountRaw = eventChatData?.participantCount;
+      const currentCount =
+        typeof currentCountRaw === "number" ? currentCountRaw : 0;
+
+      if (participants.includes(userId)) {
+        await eventChatRef.update({
+          participants: admin.firestore.FieldValue.arrayRemove(userId),
+          participantCount: Math.max(0, currentCount - 1),
+        });
+      }
+    }
+
+    // Event doc participants: remove e clampa currentCount
+    const eventRef = firestore.collection("events").doc(eventId);
+    await firestore.runTransaction(async (tx) => {
+      const eventDoc = await tx.get(eventRef);
+      if (!eventDoc.exists) return;
+
+      const data = eventDoc.data() as
+        | {
+            participants?: {
+              participantIds?: unknown;
+              pendingApprovalIds?: unknown;
+              currentCount?: unknown;
+            };
+          }
+        | undefined;
+
+      const participants = data?.participants;
+      const rawIds = participants?.participantIds;
+      const rawPending = participants?.pendingApprovalIds;
+      const currentCountRaw = participants?.currentCount;
+
+      const participantIds = Array.isArray(rawIds) ?
+        (rawIds as unknown[]) :
+        [];
+      const pendingIds = Array.isArray(rawPending) ?
+        (rawPending as unknown[]) :
+        [];
+      const currentCount =
+        typeof currentCountRaw === "number" ? currentCountRaw : 0;
+
+      const wasParticipant = participantIds.some((id) => id === userId);
+      const wasPending = pendingIds.some((id) => id === userId);
+
+      if (!wasParticipant && !wasPending) return;
+
+      const removeUserId = admin.firestore.FieldValue.arrayRemove(userId);
+
+      const updateData = {
+        "participants.participantIds": removeUserId,
+        "participants.pendingApprovalIds": removeUserId,
+      } as FirebaseFirestore.UpdateData<
+        FirebaseFirestore.DocumentData
+      >;
+
+      if (wasParticipant) {
+        updateData["participants.currentCount"] = Math.max(
+          0,
+          currentCount - 1
+        );
+      }
+
+      tx.update(eventRef, updateData);
+    });
+  }
+}
 
 /**
  * Helper: Deleta documentos em lote
@@ -125,11 +576,47 @@ export const deleteUserAccount = functions.https.onCall(
       ranking: 0,
       userLocations: 0,
       blockedUsers: 0,
+      events: 0,
+      eventChats: 0,
+      eventChatMessages: 0,
+      eventApplications: 0,
+      eventConversations: 0,
+      eventNotifications: 0,
     };
 
     try {
+      // 0. Deletar eventos criados pelo usuário + dados relacionados
+      console.log("🗑️ [0/14] Deletando eventos criados pelo usuário...");
+      const ownedEventsSnapshot = await db
+        .collection("events")
+        .where("createdBy", "==", userId)
+        .get();
+
+      console.log(
+        `🗑️ [0/14] ${ownedEventsSnapshot.size} ` +
+          "evento(s) encontrados para deletar"
+      );
+
+      for (const event of ownedEventsSnapshot.docs) {
+        const eventId = event.id;
+        console.log(`🗑️ [0/14] Deletando evento ${eventId}...`);
+        const stats = await deleteOwnedEventAndRelatedData(eventId, userId);
+        deletionStats.events += stats.events;
+        deletionStats.eventChats += stats.eventChats;
+        deletionStats.eventChatMessages += stats.eventChatMessages;
+        deletionStats.eventApplications += stats.eventApplications;
+        deletionStats.eventConversations += stats.eventConversations;
+        deletionStats.eventNotifications += stats.eventNotifications;
+      }
+
+      // 0.5 Remover participações do usuário em eventos de terceiros
+      console.log(
+        "🗑️ [0.5/14] Removendo participações em eventos de terceiros..."
+      );
+      await removeUserFromOtherEvents(userId);
+
       // 1. Deletar sub-coleções do documento Users
-      console.log("🗑️ [1/11] Deletando sub-coleções de Users...");
+      console.log("🗑️ [1/14] Deletando sub-coleções de Users...");
       const userRef = db.collection("Users").doc(userId);
 
       // Deletar applications sub-coleção
@@ -141,13 +628,13 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${applicationsDeleted} applications`);
 
       // 2. Deletar documento principal do usuário
-      console.log("🗑️ [2/11] Deletando documento Users...");
+      console.log("🗑️ [2/14] Deletando documento Users...");
       await userRef.delete();
       deletionStats.users = 1;
       console.log("✅ Documento Users deletado");
 
       // 3. Deletar reviews (como reviewer)
-      console.log("🗑️ [3/11] Deletando reviews como reviewer...");
+      console.log("🗑️ [3/14] Deletando reviews como reviewer...");
       const reviewsAsReviewer = await batchDelete(
         "Reviews",
         db.collection("Reviews").where("reviewer_id", "==", userId)
@@ -156,7 +643,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${reviewsAsReviewer} reviews como reviewer`);
 
       // 4. Deletar reviews (como reviewed)
-      console.log("🗑️ [4/11] Deletando reviews como reviewed...");
+      console.log("🗑️ [4/14] Deletando reviews como reviewed...");
       const reviewsAsReviewed = await batchDelete(
         "Reviews",
         db.collection("Reviews").where("reviewee_id", "==", userId)
@@ -165,7 +652,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${reviewsAsReviewed} reviews como reviewed`);
 
       // 5. Remover usuário de Connections (conversas)
-      console.log("🗑️ [5/11] Removendo de Connections...");
+      console.log("🗑️ [5/14] Removendo de Connections...");
       const connectionsSnapshot = await db
         .collection("Connections")
         .where("memberIds", "array-contains", userId)
@@ -194,7 +681,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Removido de ${connectionsSnapshot.size} Connections`);
 
       // 6. Deletar mensagens do Chats
-      console.log("🗑️ [6/11] Deletando mensagens de Chats...");
+      console.log("🗑️ [6/14] Deletando mensagens de Chats...");
       const chatsDeleted = await batchDelete(
         "Chats",
         db.collection("Chats").where("senderId", "==", userId)
@@ -203,7 +690,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${chatsDeleted} mensagens`);
 
       // 7. Deletar notificações
-      console.log("🗑️ [7/11] Deletando Notifications...");
+      console.log("🗑️ [7/14] Deletando Notifications...");
       const notificationsDeleted = await batchDelete(
         "Notifications",
         db.collection("Notifications").where("userId", "==", userId)
@@ -212,7 +699,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${notificationsDeleted} notificações`);
 
       // 8. Deletar visitas ao perfil (feitas) - ProfileVisits
-      console.log("🗑️ [8/11] Deletando ProfileVisits (feitas)...");
+      console.log("🗑️ [8/14] Deletando ProfileVisits (feitas)...");
       const visitsAsVisitor = await batchDelete(
         "ProfileVisits",
         db.collection("ProfileVisits").where("visitorId", "==", userId)
@@ -221,7 +708,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${visitsAsVisitor} visitas feitas`);
 
       // 9. Deletar visitas ao perfil (recebidas) - ProfileVisits
-      console.log("🗑️ [9/11] Deletando ProfileVisits (recebidas)...");
+      console.log("🗑️ [9/14] Deletando ProfileVisits (recebidas)...");
       const visitsAsVisited = await batchDelete(
         "ProfileVisits",
         db.collection("ProfileVisits").where("visitedUserId", "==", userId)
@@ -230,14 +717,14 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${visitsAsVisited} visitas recebidas`);
 
       // 9.5. Deletar visualizações para notificações - ProfileViews
-      console.log("🗑️ [9.5/11] Deletando ProfileViews (como viewer)...");
+      console.log("🗑️ [9.5/14] Deletando ProfileViews (como viewer)...");
       const viewsAsViewer = await batchDelete(
         "ProfileViews",
         db.collection("ProfileViews").where("viewerId", "==", userId)
       );
       console.log(`✅ Deletadas ${viewsAsViewer} views como viewer`);
 
-      console.log("🗑️ [9.6/11] Deletando ProfileViews (recebidas)...");
+      console.log("🗑️ [9.6/14] Deletando ProfileViews (recebidas)...");
       const viewsReceived = await batchDelete(
         "ProfileViews",
         db.collection("ProfileViews").where("viewedUserId", "==", userId)
@@ -245,7 +732,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletadas ${viewsReceived} views recebidas`);
 
       // 10. Deletar ranking
-      console.log("🗑️ [10/11] Deletando ranking...");
+      console.log("🗑️ [10/14] Deletando ranking...");
       const rankingDeleted = await batchDelete(
         "ranking",
         db.collection("ranking").where("userId", "==", userId)
@@ -254,7 +741,7 @@ export const deleteUserAccount = functions.https.onCall(
       console.log(`✅ Deletados ${rankingDeleted} registros de ranking`);
 
       // 11. Deletar localização do usuário
-      console.log("🗑️ [11/11] Deletando UserLocations...");
+      console.log("🗑️ [11/14] Deletando UserLocations...");
       const locationRef = db.collection("UserLocations").doc(userId);
       await locationRef.delete();
       deletionStats.userLocations = 1;

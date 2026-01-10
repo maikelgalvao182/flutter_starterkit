@@ -9,6 +9,7 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/models/map_bounds.dart';
 import 'package:partiu/features/home/data/services/map_discovery_service.dart';
+import 'package:partiu/features/home/data/services/people_map_discovery_service.dart';
 import 'package:partiu/features/home/presentation/services/google_event_marker_service.dart';
 import 'package:partiu/features/home/presentation/services/map_navigation_service.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
@@ -39,10 +40,12 @@ import 'package:partiu/shared/widgets/confetti_celebration.dart';
 /// - MarkerClusterService (algoritmo de clustering)
 class GoogleMapView extends StatefulWidget {
   final MapViewModel viewModel;
+  final VoidCallback? onPlatformMapCreated;
 
   const GoogleMapView({
     super.key,
     required this.viewModel,
+    this.onPlatformMapCreated,
   });
 
   @override
@@ -58,6 +61,9 @@ class GoogleMapViewState extends State<GoogleMapView> {
   
   /// Serviço para descoberta de eventos por bounding box
   final MapDiscoveryService _discoveryService = MapDiscoveryService();
+
+  /// Serviço para contagem de pessoas por bounding box
+  final PeopleMapDiscoveryService _peopleCountService = PeopleMapDiscoveryService();
   
   /// Markers atuais do mapa (clusterizados)
   Set<Marker> _markers = {};
@@ -67,6 +73,9 @@ class GoogleMapViewState extends State<GoogleMapView> {
   
   /// Zoom atual do mapa (usado para clustering)
   double _currentZoom = 12.0;
+
+  // Deve estar alinhado com MarkerClusterService._maxClusterZoom
+  static const double _clusterZoomThreshold = 11.0;
   
   /// Flag para evitar rebuilds durante animação de câmera
   bool _isAnimating = false;
@@ -134,7 +143,11 @@ class GoogleMapViewState extends State<GoogleMapView> {
   /// Carrega o estilo do mapa de assets
   Future<void> _loadMapStyle() async {
     try {
-      _mapStyle = await rootBundle.loadString('assets/map_styles/clean.json');
+      final style = await rootBundle.loadString('assets/map_styles/clean.json');
+      if (!mounted) return;
+      setState(() {
+        _mapStyle = style;
+      });
     } catch (e) {
       debugPrint('⚠️ Erro ao carregar estilo do mapa: $e');
     }
@@ -193,8 +206,9 @@ class GoogleMapViewState extends State<GoogleMapView> {
       debugPrint('⚠️ _rebuildClusteredMarkers: widget não montado');
       return;
     }
-    
-    final eventCount = widget.viewModel.events.length;
+
+    final filteredEvents = _applyCategoryFilter(widget.viewModel.events);
+    final eventCount = filteredEvents.length;
     final currentMarkerCount = _markers.length;
     
     debugPrint('🔄 _rebuildClusteredMarkers: $eventCount eventos, $currentMarkerCount markers atuais');
@@ -219,7 +233,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
     
     // Gerar markers clusterizados
     final markers = await _markerService.buildClusteredMarkers(
-      widget.viewModel.events,
+      filteredEvents,
       zoom: _currentZoom,
       onSingleTap: (eventId) {
         debugPrint('🎯 Marker individual tocado: $eventId');
@@ -242,6 +256,18 @@ class GoogleMapViewState extends State<GoogleMapView> {
     }
   }
 
+  List<EventModel> _applyCategoryFilter(List<EventModel> events) {
+    final selected = widget.viewModel.selectedCategory;
+    if (selected == null || selected.trim().isEmpty) return events;
+
+    final normalized = selected.trim();
+    return events.where((event) {
+      final category = event.category;
+      if (category == null) return false;
+      return category.trim() == normalized;
+    }).toList(growable: false);
+  }
+
   /// Callback quando cluster é tocado
   /// 
   /// Comportamento:
@@ -257,40 +283,51 @@ class GoogleMapViewState extends State<GoogleMapView> {
       return;
     }
     
-    // Calcular centro do cluster
-    double avgLat = 0;
-    double avgLng = 0;
-    for (final event in eventsInCluster) {
-      avgLat += event.lat;
-      avgLng += event.lng;
+    // ✅ Em vez de usar apenas média, usar bounds do cluster.
+    // Isso evita “cair” numa área vazia quando a posição do cluster/zoom está levemente defasada.
+    double minLat = eventsInCluster.first.lat;
+    double maxLat = eventsInCluster.first.lat;
+    double minLng = eventsInCluster.first.lng;
+    double maxLng = eventsInCluster.first.lng;
+    for (final event in eventsInCluster.skip(1)) {
+      if (event.lat < minLat) minLat = event.lat;
+      if (event.lat > maxLat) maxLat = event.lat;
+      if (event.lng < minLng) minLng = event.lng;
+      if (event.lng > maxLng) maxLng = event.lng;
     }
-    avgLat /= eventsInCluster.length;
-    avgLng /= eventsInCluster.length;
-    
-    // 🎯 Calcular zoom para DESFAZER o cluster
-    // Clustering é ativado quando zoom <= 11, então precisamos ir para zoom > 11
-    // Quanto mais eventos no cluster, mais zoom precisamos para separar
-    double newZoom;
-    if (_currentZoom <= 11) {
-      // Se estamos em zoom de clustering, ir direto para zoom 12-13 (desativa clustering)
-      newZoom = eventsInCluster.length > 5 ? 13.0 : 12.0;
-    } else {
-      // Se já passou do threshold de clustering, aumentar normalmente
-      newZoom = (_currentZoom + 2).clamp(3.0, 20.0);
-    }
-    
-    debugPrint('🔍 Expandindo cluster: zoom ${_currentZoom.toStringAsFixed(1)} → ${newZoom.toStringAsFixed(1)}');
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    debugPrint(
+      '🔍 Expandindo cluster: ${eventsInCluster.length} eventos, bounds=($minLat,$minLng)-($maxLat,$maxLng)',
+    );
     
     // Marcar que está animando para evitar rebuilds intermediários
     _isAnimating = true;
     
     try {
-      await _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(avgLat, avgLng),
-          newZoom,
-        ),
-      );
+      // Tenta enquadrar todos os eventos do cluster.
+      // Em clusters com um único ponto (bounds degenerado), dá fallback para zoom.
+      if (minLat == maxLat && minLng == maxLng) {
+        // 🎯 Calcular zoom para DESFAZER o cluster
+        // Clustering é ativado quando zoom <= 11, então precisamos ir para zoom > 11
+        final newZoom = (_currentZoom <= _clusterZoomThreshold)
+            ? (eventsInCluster.length > 5 ? 13.0 : 12.0)
+            : (_currentZoom + 2).clamp(3.0, 20.0);
+        debugPrint(
+          '🔍 Cluster em ponto único: zoom ${_currentZoom.toStringAsFixed(1)} → ${newZoom.toStringAsFixed(1)}',
+        );
+        await _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), newZoom),
+        );
+      } else {
+        await _mapController!.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 80),
+        );
+      }
       
       // Aguardar animação completar
       await Future.delayed(const Duration(milliseconds: 400));
@@ -299,9 +336,10 @@ class GoogleMapViewState extends State<GoogleMapView> {
       _isAnimating = false;
     }
     
-    // 🎯 FORÇAR rebuild dos markers após zoom do cluster
-    // O onCameraIdle pode ter sido ignorado durante a animação
-    _currentZoom = newZoom;
+    // 🎯 Atualiza zoom real após animação (bounds define zoom automaticamente)
+    try {
+      _currentZoom = await _mapController!.getZoomLevel();
+    } catch (_) {}
     
     // Limpar cache de clusters para forçar recalculo com novo zoom
     _markerService.clearClusterCache();
@@ -313,12 +351,10 @@ class GoogleMapViewState extends State<GoogleMapView> {
   /// Callback quando o mapa é criado
   void _onMapCreated(GoogleMapController controller) async {
     _mapController = controller;
-    
-    // Aplicar estilo customizado ao mapa se já foi carregado
-    if (_mapStyle != null) {
-      _mapController?.setMapStyle(_mapStyle);
-    }
 
+    // Sinaliza que o PlatformView do mapa já foi criado (evita tela branca sem feedback)
+    widget.onPlatformMapCreated?.call();
+    
     // Mover câmera para localização inicial (já carregada)
     if (widget.viewModel.lastLocation != null) {
       await _moveCameraTo(
@@ -346,9 +382,15 @@ class GoogleMapViewState extends State<GoogleMapView> {
 
     try {
       // Obter zoom atual
+      final previousZoom = _currentZoom;
       final newZoom = await _mapController!.getZoomLevel();
-      final zoomChanged = (newZoom - _currentZoom).abs() > 0.5;
-      
+      final zoomChanged = (newZoom - previousZoom).abs() > 0.5;
+
+      // Recalcular quando cruzar o limiar de clustering, mesmo se a variação for pequena
+      final crossedClusterThreshold =
+          (previousZoom <= _clusterZoomThreshold && newZoom > _clusterZoomThreshold) ||
+          (previousZoom > _clusterZoomThreshold && newZoom <= _clusterZoomThreshold);
+
       // Atualizar zoom atual
       _currentZoom = newZoom;
 
@@ -357,14 +399,17 @@ class GoogleMapViewState extends State<GoogleMapView> {
       
       debugPrint('📍 GoogleMapView: Câmera parou (zoom: ${newZoom.toStringAsFixed(1)}, mudou: $zoomChanged)');
       
-      // Recalcular clusters se zoom mudou significativamente
-      if (zoomChanged && widget.viewModel.events.isNotEmpty) {
+      // Recalcular clusters se zoom mudou significativamente OU se cruzou o limiar de clustering
+      if ((zoomChanged || crossedClusterThreshold) && widget.viewModel.events.isNotEmpty) {
         debugPrint('🔄 GoogleMapView: Zoom mudou - recalculando clusters');
         await _rebuildClusteredMarkers();
       }
       
       // Disparar busca de eventos no bounding box
       await _discoveryService.loadEventsInBounds(bounds);
+
+      // Atualizar contagem de pessoas no bounds visível
+      await _peopleCountService.loadPeopleCountInBounds(bounds);
     } catch (error) {
       debugPrint('⚠️ GoogleMapView: Erro ao capturar bounding box: $error');
     }
@@ -393,6 +438,9 @@ class GoogleMapViewState extends State<GoogleMapView> {
       
       // Forçar busca imediata (ignora debounce)
       await _discoveryService.forceRefresh(bounds);
+
+      // Forçar contagem imediata de pessoas no bounds inicial
+      await _peopleCountService.forceRefresh(bounds);
       
       // Gerar markers iniciais com clustering
       if (widget.viewModel.events.isNotEmpty) {
@@ -580,8 +628,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
                 BlockService().isBlockedCached(currentUserId, event.createdBy)) {
               final i18n = AppLocalizations.of(context);
               ToastService.showWarning(
-                message: i18n?.translate('user_blocked_cannot_message') ?? 
-                'Você não pode enviar mensagens para este usuário',
+                message: i18n.translate('user_blocked_cannot_message'),
               );
               return;
             }
@@ -610,6 +657,7 @@ class GoogleMapViewState extends State<GoogleMapView> {
     // Widget limpo - apenas UI
     // Toda lógica delegada ao ViewModel
     return GoogleMap(
+      style: _mapStyle,
       // Callback de criação
       onMapCreated: _onMapCreated,
 

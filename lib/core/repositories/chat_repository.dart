@@ -271,6 +271,14 @@ class ChatRepository implements IChatRepository {
         throw Exception('Dados do usuário não disponíveis');
       }
 
+      final isEventChat = receiver.userId.startsWith('event_');
+
+      // Para chats 1x1, o resumo da conversa do sender (Connections/{sender}/Conversations/{receiver})
+      // deve conter os dados do RECEIVER (avatar/nome do outro usuário).
+      // Para chats de evento, o saveMessage usa esses campos como dados do SENDER na mensagem.
+      final conversationPhotoUrl = isEventChat ? (currentUser.photoUrl) : receiver.photoUrl;
+      final conversationFullName = isEventChat ? (currentUser.userFullname) : receiver.userFullname;
+
       print('🔍 [CHAT DEBUG] Calling saveMessage...');
       
       // Salva a mensagem
@@ -279,8 +287,8 @@ class ChatRepository implements IChatRepository {
         senderId: currentUserId,
         receiverId: receiver.userId,
         fromUserId: currentUserId,
-        userPhotoLink: currentUser.photoUrl ?? '',
-        userFullName: currentUser.userFullname ?? '',
+        userPhotoLink: conversationPhotoUrl,
+        userFullName: conversationFullName,
         textMsg: text,
         imgLink: '',
         isRead: false,
@@ -351,6 +359,13 @@ class ChatRepository implements IChatRepository {
         throw Exception('Dados do usuário não disponíveis');
       }
 
+      final isEventChat = receiver.userId.startsWith('event_');
+
+      // Mesmo racional do sendTextMessage: 1x1 grava avatar/nome do receiver no resumo do sender.
+      // Event chat mantém dados do sender na mensagem.
+      final conversationPhotoUrl = isEventChat ? (currentUser.photoUrl) : receiver.photoUrl;
+      final conversationFullName = isEventChat ? (currentUser.userFullname) : receiver.userFullname;
+
       print('🖼️ [CHAT DEBUG] Calling saveMessage with image...');
       
       // Salva a mensagem
@@ -359,8 +374,8 @@ class ChatRepository implements IChatRepository {
         senderId: currentUserId,
         receiverId: receiver.userId,
         fromUserId: currentUserId,
-        userPhotoLink: currentUser.photoUrl ?? '',
-        userFullName: currentUser.userFullname ?? '',
+        userPhotoLink: conversationPhotoUrl,
+        userFullName: conversationFullName,
         textMsg: '',
         imgLink: imageUrl,
         isRead: false,

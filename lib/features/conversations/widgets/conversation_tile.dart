@@ -10,6 +10,7 @@ import 'package:partiu/features/conversations/utils/conversation_styles.dart';
 import 'package:partiu/features/events/state/event_store.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/event_emoji_avatar.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -59,16 +60,38 @@ class ConversationTile extends StatelessWidget {
             // Extrair dados frescos do snapshot
             final data = snap.data?.data();
 
+            bool isPlaceholderName(String value) {
+              final normalized = value.trim().toLowerCase();
+              return normalized.isEmpty ||
+                  normalized == 'unknown user' ||
+                  normalized == 'unknow user' ||
+                  normalized == 'usuário' ||
+                  normalized == 'usuario';
+            }
+
+            String cleanName(dynamic value) {
+              if (value == null) return '';
+              final text = value.toString().trim();
+              if (isPlaceholderName(text)) return '';
+              return text;
+            }
+
             // Calcular estado derivado UMA VEZ
             final unreadCount = data?['unread_count'] as int? ?? 0;
             final messageRead = data?['message_read'] as bool? ?? true;
             final hasUnread = unreadCount > 0 || !messageRead;
 
-            final displayName = data?['activityText'] ?? 
-                               data?['fullname'] ?? 
-                               rawData['activityText'] ?? 
-                               rawData['fullname'] ?? 
-                               displayData.displayName;
+            final displayName = cleanName(data?['activityText']).isNotEmpty
+              ? cleanName(data?['activityText'])
+              : (cleanName(data?['fullname']).isNotEmpty
+                ? cleanName(data?['fullname'])
+                : (cleanName(rawData['activityText']).isNotEmpty
+                  ? cleanName(rawData['activityText'])
+                  : (cleanName(rawData['fullname']).isNotEmpty
+                    ? cleanName(rawData['fullname'])
+                    : (cleanName(displayData.fullName).isNotEmpty
+                      ? cleanName(displayData.fullName)
+                      : cleanName(displayData.displayName)))));
 
             final emoji = data?['emoji']?.toString() ?? 
                          rawData['emoji']?.toString() ?? 
@@ -176,6 +199,26 @@ class ConversationTile extends StatelessWidget {
     // Verificar se é chat de evento
     final isEventChat = rawData['is_event_chat'] == true || rawData['event_id'] != null;
 
+    String truncateName(String value) {
+      final text = value.trim();
+      const maxLen = 28;
+      if (text.length <= maxLen) return text;
+
+      // 28 caracteres no total, incluindo "..."
+      const ellipsis = '...';
+      final cut = (maxLen - ellipsis.length).clamp(0, text.length);
+      return '${text.substring(0, cut).trimRight()}$ellipsis';
+    }
+
+    bool isPlaceholderName(String value) {
+      final normalized = value.trim().toLowerCase();
+      return normalized.isEmpty ||
+          normalized == 'unknown user' ||
+          normalized == 'unknow user' ||
+          normalized == 'usuário' ||
+          normalized == 'usuario';
+    }
+
     // Leading: Avatar ou Emoji do evento (SEM badge - será adicionado externamente)
     final Widget leading;
     if (isEventChat) {
@@ -205,9 +248,23 @@ class ConversationTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: ConversationStyles.buildEventNameText(
-              name: displayName,
-            ),
+            child: (!isEventChat && isPlaceholderName(displayName) && displayData.otherUserId.isNotEmpty)
+                ? ValueListenableBuilder<String?>(
+                    valueListenable: UserStore.instance.getNameNotifier(displayData.otherUserId),
+                    builder: (context, name, _) {
+                      final resolved = (name ?? '').trim();
+                      final effective = (!isPlaceholderName(resolved) && resolved.isNotEmpty)
+                          ? resolved
+                          : '';
+
+                      return ConversationStyles.buildEventNameText(
+                        name: effective.isNotEmpty ? truncateName(effective) : '',
+                      );
+                    },
+                  )
+                : ConversationStyles.buildEventNameText(
+                    name: isPlaceholderName(displayName) ? '' : truncateName(displayName),
+                  ),
           ),
           const SizedBox(width: 8),
           if (timeAgo.isNotEmpty)

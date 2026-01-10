@@ -7,14 +7,12 @@ import 'package:partiu/features/home/presentation/widgets/create_button.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/list_button.dart';
 import 'package:partiu/features/home/presentation/widgets/list_drawer.dart';
-import 'package:partiu/features/home/presentation/widgets/list_drawer/list_drawer_controller.dart';
 import 'package:partiu/features/home/presentation/widgets/navigate_to_user_button.dart';
 import 'package:partiu/features/home/presentation/widgets/people_button.dart';
 import 'package:partiu/features/home/presentation/screens/find_people_screen.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
-import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
-import 'package:partiu/features/home/presentation/widgets/schedule_drawer.dart';
-import 'package:provider/provider.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/features/notifications/widgets/notification_horizontal_filters.dart';
 
 /// Tela de descoberta (Tab 0)
 /// Exibe mapa interativo com atividades próximas
@@ -33,7 +31,16 @@ class DiscoverTab extends StatefulWidget {
 class _DiscoverTabState extends State<DiscoverTab> {
   final GlobalKey<DiscoverScreenState> _discoverKey = GlobalKey<DiscoverScreenState>();
 
-  void _showCreateDrawer(BuildContext context) async {
+  List<String> _lastCategoryKeys = const [];
+  String? _lastLocaleTag;
+  List<String> _cachedCategoryLabels = const [];
+
+  static const double _peopleButtonTop = 16;
+  static const double _peopleButtonRight = 16;
+  static const double _peopleButtonHeight = 48;
+  static const double _filtersSpacing = 8;
+
+  void _showCreateDrawer() async {
     final coordinator = CreateFlowCoordinator(mapViewModel: widget.mapViewModel);
     
     // Loop para gerenciar navegação entre drawers
@@ -50,12 +57,16 @@ class _DiscoverTabState extends State<DiscoverTab> {
         ),
       );
 
+      if (!mounted) return;
+
       // Se fechou sem ação, sair do fluxo
       if (createResult == null) break;
 
       // Se pediu para abrir CategoryDrawer
       if (createResult['action'] == 'openCategory') {
-        final categoryResult = await _showCategoryFlow(context, coordinator);
+        final categoryResult = await _showCategoryFlow(coordinator);
+
+        if (!mounted) return;
         
         // Se voltou do CategoryDrawer, continua o loop para reabrir CreateDrawer
         if (categoryResult != null && categoryResult['action'] == 'back') {
@@ -70,7 +81,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     }
   }
 
-  Future<Map<String, dynamic>?> _showCategoryFlow(BuildContext context, CreateFlowCoordinator coordinator) async {
+  Future<Map<String, dynamic>?> _showCategoryFlow(CreateFlowCoordinator coordinator) async {
     // Loop para gerenciar navegação entre CategoryDrawer, ScheduleDrawer e LocationPicker
     while (true) {
       final categoryResult = await showModalBottomSheet<Map<String, dynamic>>(
@@ -83,6 +94,8 @@ class _DiscoverTabState extends State<DiscoverTab> {
         ),
       );
 
+      if (!mounted) return null;
+
       // Se voltou para CreateDrawer
       if (categoryResult != null && categoryResult['action'] == 'back') {
         return categoryResult;
@@ -93,7 +106,9 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
       // Se pediu para abrir LocationPicker (veio do ScheduleDrawer)
       if (categoryResult['action'] == 'openLocationPicker') {
-        final locationResult = await _showLocationPickerFlow(context, coordinator);
+        final locationResult = await _showLocationPickerFlow(coordinator);
+
+        if (!mounted) return null;
         
         // Se voltou do LocationPicker, continua o loop para reabrir CategoryDrawer/ScheduleDrawer
         if (locationResult != null && locationResult['action'] == 'back') {
@@ -108,7 +123,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     }
   }
 
-  Future<Map<String, dynamic>?> _showLocationPickerFlow(BuildContext context, CreateFlowCoordinator coordinator) async {
+  Future<Map<String, dynamic>?> _showLocationPickerFlow(CreateFlowCoordinator coordinator) async {
     final locationResult = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => LocationPickerPageRefactored(
@@ -121,7 +136,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     return locationResult;
   }
 
-  void _showListDrawer(BuildContext context) {
+  void _showListDrawer() {
     // Usa bottom sheet nativo
     ListDrawer.show(context);
   }
@@ -140,6 +155,8 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Stack(
       children: [
         // Mapa Apple Maps
@@ -150,10 +167,79 @@ class _DiscoverTabState extends State<DiscoverTab> {
         
         // Botão "Perto de você" (canto superior direito)
         Positioned(
-          top: 16,
-          right: 16,
+          top: _peopleButtonTop,
+          right: _peopleButtonRight,
           child: PeopleButton(
             onPressed: _showPeopleNearby,
+          ),
+        ),
+
+        // Filtro dinâmico por categoria (abaixo do PeopleButton)
+        Positioned(
+          top: _peopleButtonTop + _peopleButtonHeight + _filtersSpacing,
+          left: 0,
+          right: 0,
+          child: ListenableBuilder(
+            listenable: widget.mapViewModel,
+            builder: (context, _) {
+              final categories = widget.mapViewModel.availableCategories;
+              final allLabel = i18n.translate('notif_filter_all');
+              final totalInBounds = widget.mapViewModel.eventsInBoundsCount;
+              final countsByCategory = widget.mapViewModel.eventsInBoundsCountByCategory;
+
+              final localeTag = Localizations.localeOf(context).toLanguageTag();
+              if (_lastLocaleTag != localeTag ||
+                  _lastCategoryKeys.length != categories.length ||
+                  !_listsEqual(_lastCategoryKeys, categories)) {
+                _lastLocaleTag = localeTag;
+                _lastCategoryKeys = List<String>.from(categories, growable: false);
+                _cachedCategoryLabels = categories
+                    .map((key) {
+                      final normalized = key.trim();
+                      if (normalized.isEmpty) return key;
+                      // As categorias são salvas como chaves (ex: gastronomy, sports)
+                      // e traduzidas via i18n (ex: category_gastronomy)
+                      final translated = i18n.translate('category_$normalized');
+                      // Fallback: se não houver tradução, usa a chave original
+                      return translated.isEmpty ? key : translated;
+                    })
+                    .toList(growable: false);
+              }
+
+              final allItem = '$allLabel ($totalInBounds)';
+              final items = <String>[
+                allItem,
+                ...List<String>.generate(
+                  categories.length,
+                  (index) {
+                    final key = categories[index].trim();
+                    final label = _cachedCategoryLabels[index];
+                    final count = countsByCategory[key] ?? 0;
+                    return '$label ($count)';
+                  },
+                  growable: false,
+                ),
+              ];
+
+              final selected = widget.mapViewModel.selectedCategory;
+              final selectedCategoryIndex =
+                selected == null ? -1 : categories.indexOf(selected);
+              final selectedIndex =
+                selectedCategoryIndex >= 0 ? selectedCategoryIndex + 1 : 0;
+
+              return NotificationHorizontalFilters(
+                items: items,
+                selectedIndex: selectedIndex,
+                onSelected: (index) {
+                  if (index == 0) {
+                    widget.mapViewModel.setCategoryFilter(null);
+                  } else {
+                    widget.mapViewModel.setCategoryFilter(categories[index - 1]);
+                  }
+                },
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              );
+            },
           ),
         ),
         
@@ -173,7 +259,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
           bottom: 24,
           child: Center(
             child: ListButton(
-              onPressed: () => _showListDrawer(context),
+              onPressed: _showListDrawer,
             ),
           ),
         ),
@@ -183,10 +269,19 @@ class _DiscoverTabState extends State<DiscoverTab> {
           right: 16,
           bottom: 24,
           child: CreateButton(
-            onPressed: () => _showCreateDrawer(context),
+            onPressed: _showCreateDrawer,
           ),
         ),
       ],
     );
+  }
+
+  bool _listsEqual(List<String> a, List<String> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

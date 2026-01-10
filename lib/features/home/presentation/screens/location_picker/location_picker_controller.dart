@@ -5,6 +5,7 @@ import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/plugins/locationpicker/entities/localization_item.dart';
 import 'package:partiu/plugins/locationpicker/place_picker.dart';
 import 'package:partiu/plugins/locationpicker/uuid.dart';
+import 'dart:ui' show PlatformDispatcher;
 
 /// Controller que gerencia todo o estado do LocationPicker
 class LocationPickerController extends ChangeNotifier {
@@ -115,6 +116,7 @@ class LocationPickerController extends ChangeNotifier {
       sessionToken: _sessionToken,
       localization: localizationItem,
       bias: _locationResult?.latLng,
+      countryCode: _locationResult?.country?.shortName ?? PlatformDispatcher.instance.locale.countryCode,
     );
 
     _suggestions = results;

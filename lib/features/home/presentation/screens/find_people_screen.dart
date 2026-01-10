@@ -6,18 +6,16 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
-import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/pull_to_refresh.dart';
 import 'package:partiu/features/home/presentation/screens/advanced_filters_screen.dart';
 import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
+import 'package:partiu/features/home/data/services/people_map_discovery_service.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
 import 'package:partiu/features/home/presentation/widgets/vip_locked_card.dart';
 import 'package:partiu/features/subscription/services/vip_access_service.dart';
-import 'package:partiu/features/home/domain/models/user_with_meta.dart';
 
 /// Tela para encontrar pessoas na região
 /// 
@@ -33,6 +31,7 @@ class FindPeopleScreen extends StatefulWidget {
 class _FindPeopleScreenState extends State<FindPeopleScreen> {
   late final FindPeopleController _controller;
   late final ScrollController _scrollController;
+  final PeopleMapDiscoveryService _peopleDiscoveryService = PeopleMapDiscoveryService();
   bool _vipDialogOpen = false;
   double _lastScrollPosition = 0.0;
 
@@ -50,6 +49,14 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
     
     // 🚀 Garante inicialização do controller (padrão lazy initialization)
     _controller.ensureInitialized();
+
+    // Se já existir um bounds conhecido do mapa, força refresh para popular a lista
+    // A lista agora vem diretamente do PeopleMapDiscoveryService (igual ListDrawer)
+    debugPrint('🔄 [FindPeopleScreen] Verificando bounds atual...');
+    debugPrint('   📐 currentBounds: ${_peopleDiscoveryService.currentBounds.value}');
+    debugPrint('   📋 nearbyPeople.length: ${_peopleDiscoveryService.nearbyPeople.value.length}');
+    
+    _peopleDiscoveryService.refreshCurrentBounds();
   }
 
   @override
@@ -129,22 +136,27 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
       elevation: 0,
       centerTitle: true,
       automaticallyImplyLeading: false,
-      title: ValueListenableBuilder<List<User>>(
-        valueListenable: _controller.users,
-        builder: (context, usersList, _) {
-          final count = usersList.length;
-          final title = count > 0 
-              ? '$count ${count == 1 ? 'pessoa' : 'pessoas'} na região'
-              : 'Pessoas na região';
-          
-          return Text(
-            title,
-            style: GoogleFonts.getFont(
-              FONT_PLUS_JAKARTA_SANS,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: GlimpseColors.primaryColorLight,
-            ),
+      title: ValueListenableBuilder<int>(
+        valueListenable: _peopleDiscoveryService.nearbyPeopleCount,
+        builder: (context, peopleCount, _) {
+          return ValueListenableBuilder<List<User>>(
+            valueListenable: _controller.users,
+            builder: (context, usersList, __) {
+              final count = peopleCount > 0 ? peopleCount : usersList.length;
+              final title = count > 0
+                  ? '$count ${count == 1 ? 'pessoa' : 'pessoas'} na região'
+                  : 'Pessoas na região';
+
+              return Text(
+                title,
+                style: GoogleFonts.getFont(
+                  FONT_PLUS_JAKARTA_SANS,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: GlimpseColors.primaryColorLight,
+                ),
+              );
+            },
           );
         },
       ),
@@ -197,103 +209,121 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
   }
 
   Widget _buildBody(AppLocalizations i18n) {
-    // Loading state
-        return ValueListenableBuilder<bool>(
-      valueListenable: _controller.isLoading,
-      builder: (context, isLoading, _) {
-        if (isLoading) {
-          return ListView.separated(
-            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-            itemCount: 5,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) => const UserCardShimmer(),
-          );
-        }        // Error state
-        return ValueListenableBuilder<String?>(
-          valueListenable: _controller.error,
-          builder: (context, errorMessage, _) {
-            if (errorMessage != null) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      errorMessage,
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 16,
-                        color: GlimpseColors.textSubTitle,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: _controller.refresh,
-                      child: Text(
-                        'Tentar novamente',
-                        style: GoogleFonts.getFont(
-                          FONT_PLUS_JAKARTA_SANS,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: GlimpseColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Success/Empty state
-            return ValueListenableBuilder<List<User>>(
-              valueListenable: _controller.users,
-              builder: (context, usersList, _) {
-                // Empty state
-                if (usersList.isEmpty) {
-                  return Center(
-                    child: GlimpseEmptyState.standard(
-                      text: i18n.translate('no_people_found_nearby'),
-                    ),
+    // 🎯 Usar lista reativa do PeopleMapDiscoveryService (igual ListDrawer com eventos)
+    // A lista atualiza automaticamente quando o bounds do mapa muda
+    return ValueListenableBuilder<List<User>>(
+      valueListenable: _peopleDiscoveryService.nearbyPeople,
+      builder: (context, nearbyPeopleList, _) {
+        debugPrint('🔄 [FindPeopleScreen] nearbyPeople rebuild: ${nearbyPeopleList.length} pessoas');
+        
+        // Também escutar a lista do controller para fallback inicial
+        return ValueListenableBuilder<List<User>>(
+          valueListenable: _controller.users,
+          builder: (context, controllerUsersList, _) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: _controller.isLoading,
+              builder: (context, isLoading, _) {
+                // Priorizar lista do serviço de descoberta, fallback para controller
+                final usersList = nearbyPeopleList.isNotEmpty 
+                    ? nearbyPeopleList 
+                    : controllerUsersList;
+                
+                debugPrint('🔄 [FindPeopleScreen] Lista final: ${usersList.length} (nearby: ${nearbyPeopleList.length}, controller: ${controllerUsersList.length})');
+                
+                // Loading state - só mostra shimmer se ambas as listas estão vazias
+                if (isLoading && usersList.isEmpty) {
+                  return ListView.separated(
+                    padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+                    itemCount: 5,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) => const UserCardShimmer(),
                   );
                 }
 
-                // Success state - Lista de usuários com Pull to Refresh
-                return PlatformPullToRefresh(
-                  onRefresh: _controller.refresh,
-                  controller: _scrollController,
-                  padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-                  // 🔒 Limitar a 13 itens para não-VIP (12 cards + 1 VipLockedCard)
-                  itemCount: VipAccessService.isVip 
-                    ? usersList.length 
-                    : (usersList.length > 12 ? 13 : usersList.length),
-                  itemBuilder: (context, index) {
-                    debugPrint('🎨 [ItemBuilder] Building index $index, isVip: ${VipAccessService.isVip}');
-                    
-                    // 🔒 Se não é VIP e chegou no 13º item (índice 12), mostra VipLockedCard
-                    if (!VipAccessService.isVip && index == 12) {
-                      debugPrint('🔒 [ItemBuilder] Renderizando VipLockedCard no índice 12');
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: VipLockedCard(
-                          onTap: () {
-                            debugPrint('🔒 [VipLockedCard] Tap detectado!');
-                            _showVipDialog();
-                          },
+                // Error state
+                return ValueListenableBuilder<String?>(
+                  valueListenable: _controller.error,
+                  builder: (context, errorMessage, _) {
+                    if (errorMessage != null && usersList.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              errorMessage,
+                              style: GoogleFonts.getFont(
+                                FONT_PLUS_JAKARTA_SANS,
+                                fontSize: 16,
+                                color: GlimpseColors.textSubTitle,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () => _peopleDiscoveryService.refreshCurrentBounds(),
+                              child: Text(
+                                'Tentar novamente',
+                                style: GoogleFonts.getFont(
+                                  FONT_PLUS_JAKARTA_SANS,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: GlimpseColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }
-                    
-                    final user = usersList[index];
-                    
-                    return UserCard(
-                        key: ValueKey(user.userId),
-                        userId: user.userId,
-                        user: user,
-                        overallRating: user.overallRating,
-                        index: index,
-                        onTap: () {
-                          // TODO: Navegar para perfil do usuário
-                        },
+
+                    // Empty state
+                    if (usersList.isEmpty) {
+                      return Center(
+                        child: GlimpseEmptyState.standard(
+                          text: i18n.translate('no_people_found_nearby'),
+                        ),
                       );
+                    }
+
+                    // Success state - Lista de usuários com Pull to Refresh
+                    return PlatformPullToRefresh(
+                      onRefresh: () async => _peopleDiscoveryService.refreshCurrentBounds(),
+                      controller: _scrollController,
+                      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+                      // 🔒 Limitar a 13 itens para não-VIP (12 cards + 1 VipLockedCard)
+                      itemCount: VipAccessService.isVip 
+                        ? usersList.length 
+                        : (usersList.length > 12 ? 13 : usersList.length),
+                      itemBuilder: (context, index) {
+                        debugPrint('🎨 [ItemBuilder] Building index $index, isVip: ${VipAccessService.isVip}');
+                        
+                        // 🔒 Se não é VIP e chegou no 13º item (índice 12), mostra VipLockedCard
+                        if (!VipAccessService.isVip && index == 12) {
+                          debugPrint('🔒 [ItemBuilder] Renderizando VipLockedCard no índice 12');
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: VipLockedCard(
+                              onTap: () {
+                                debugPrint('🔒 [VipLockedCard] Tap detectado!');
+                                _showVipDialog();
+                              },
+                            ),
+                          );
+                        }
+                        
+                        final user = usersList[index];
+                        
+                        return UserCard(
+                            key: ValueKey(user.userId),
+                            userId: user.userId,
+                            user: user,
+                            overallRating: user.overallRating,
+                            index: index,
+                            onTap: () {
+                              // TODO: Navegar para perfil do usuário
+                            },
+                          );
+                      },
+                    );
                   },
                 );
               },

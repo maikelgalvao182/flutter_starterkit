@@ -35,12 +35,24 @@ class VipBottomSheet extends StatefulWidget {
 class _VipBottomSheetState extends State<VipBottomSheet> {
   late final SubscriptionPurchaseController _controller;
   bool _isInitialized = false;
+  bool _hasClosed = false;
+
+  void _closeIfNeeded() {
+    if (!mounted || _hasClosed) return;
+    _hasClosed = true;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(true);
+    }
+  }
   
   // Listener de acesso VIP (via SubscriptionMonitoringService)
   void _onVipAccessChanged(bool hasAccess) {
     if (!mounted) return;
-    // Não fecha mais automaticamente baseado apenas no RevenueCat
-    // Aguarda sincronização com Firestore (_onUserChanged)
+    // Fecha imediatamente quando o RevenueCat confirma acesso,
+    // evitando ficar “preso” aguardando a sync do Firestore.
+    if (hasAccess) {
+      _closeIfNeeded();
+    }
   }
 
   // Listener para mudanças no usuário (Firestore)
@@ -49,7 +61,7 @@ class _VipBottomSheetState extends State<VipBottomSheet> {
     final user = AppState.currentUser.value;
     // Só fecha se o Firestore confirmar o VIP (vipExpiresAt válido)
     if (user != null && user.hasActiveVip) {
-      Navigator.of(context).pop(true);
+      _closeIfNeeded();
     }
   }
 
@@ -98,9 +110,9 @@ class _VipBottomSheetState extends State<VipBottomSheet> {
   @override
   void dispose() {
     AppState.currentUser.removeListener(_onUserChanged);
+    // Remove listener de acesso VIP
+    VipAccessService.removeAccessListener(_onVipAccessChanged);
     _controller.dispose();
-  // Remove listener de acesso VIP
-  VipAccessService.removeAccessListener(_onVipAccessChanged);
     super.dispose();
   }
 
@@ -112,6 +124,15 @@ class _VipBottomSheetState extends State<VipBottomSheet> {
     ToastService.showSuccess(
       message: tm.vipSubscriptionRestored,
     );
+
+    // Se o RevenueCat já confirmou acesso, fecha na hora.
+    final customerInfo = SimpleRevenueCatService.lastCustomerInfo;
+    final hasVipAccess = customerInfo != null &&
+        SimpleRevenueCatService.hasAccess(customerInfo);
+    if (hasVipAccess) {
+      _closeIfNeeded();
+      return;
+    }
 
     // Não fecha imediatamente. Aguarda sincronização com Firestore.
     // O listener _onUserChanged fechará o dialog quando o vipExpiresAt for atualizado.

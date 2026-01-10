@@ -4,12 +4,7 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/app_section_view_model.dart';
-import 'package:partiu/features/profile/presentation/widgets/dialogs/delete_account_confirm_dialog.dart';
-import 'package:partiu/features/auth/presentation/widgets/app_evaluation_widget.dart';
-import 'package:partiu/app/services/locale_service.dart';
-import 'package:partiu/shared/widgets/dialogs/language_selector_dialog.dart';
 import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 import 'package:partiu/core/helpers/app_helper.dart';
 import 'package:partiu/dialogs/progress_dialog.dart';
@@ -28,6 +23,7 @@ import 'package:partiu/core/constants/push_types.dart';
 import 'package:partiu/core/services/push_preferences_service.dart';
 import 'package:partiu/core/managers/session_manager.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:in_app_review/in_app_review.dart';
 
 class AppSectionCard extends StatefulWidget {
   const AppSectionCard({super.key});
@@ -188,7 +184,7 @@ class _AppSectionCardState extends State<AppSectionCard> {
                 title: Platform.isAndroid
                     ? (i18n.translate('rate_on_play_store') ?? 'Avaliar na Play Store')
                     : (i18n.translate('rate_on_app_store') ?? 'Avaliar na App Store'),
-                onTap: () => _showReviewDialog(context),
+                onTap: () => _requestAppReview(),
               ),
               Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
               _buildListItemWithImage(
@@ -414,26 +410,18 @@ class _AppSectionCardState extends State<AppSectionCard> {
     }
   }
   
-  /// Mostra dialog de avaliação do app
-  void _showReviewDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          constraints: const BoxConstraints(maxHeight: 600),
-          child: const SingleChildScrollView(
-            padding: EdgeInsets.all(20),
-            child: AppEvaluationWidget(
-              isBride: false, // Vendor/Creator flow
-              shouldAutoRequestReview: true,
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> _requestAppReview() async {
+    try {
+      final inAppReview = InAppReview.instance;
+
+      if (await inAppReview.isAvailable()) {
+        await inAppReview.requestReview();
+      } else {
+        await inAppReview.openStoreListing(appStoreId: '6755944656');
+      }
+    } catch (e) {
+      debugPrint('⭐️ [REVIEW] Error requesting review: $e');
+    }
   }
   
   Future<void> _updatePushPreference(PushType type, bool enabled) async {

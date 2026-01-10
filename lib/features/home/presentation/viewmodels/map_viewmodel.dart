@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/geo_distance_helper.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
+import 'package:partiu/features/home/data/services/map_discovery_service.dart';
 import 'package:partiu/features/home/data/repositories/event_map_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 import 'package:partiu/features/home/data/services/user_location_service.dart';
@@ -38,6 +38,18 @@ class MapViewModel extends ChangeNotifier {
   final LocationStreamController _streamController;
   final UserRepository _userRepository;
   final EventApplicationRepository _applicationRepository;
+  final MapDiscoveryService _mapDiscoveryService;
+
+  List<String> _availableCategoriesInBounds = const [];
+
+  int _eventsInBoundsCount = 0;
+  int _matchingEventsInBoundsCount = 0;
+
+  Map<String, int> _eventsInBoundsCountByCategory = const {};
+
+  int get eventsInBoundsCount => _eventsInBoundsCount;
+  int get matchingEventsInBoundsCount => _matchingEventsInBoundsCount;
+  Map<String, int> get eventsInBoundsCountByCategory => _eventsInBoundsCountByCategory;
 
   /// Markers para Google Maps (pré-carregados)
   Set<Marker> _googleMarkers = {};
@@ -59,6 +71,50 @@ class MapViewModel extends ChangeNotifier {
   List<EventModel> _events = [];
   List<EventModel> get events => _events;
 
+  /// Filtro de categoria selecionado para o mapa
+  /// - null: mostrar todas
+  /// - String: mostrar apenas eventos daquela categoria
+  String? _selectedCategory;
+  String? get selectedCategory => _selectedCategory;
+
+  /// Categorias disponíveis, derivadas dos eventos carregados (coleção Events)
+  List<String> get availableCategories {
+    return _availableCategoriesInBounds;
+  }
+
+  void setCategoryFilter(String? category) {
+    final normalized = category?.trim();
+    final next = (normalized == null || normalized.isEmpty) ? null : normalized;
+    if (_selectedCategory == next) return;
+    _selectedCategory = next;
+    _recomputeCountsInBounds();
+    notifyListeners();
+  }
+
+  void _recomputeCountsInBounds() {
+    final boundsEvents = _mapDiscoveryService.nearbyEvents.value;
+
+    final countsByCategory = <String, int>{};
+    for (final event in boundsEvents) {
+      final category = event.category;
+      if (category == null) continue;
+      final normalized = category.trim();
+      if (normalized.isEmpty) continue;
+      countsByCategory[normalized] = (countsByCategory[normalized] ?? 0) + 1;
+    }
+
+    _eventsInBoundsCount = boundsEvents.length;
+    _eventsInBoundsCountByCategory = Map<String, int>.unmodifiable(countsByCategory);
+
+    final selected = _selectedCategory;
+    if (selected == null || selected.trim().isEmpty) {
+      _matchingEventsInBoundsCount = _eventsInBoundsCount;
+    } else {
+      _matchingEventsInBoundsCount =
+          _eventsInBoundsCountByCategory[selected.trim()] ?? 0;
+    }
+  }
+
   /// Callback quando um marker é tocado (recebe EventModel completo)
   Function(EventModel event)? onMarkerTap;
 
@@ -78,15 +134,66 @@ class MapViewModel extends ChangeNotifier {
     LocationStreamController? streamController,
     UserRepository? userRepository,
     EventApplicationRepository? applicationRepository,
+    MapDiscoveryService? mapDiscoveryService,
     this.onMarkerTap,
   })  : _eventRepository = eventRepository ?? EventMapRepository(),
         _locationService = locationService ?? UserLocationService(),
         _googleMarkerService = googleMarkerService ?? GoogleEventMarkerService(),
         _streamController = streamController ?? LocationStreamController(),
         _userRepository = userRepository ?? UserRepository(),
-        _applicationRepository = applicationRepository ?? EventApplicationRepository() {
+        _applicationRepository = applicationRepository ?? EventApplicationRepository(),
+        _mapDiscoveryService = mapDiscoveryService ?? MapDiscoveryService() {
     _instance = this; // Registra instância global
     _initializeRadiusListener();
+    _startBoundsCategoriesListener();
+  }
+
+  void _startBoundsCategoriesListener() {
+    // Mantém chips sincronizados com o bounding box (viewport)
+    _mapDiscoveryService.nearbyEvents.addListener(_onBoundsEventsChanged);
+    // Atualiza imediatamente com o valor atual (seeded)
+    _onBoundsEventsChanged();
+  }
+
+  void _stopBoundsCategoriesListener() {
+    _mapDiscoveryService.nearbyEvents.removeListener(_onBoundsEventsChanged);
+  }
+
+  void _onBoundsEventsChanged() {
+    var changed = false;
+
+    final previousTotal = _eventsInBoundsCount;
+    final previousMatching = _matchingEventsInBoundsCount;
+    final previousCountsByCategory = _eventsInBoundsCountByCategory;
+
+    _recomputeCountsInBounds();
+
+    if (_eventsInBoundsCount != previousTotal ||
+        _matchingEventsInBoundsCount != previousMatching ||
+        !mapEquals(previousCountsByCategory, _eventsInBoundsCountByCategory)) {
+      changed = true;
+    }
+
+    final next = _eventsInBoundsCountByCategory.keys.toList()..sort();
+    if (!listEquals(_availableCategoriesInBounds, next)) {
+      _availableCategoriesInBounds = next;
+      changed = true;
+    }
+
+    // Se a categoria selecionada não existe mais no viewport, reseta para "Todas"
+    final selected = _selectedCategory;
+    if (selected != null && selected.trim().isNotEmpty) {
+      final normalized = selected.trim();
+      if (!_availableCategoriesInBounds.contains(normalized)) {
+        _selectedCategory = null;
+        _recomputeCountsInBounds();
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   /// Cancela todos os streams Firestore (usar no logout)
@@ -99,6 +206,7 @@ class MapViewModel extends ChangeNotifier {
     _radiusSubscription = null;
     _reloadSubscription?.cancel();
     _reloadSubscription = null;
+    _stopBoundsCategoriesListener();
     BlockService.instance.removeListener(_onBlockedUsersChanged);
     debugPrint('✅ MapViewModel: Streams cancelados');
   }

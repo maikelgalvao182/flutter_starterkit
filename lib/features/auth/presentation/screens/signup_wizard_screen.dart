@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:partiu/core/utils/app_logger.dart';
-import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/auth/presentation/screens/signup_wizard_viewmodel.dart';
@@ -16,7 +15,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/features/auth/presentation/widgets/origin_brazilian_city_selector.dart';
 
 /// Wizard de cadastro - Fluxo VENDOR apenas
 /// 

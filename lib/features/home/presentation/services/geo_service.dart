@@ -79,6 +79,7 @@ class GeoService {
     int limit = 100,
   }) async {
     try {
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
       final box = _buildBoundingBox(lat, lng, PEOPLE_SEARCH_RADIUS_KM);
 
       // Tenta buscar na coleção 'Users' (padrão do app)
@@ -95,6 +96,9 @@ class GeoService {
       List<Map<String, dynamic>> results = [];
 
       for (final doc in snapshot.docs) {
+        if (currentUserId != null && doc.id == currentUserId) {
+          continue;
+        }
         final data = doc.data();
 
         final userLat = (data['latitude'] as num?)?.toDouble();

@@ -10,6 +10,7 @@ class EventModel {
   final double lat;
   final double lng;
   final String title;
+  final String? category;
   final String? locationName;
   final String? formattedAddress;
   final String? placeId;
@@ -32,6 +33,7 @@ class EventModel {
     required this.lat,
     required this.lng,
     required this.title,
+    this.category,
     this.locationName,
     this.formattedAddress,
     this.placeId,
@@ -117,6 +119,7 @@ class EventModel {
       lat: lat,
       lng: lng,
       title: map['activityText'] as String? ?? '',
+      category: (map['category'] as String?)?.trim(),
       locationName: locationName,
       formattedAddress: formattedAddress,
       placeId: placeId,
@@ -140,6 +143,7 @@ class EventModel {
     double? lat,
     double? lng,
     String? title,
+    String? category,
     String? locationName,
     String? formattedAddress,
     String? placeId,
@@ -162,6 +166,7 @@ class EventModel {
       lat: lat ?? this.lat,
       lng: lng ?? this.lng,
       title: title ?? this.title,
+      category: category ?? this.category,
       locationName: locationName ?? this.locationName,
       formattedAddress: formattedAddress ?? this.formattedAddress,
       placeId: placeId ?? this.placeId,

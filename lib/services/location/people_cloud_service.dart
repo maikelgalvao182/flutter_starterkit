@@ -123,6 +123,30 @@ class PeopleCloudService {
       rethrow;
     }
   }
+
+  /// Retorna apenas o total de candidatos dentro do bounding box (antes do limite).
+  ///
+  /// Útil para UI que precisa mostrar a contagem real no mapa,
+  /// sem baixar lista nem calcular distâncias.
+  Future<int> getPeopleCountInBounds({
+    required Map<String, double> boundingBox,
+    UserCloudFilters? filters,
+  }) async {
+    final callable = _functions.httpsCallable(
+      'getPeople',
+      options: HttpsCallableOptions(
+        timeout: const Duration(seconds: 30),
+      ),
+    );
+
+    final result = await callable.call({
+      'boundingBox': boundingBox,
+      'filters': filters?.toMap(),
+    });
+
+    final data = _convertToStringDynamic(result.data);
+    return (data['totalCandidates'] as int?) ?? 0;
+  }
   
   /// Calcula distâncias em batch usando Isolate
   /// 

@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +74,7 @@ class EventMapRepository {
             lat: lat,
             lng: lng,
             title: data['activityText'] as String? ?? '',
+            category: (data['category'] as String?)?.trim(),
             locationName: location['locationName'] as String?,
             formattedAddress: location['formattedAddress'] as String?,
             placeId: location['placeId'] as String?,
@@ -161,6 +161,7 @@ class EventMapRepository {
             lat: lat,
             lng: lng,
             title: data['activityText'] as String? ?? '',
+            category: (data['category'] as String?)?.trim(),
             locationName: location['locationName'] as String?,
             formattedAddress: location['formattedAddress'] as String?,
             placeId: location['placeId'] as String?,
@@ -200,14 +201,14 @@ class EventMapRepository {
 
       final lat = (location['latitude'] as num?)?.toDouble();
       final lng = (location['longitude'] as num?)?.toDouble();
-
       if (lat == null || lng == null) return null;
+
+      final creatorId = data['createdBy'] as String? ?? '';
 
       final participantsData = data['participants'] as Map<String, dynamic>?;
       final scheduleData = data['schedule'] as Map<String, dynamic>?;
       final dateTimestamp = scheduleData?['date'] as Timestamp?;
-      final creatorId = data['createdBy'] as String? ?? '';
-      
+
       List<String>? photoReferences;
       final photoRefs = location['photoReferences'] as List<dynamic>?;
       if (photoRefs != null) {
@@ -218,7 +219,7 @@ class EventMapRepository {
       String? creatorFullName;
       String? creatorPhotoUrl;
       List<Map<String, dynamic>>? participants;
-      
+
       if (includeCreatorAsParticipant && creatorId.isNotEmpty) {
         try {
           final creatorDoc = await _firestore.collection('Users').doc(creatorId).get();
@@ -226,8 +227,7 @@ class EventMapRepository {
             final creatorData = creatorDoc.data();
             creatorFullName = creatorData?['fullName'] as String?;
             creatorPhotoUrl = creatorData?['photoUrl'] as String?;
-            
-            // Criar lista de participantes com o criador
+
             participants = [
               {
                 'userId': creatorId,
@@ -250,6 +250,7 @@ class EventMapRepository {
         lat: lat,
         lng: lng,
         title: data['activityText'] as String? ?? '',
+        category: (data['category'] as String?)?.trim(),
         locationName: location['locationName'] as String?,
         formattedAddress: location['formattedAddress'] as String?,
         placeId: location['placeId'] as String?,
@@ -264,25 +265,5 @@ class EventMapRepository {
       debugPrint('❌ [EventMapRepository] Erro ao buscar evento por ID: $e');
       return null;
     }
-  }
-
-  /// Calcula distância entre dois pontos em km usando fórmula de Haversine
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double earthRadius = 6371; // km
-    
-    final dLat = _toRadians(lat2 - lat1);
-    final dLon = _toRadians(lon2 - lon1);
-    
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2);
-    
-    final c = 2 * math.asin(math.sqrt(a));
-    
-    return earthRadius * c;
-  }
-
-  double _toRadians(double degrees) {
-    return degrees * math.pi / 180.0;
   }
 }

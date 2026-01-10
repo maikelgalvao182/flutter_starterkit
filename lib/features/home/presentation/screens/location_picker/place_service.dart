@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/plugins/locationpicker/entities/address_component.dart';
 import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/plugins/locationpicker/entities/localization_item.dart';
@@ -31,16 +33,22 @@ class PlaceService {
     required String sessionToken,
     required LocalizationItem localization,
     LatLng? bias,
+    String? countryCode,
   }) async {
     try {
       final sanitizedQuery = query.replaceAll(' ', '+');
+
+      final normalizedCountryCode = (countryCode ?? '').trim().toLowerCase();
 
       var endpoint = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
           'key=$apiKey&'
           'language=${localization.languageCode}&'
           'input=$sanitizedQuery&'
-          'components=country:br&'
           'sessiontoken=$sessionToken';
+
+      if (normalizedCountryCode.isNotEmpty) {
+        endpoint += '&components=country:$normalizedCountryCode';
+      }
 
       if (bias != null) {
         endpoint += '&location=${bias.latitude},${bias.longitude}';
@@ -52,10 +60,26 @@ class PlaceService {
           );
 
       if (response.statusCode != 200) {
+        if (kDebugMode) {
+          AppLogger.warning(
+            'Places autocomplete HTTP ${response.statusCode}',
+            tag: 'PLACES',
+          );
+        }
         throw Exception('Autocomplete failed: ${response.statusCode}');
       }
 
       final responseJson = json.decode(response.body) as Map<String, dynamic>;
+
+      if (kDebugMode) {
+        final status = responseJson['status'];
+        if (status != null && status != 'OK' && status != 'ZERO_RESULTS') {
+          AppLogger.warning(
+            'Places autocomplete status=$status message=${responseJson['error_message'] ?? ''}',
+            tag: 'PLACES',
+          );
+        }
+      }
 
       if (responseJson['status'] != null &&
           responseJson['status'] != 'OK' &&
@@ -83,6 +107,12 @@ class PlaceService {
         return RichSuggestion(aci, () {});
       }).toList();
     } catch (e) {
+      if (kDebugMode) {
+        AppLogger.warning(
+          'Places autocomplete falhou: $e',
+          tag: 'PLACES',
+        );
+      }
       return [];
     }
   }
