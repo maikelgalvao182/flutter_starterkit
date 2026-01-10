@@ -60,9 +60,9 @@ class RadiusFilterWidget extends StatelessWidget {
             SliderTheme(
               data: SliderThemeData(
                 activeTrackColor: GlimpseColors.primary,
-                inactiveTrackColor: GlimpseColors.textSubTitle.withOpacity(0.2),
+                inactiveTrackColor: GlimpseColors.textSubTitle.withValues(alpha: 0.2),
                 thumbColor: GlimpseColors.primary,
-                overlayColor: GlimpseColors.primary.withOpacity(0.2),
+                overlayColor: GlimpseColors.primary.withValues(alpha: 0.2),
                 valueIndicatorColor: GlimpseColors.primary,
               ),
               child: Slider(
@@ -77,11 +77,11 @@ class RadiusFilterWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Os eventos no mapa serão atualizados automaticamente',
+              i18n.translate('map_events_auto_update_hint'),
               style: GoogleFonts.getFont(
                 FONT_PLUS_JAKARTA_SANS,
                 fontSize: 12,
-                color: GlimpseColors.textSubTitle.withOpacity(0.7),
+                color: GlimpseColors.textSubTitle.withValues(alpha: 0.7),
                 fontStyle: FontStyle.italic,
               ),
             ),

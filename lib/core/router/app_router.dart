@@ -301,11 +301,11 @@ GoRouter createAppRouter(BuildContext context) {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 16),
-            Text('Erro: ${state.error}'),
+            Text('${AppLocalizations.of(context).translate('error')}: ${state.error}'),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => context.go(AppRoutes.signIn),
-              child: const Text('Voltar ao Login'),
+              child: Text(AppLocalizations.of(context).translate('back_to_sign_in')),
             ),
           ],
         ),

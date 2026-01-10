@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Tipos de horário disponíveis
 enum TimeType {
@@ -24,13 +25,15 @@ class TimeTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Row(
       children: [
         Expanded(
           child: _TimeTypeCard(
             type: TimeType.flexible,
-            title: 'Horário flexível',
-            subtitle: 'Qualquer hora do dia',
+            title: i18n.translate('flexible_time'),
+            subtitle: i18n.translate('time_type_flexible_subtitle'),
             icon: IconsaxPlusLinear.calendar,
             isSelected: selectedType == TimeType.flexible,
             onTap: () => onTypeSelected(TimeType.flexible),
@@ -42,8 +45,8 @@ class TimeTypeSelector extends StatelessWidget {
         Expanded(
           child: _TimeTypeCard(
             type: TimeType.specific,
-            title: 'Horário específico',
-            subtitle: 'Escolha o horário exato',
+            title: i18n.translate('specific_time'),
+            subtitle: i18n.translate('time_type_specific_subtitle'),
             icon: IconsaxPlusLinear.timer_1,
             isSelected: selectedType == TimeType.specific,
             onTap: () => onTypeSelected(TimeType.specific),

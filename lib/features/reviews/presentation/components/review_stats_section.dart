@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/data/models/review_stats_model.dart';
 import 'package:partiu/shared/widgets/criteria_bars.dart';
 
@@ -27,13 +28,19 @@ class ReviewStatsSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final i18n = AppLocalizations.of(context);
+    final countTemplate = stats.totalReviews == 1
+        ? i18n.translate('review_stats_count_singular')
+        : i18n.translate('review_stats_count_plural');
+    final countText = countTemplate.replaceAll('{count}', stats.totalReviews.toString());
+
     return Container(
       padding: GlimpseStyles.profileSectionPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Avaliações',
+            i18n.translate('review_stats_title'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontWeight: FontWeight.w700,
@@ -72,7 +79,7 @@ class ReviewStatsSection extends StatelessWidget {
                         _buildStars(stats.overallRating),
                         const SizedBox(height: 4),
                         Text(
-                          '${stats.totalReviews} ${stats.totalReviews == 1 ? "avaliação" : "avaliações"}',
+                          countText,
                           style: GoogleFonts.getFont(
                             FONT_PLUS_JAKARTA_SANS,
                             fontSize: 14,

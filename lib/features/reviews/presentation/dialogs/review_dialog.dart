@@ -32,6 +32,16 @@ class ReviewDialog {
     required PendingReviewModel pendingReview,
   }) async {
     final repo = ReviewRepository();
+    final i18n = AppLocalizations.of(context);
+
+    final experienceTitle = i18n.translate('review_dialog_title_experience');
+    final highlightTitle = i18n.translate('review_dialog_title_highlight_qualities');
+    final leaveCommentTitle = i18n.translate('review_dialog_title_leave_comment');
+    final continueLabel = i18n.translate('continue');
+    final sendReviewLabel = i18n.translate('review_dialog_primary_send_review');
+    final sendReviewsLabel = i18n.translate('review_dialog_primary_send_reviews');
+    final blockedMessage = i18n.translate('review_dialog_blocked_message');
+    final participantFallbackName = i18n.translate('participant_label');
 
     // Owner: step 0 (condicionado)
     List<String> participantsToReview = const [];
@@ -84,7 +94,7 @@ class ReviewDialog {
       for (var i = 0; i < participantsToReview.length; i++) {
         final participantId = participantsToReview[i];
         final profile = pendingReview.participantProfiles?[participantId];
-        final displayName = (profile?.name.isNotEmpty == true) ? profile!.name : 'Participante';
+        final displayName = (profile?.name.isNotEmpty == true) ? profile!.name : participantFallbackName;
         final displayPhotoUrl = profile?.photoUrl;
         final isLast = i == participantsToReview.length - 1;
         final remaining = _remainingParticipants(
@@ -95,7 +105,7 @@ class ReviewDialog {
 
         final ratings = await _showRatingsSheet(
           context,
-          title: 'Como foi a experiência?',
+          title: experienceTitle,
           allowProceed: true,
           revieweeName: displayName,
           revieweePhotoUrl: displayPhotoUrl,
@@ -107,7 +117,7 @@ class ReviewDialog {
 
         final badges = await _showBadgesSheet(
           context,
-          title: 'Destaque qualidades',
+          title: highlightTitle,
           revieweeName: displayName,
           revieweePhotoUrl: displayPhotoUrl,
         );
@@ -118,8 +128,8 @@ class ReviewDialog {
 
         final comment = await _showCommentSheet(
           context,
-          title: 'Deixe um comentário',
-          primaryButtonText: isLast ? 'Enviar avaliações' : 'Continuar',
+          title: leaveCommentTitle,
+          primaryButtonText: isLast ? sendReviewsLabel : continueLabel,
           revieweeName: displayName,
           revieweePhotoUrl: displayPhotoUrl,
           remainingParticipants: remaining,
@@ -141,13 +151,13 @@ class ReviewDialog {
           ratingsPerParticipant: ratingsPerParticipant,
           badgesPerParticipant: badgesPerParticipant,
           commentPerParticipant: commentPerParticipant,
+          fallbackOwnerName: i18n.translate('organizer_label'),
         );
 
         if (!context.mounted) {
           return true;
         }
 
-        final i18n = AppLocalizations.of(context);
         final message = participantsToReview.length > 1
             ? i18n
                 .translate('reviews_sent_successfully')
@@ -168,12 +178,11 @@ class ReviewDialog {
     final allowed = pendingReview.allowedToReviewOwner ?? false;
     final ratings = await _showRatingsSheet(
       context,
-      title: 'Como foi a experiência?',
+      title: experienceTitle,
       allowProceed: allowed,
       revieweeName: pendingReview.revieweeName,
       revieweePhotoUrl: pendingReview.revieweePhotoUrl,
-      blockedMessage:
-          'Você não tem permissão para avaliar este evento. Sua presença pode não ter sido confirmada pelo organizador.',
+      blockedMessage: blockedMessage,
     );
     if (!context.mounted) return false;
     if (ratings == null) {
@@ -182,7 +191,7 @@ class ReviewDialog {
 
     final badges = await _showBadgesSheet(
       context,
-      title: 'Destaque qualidades',
+      title: highlightTitle,
       revieweeName: pendingReview.revieweeName,
       revieweePhotoUrl: pendingReview.revieweePhotoUrl,
     );
@@ -193,8 +202,8 @@ class ReviewDialog {
 
     final comment = await _showCommentSheet(
       context,
-      title: 'Deixe um comentário',
-      primaryButtonText: 'Enviar avaliação',
+      title: leaveCommentTitle,
+      primaryButtonText: sendReviewLabel,
       revieweeName: pendingReview.revieweeName,
       revieweePhotoUrl: pendingReview.revieweePhotoUrl,
       remainingParticipants: const [],
@@ -311,13 +320,14 @@ class _OwnerPresenceSheetState extends State<_OwnerPresenceSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     final pending = widget.pendingReview;
     final participantIds = pending.participantIds ?? const <String>[];
     final profiles = pending.participantProfiles ?? const <String, ParticipantProfile>{};
 
     return _SheetScaffold(
       maxHeight: widget.maxHeight,
-      title: 'Confirmar presença',
+      title: i18n.translate('review_dialog_title_confirm_presence'),
       subtitle: null,
       onClose: () => Navigator.of(context, rootNavigator: true).pop<List<String>?>(null),
       body: SingleChildScrollView(
@@ -332,7 +342,7 @@ class _OwnerPresenceSheetState extends State<_OwnerPresenceSheet> {
           eventDate: pending.eventDate,
         ),
       ),
-      primaryButtonText: 'Continuar',
+      primaryButtonText: i18n.translate('continue'),
       primaryEnabled: _selected.isNotEmpty,
       onPrimaryPressed: () => Navigator.of(context, rootNavigator: true).pop<List<String>>(_selected),
     );
@@ -428,6 +438,7 @@ class _RatingsSheetState extends State<_RatingsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     final canProceed = widget.allowProceed && _ratings.length >= MINIMUM_REQUIRED_RATINGS;
 
     return _SheetScaffold(
@@ -513,7 +524,7 @@ class _RatingsSheetState extends State<_RatingsSheet> {
           ],
         ),
       ),
-      primaryButtonText: 'Continuar',
+      primaryButtonText: i18n.translate('continue'),
       primaryEnabled: canProceed,
       onPrimaryPressed: () => Navigator.of(context, rootNavigator: true).pop<Map<String, int>>(_ratings),
     );
@@ -572,6 +583,7 @@ class _BadgesSheetState extends State<_BadgesSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     return _SheetScaffold(
       maxHeight: widget.maxHeight,
       title: widget.title,
@@ -624,7 +636,7 @@ class _BadgesSheetState extends State<_BadgesSheet> {
           ],
         ),
       ),
-      primaryButtonText: 'Continuar',
+      primaryButtonText: i18n.translate('continue'),
       primaryEnabled: true,
       onPrimaryPressed: () => Navigator.of(context, rootNavigator: true).pop<List<String>>(_selectedBadges),
     );
@@ -786,6 +798,7 @@ Future<void> _submitOwnerBatch({
   required Map<String, Map<String, int>> ratingsPerParticipant,
   required Map<String, List<String>> badgesPerParticipant,
   required Map<String, String> commentPerParticipant,
+  required String fallbackOwnerName,
 }) async {
   final firestore = FirebaseFirestore.instance;
 
@@ -807,7 +820,7 @@ Future<void> _submitOwnerBatch({
     ..commentPerParticipant = commentPerParticipant;
 
   final ownerData = await ReviewBatchService.prepareOwnerData(state.reviewerId, firestore);
-  final ownerName = ownerData['ownerName'] ?? 'Organizador';
+  final ownerName = ownerData['ownerName'] ?? fallbackOwnerName;
   final ownerPhotoUrl = ownerData['ownerPhotoUrl'];
 
   var batch = firestore.batch();

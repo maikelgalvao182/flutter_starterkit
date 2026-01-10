@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Diálogo de confirmação para exclusão de conta
 class DeleteAccountConfirmDialog {
@@ -11,23 +12,24 @@ class DeleteAccountConfirmDialog {
     return showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
+        final i18n = AppLocalizations.of(context);
         return AlertDialog(
-          title: Text(title ?? 'Excluir Conta'),
+          title: Text(title ?? i18n.translate('delete_account_title')),
           content: Text(
             message ??
-                'Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.',
+                i18n.translate('delete_account_message'),
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => context.pop(false),
-              child: const Text('Cancelar'),
+              child: Text(i18n.translate('cancel')),
             ),
             TextButton(
               onPressed: () => context.pop(true),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
               ),
-              child: const Text('Excluir'),
+              child: Text(i18n.translate('delete')),
             ),
           ],
         );

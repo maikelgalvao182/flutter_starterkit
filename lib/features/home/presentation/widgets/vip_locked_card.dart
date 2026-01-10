@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Card bloqueado para usuários não-VIP
 /// Exibe um placeholder desfocado com call-to-action
@@ -77,7 +78,7 @@ class VipLockedCard extends StatelessWidget {
 
               // Overlay de bloqueio
               Container(
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
               ),
 
               // Call to Action
@@ -92,7 +93,7 @@ class VipLockedCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: GlimpseColors.primary.withOpacity(0.3),
+                            color: GlimpseColors.primary.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -106,7 +107,7 @@ class VipLockedCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Desbloqueie com VIP',
+                      AppLocalizations.of(context).translate('unlock_with_vip'),
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 14,

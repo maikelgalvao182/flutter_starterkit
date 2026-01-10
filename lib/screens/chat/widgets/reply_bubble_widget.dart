@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/chat/models/reply_snapshot.dart';
 
 /// Widget que renderiza a referência de reply dentro de uma bolha de mensagem
@@ -34,6 +35,7 @@ class ReplyBubbleWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final i18n = AppLocalizations.of(context);
     
     // Cor da linha lateral - azul se o reply é de mensagem própria
     final lineColor = GlimpseColors.primaryLight;
@@ -100,7 +102,7 @@ class ReplyBubbleWidget extends StatelessWidget {
                       const SizedBox(height: 2),
                       
                       // Conteúdo do reply
-                      _buildContent(textColor),
+                      _buildContent(i18n, textColor),
                     ],
                   ),
                 ),
@@ -116,7 +118,7 @@ class ReplyBubbleWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(Color textColor) {
+  Widget _buildContent(AppLocalizations i18n, Color textColor) {
     // Se for mensagem de imagem sem texto
     if (replySnapshot.type == 'image' && (replySnapshot.text == null || replySnapshot.text!.isEmpty)) {
       return Row(
@@ -129,7 +131,7 @@ class ReplyBubbleWidget extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            'Foto',
+            i18n.translate('photo'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 13,
@@ -153,7 +155,7 @@ class ReplyBubbleWidget extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            'Áudio',
+            i18n.translate('audio'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 13,

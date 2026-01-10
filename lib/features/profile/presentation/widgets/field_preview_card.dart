@@ -105,9 +105,9 @@ class FieldPreviewCard extends StatelessWidget {
                   ),
                   if (_getIsRequired()) ...[
                     const SizedBox(width: 2),
-                    const Text(
-                      '*',
-                      style: TextStyle(
+                    Text(
+                      i18n.translate('required_field_marker'),
+                      style: const TextStyle(
                         color: Colors.red,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

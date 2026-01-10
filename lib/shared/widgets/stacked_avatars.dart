@@ -5,6 +5,7 @@ import 'package:partiu/features/home/data/repositories/event_application_reposit
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Widget compartilhável que mostra avatares empilhados de participantes
 /// 
@@ -81,7 +82,7 @@ class _StackedAvatarsState extends State<StackedAvatars> {
       debugPrint('❌ Erro ao carregar participantes: $e');
       if (mounted) {
         setState(() {
-          _error = 'Erro ao carregar participantes';
+          _error = 'error_loading_participants';
           _isLoading = false;
         });
       }
@@ -90,6 +91,8 @@ class _StackedAvatarsState extends State<StackedAvatars> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     // Loading state
     if (_isLoading) {
       return _buildSkeleton();
@@ -107,6 +110,10 @@ class _StackedAvatarsState extends State<StackedAvatars> {
 
     final visibleParticipants = _participants.take(widget.maxVisible).toList();
     final totalCount = _participants.length;
+    final membersTemplate = totalCount == 1
+      ? i18n.translate('members_count_singular')
+      : i18n.translate('members_count_plural');
+    final membersText = membersTemplate.replaceAll('{count}', totalCount.toString());
     
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -115,7 +122,7 @@ class _StackedAvatarsState extends State<StackedAvatars> {
         if (widget.showMemberCount) ...[
           const SizedBox(width: 8),
           Text(
-            '$totalCount ${totalCount == 1 ? 'membro' : 'membros'}',
+            membersText,
             style: widget.textStyle ?? GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 13,

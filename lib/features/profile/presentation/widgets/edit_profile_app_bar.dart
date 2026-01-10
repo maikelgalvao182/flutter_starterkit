@@ -1,5 +1,6 @@
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/profile/presentation/widgets/edit_profile_styles.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/typing_indicator.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ class EditProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     return RepaintBoundary(
       child: Padding(
         padding: const EdgeInsets.only(right: 20),
@@ -70,7 +72,7 @@ class EditProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                     onPressed: onSave,
                     child: Text(
-                      'Salvar',
+                      i18n.translate('save'),
                       style: EditProfileStyles.saveButtonTextStyle,
                     ),
                   ),

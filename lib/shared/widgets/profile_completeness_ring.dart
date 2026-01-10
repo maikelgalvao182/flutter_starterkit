@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Widget que desenha um anel de progresso quadrado ao redor do avatar
 /// para indicar visualmente o percentual de completude do perfil.
@@ -36,6 +37,8 @@ class ProfileCompletenessRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     // Cores baseadas no percentual
     final Color ringColor;
     final Gradient? ringGradient;
@@ -101,7 +104,7 @@ class ProfileCompletenessRing extends StatelessWidget {
                   ],
                 ),
                 child: Text(
-                  '$percentage%',
+                  i18n.translate('percentage_value').replaceAll('{value}', percentage.toString()),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,

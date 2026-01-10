@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/shared/widgets/AnimatedSlideIn.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
@@ -352,6 +353,8 @@ class _RemainingCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Column(
       children: [
         Container(
@@ -363,7 +366,7 @@ class _RemainingCounter extends StatelessWidget {
           ),
           child: Center(
             child: Text(
-              '+$count',
+              i18n.translate('plus_count').replaceAll('{count}', count.toString()),
               style: GoogleFonts.getFont(
                 FONT_PLUS_JAKARTA_SANS,
                 fontSize: 12,

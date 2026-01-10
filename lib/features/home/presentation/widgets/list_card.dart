@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/list_emoji_avatar.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/features/home/presentation/widgets/list_card/list_card_controller.dart';
@@ -50,29 +51,10 @@ class _ListCardState extends State<ListCard> {
     }
   }
 
-  /// Formata data/hora para exibição
-  String _formatDateTime(DateTime? dateTime) {
-    if (dateTime == null) return '';
-    
-    try {
-      final formattedDate = DateFormat('dd/MM', 'pt_BR').format(dateTime);
-      
-      // Se for meia-noite exata (00:00), mostrar só a data (flexible)
-      if (dateTime.hour == 0 && dateTime.minute == 0) {
-        return formattedDate;
-      }
-      
-      // Caso contrário, mostrar data + hora
-      final formattedTime = DateFormat('HH:mm').format(dateTime);
-      return '$formattedDate • $formattedTime';
-    } catch (e) {
-      debugPrint('Erro ao formatar data/hora: $e');
-      return '';
-    }
-  }
-
   /// Constrói a pilha de avatares simplificada e unificada
   Widget _buildParticipantsStack() {
+    final i18n = AppLocalizations.of(context);
+
     final emoji = _controller.emoji ?? ListEmojiAvatar.defaultEmoji;
     final participants = _controller.recentParticipants;
     final totalCount = _controller.totalParticipantsCount;
@@ -132,6 +114,7 @@ class _ListCardState extends State<ListCard> {
     
     // 3. Contador
     if (hasCounter) {
+      final totalCountText = i18n.translate('plus_count').replaceAll('{count}', totalCount.toString());
       items.add(
         Container(
           width: size,
@@ -143,7 +126,7 @@ class _ListCardState extends State<ListCard> {
             border: Border.all(color: Colors.white, width: border),
           ),
           child: Text(
-            '+$totalCount',
+            totalCountText,
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 12,
@@ -220,7 +203,6 @@ class _ListCardState extends State<ListCard> {
       }
     }
 
-    final hasParticipants = _controller.totalParticipantsCount > 0;
     final locationName = _controller.locationName;
     final locality = _controller.locality;
     final state = _controller.state;

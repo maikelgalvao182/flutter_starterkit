@@ -7,8 +7,8 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
 import 'package:partiu/core/router/app_router.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/common/state/app_state.dart';
-import 'package:partiu/common/services/notifications_counter_service.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_profile_completeness_ring.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
@@ -116,13 +116,14 @@ class _HomeAppBarState extends State<HomeAppBar> {
 class _UserAppBarContent extends StatelessWidget {
   const _UserAppBarContent({required this.user});
 
-  final user;
+  final dynamic user;
 
   @override
   Widget build(BuildContext context) {
-    final fullName = user.fullName ?? 'Usuário';
+    final i18n = AppLocalizations.of(context);
     final locality = user.locality ?? '';
     final state = user.state ?? '';
+    final fallbackLocation = i18n.translate('location_not_defined');
     
     final location = locality.isNotEmpty && state.isNotEmpty
         ? '$locality, $state'
@@ -130,7 +131,7 @@ class _UserAppBarContent extends StatelessWidget {
             ? locality
             : state.isNotEmpty
                 ? state
-                : 'Localização não definida';
+          : fallbackLocation;
 
     return Row(
       children: [
@@ -188,6 +189,7 @@ class _GuestAppBarContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     return Row(
       children: [
         // Avatar estático de visitante
@@ -208,7 +210,7 @@ class _GuestAppBarContent extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Oi, Visitante 👋',
+                i18n.translate('home_greeting_guest'),
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 16,
@@ -220,7 +222,7 @@ class _GuestAppBarContent extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                'Localização não definida',
+                i18n.translate('location_not_defined'),
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 13,

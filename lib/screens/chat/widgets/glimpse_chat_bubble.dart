@@ -352,7 +352,7 @@ class GlimpseChatBubble extends StatelessWidget {
                   Navigator.of(sheetContext).pop();
                   onReply?.call();
                 },
-                child: Text(replyLabel.isNotEmpty ? replyLabel : 'Responder'),
+                child: Text(replyLabel),
               ),
             if (canCopy)
               CupertinoActionSheetAction(
@@ -365,11 +365,11 @@ class GlimpseChatBubble extends StatelessWidget {
                   navigator.pop();
 
                   ToastService.showInfo(
-                    message: copiedLabel.isNotEmpty ? copiedLabel : 'Copiado',
+                    message: copiedLabel,
                     duration: const Duration(seconds: 2),
                   );
                 },
-                child: Text(copyLabel.isNotEmpty ? copyLabel : 'Copiar'),
+                child: Text(copyLabel),
               ),
           ],
           // Sem botão "Cancelar" (pedido do usuário). Dismiss ao tocar fora.

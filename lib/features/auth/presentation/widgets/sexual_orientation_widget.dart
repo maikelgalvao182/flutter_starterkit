@@ -34,10 +34,28 @@ class SexualOrientationWidget extends StatelessWidget {
     ];
     
     return GlimpseDropdown(
-      labelText: 'Orientação Sexual',
-      hintText: 'Selecione sua orientação sexual',
+      labelText: i18n.translate('sexual_orientation_label'),
+      hintText: i18n.translate('sexual_orientation_hint'),
       items: orientationOptions,
       selectedValue: initialOrientation.isNotEmpty ? initialOrientation : null,
+      itemBuilder: (item) {
+        if (item == orientationHeterosexual) {
+          return i18n.translate('sexual_orientation_heterosexual');
+        }
+        if (item == orientationHomosexual) {
+          return i18n.translate('sexual_orientation_homosexual');
+        }
+        if (item == orientationBisexual) {
+          return i18n.translate('sexual_orientation_bisexual');
+        }
+        if (item == orientationOther) {
+          return i18n.translate('sexual_orientation_other');
+        }
+        if (item == orientationPreferNotToSay) {
+          return i18n.translate('sexual_orientation_prefer_not_to_say');
+        }
+        return item;
+      },
       onChanged: onOrientationChanged,
     );
   }

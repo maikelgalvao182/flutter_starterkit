@@ -3,6 +3,7 @@ import 'package:partiu/features/notifications/models/activity_notification_types
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// TRIGGER 8: Atividade cancelada
 /// 
@@ -19,6 +20,8 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
     Map<String, dynamic> context,
   ) async {
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
       // Busca participantes da atividade
       final participants = await _getActivityParticipants(activity.id);
       
@@ -32,6 +35,7 @@ class ActivityCanceledTrigger extends BaseActivityTrigger {
 
       // Gera mensagem usando template
       final template = NotificationTemplates.activityCanceled(
+        i18n: i18n,
         activityName: activity.name,
         emoji: activity.emoji,
       );

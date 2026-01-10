@@ -17,7 +17,6 @@ class PersonalTab extends StatelessWidget {
     required this.birthMonthController,
     required this.birthYearController,
     required this.localityController,
-    required this.countryController,
     required this.languagesController,
     required this.instagramController,
     required this.validateBio,
@@ -39,7 +38,6 @@ class PersonalTab extends StatelessWidget {
   final TextEditingController birthMonthController;
   final TextEditingController birthYearController;
   final TextEditingController localityController;
-  final TextEditingController countryController;
   final TextEditingController languagesController;
   final TextEditingController instagramController;
   final String? Function(String?) validateBio;
@@ -67,7 +65,6 @@ class PersonalTab extends StatelessWidget {
       'birthMonth': birthMonthController,
       'birthYear': birthYearController,
       'locality': localityController,
-      'country': countryController,
       'languages': languagesController,
       'instagram': instagramController,
     };
@@ -156,13 +153,6 @@ class PersonalTab extends StatelessWidget {
         FieldPreviewCard(
           fieldType: PersonalFieldType.locality,
           preview: localityController.text,
-          onTap: () {}, // Read-only - sem ação
-        ),
-
-        // Country (Read-only - atualizado automaticamente pelo LocationBackgroundUpdater)
-        FieldPreviewCard(
-          fieldType: PersonalFieldType.country,
-          preview: countryController.text,
           onTap: () {}, // Read-only - sem ação
         ),
 

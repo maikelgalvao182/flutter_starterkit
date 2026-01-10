@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/models/user.dart' as app_user;
 import 'package:partiu/core/utils/interests_helper.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
@@ -49,6 +49,7 @@ class _PresenceDrawerState extends State<PresenceDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
@@ -87,7 +88,7 @@ class _PresenceDrawerState extends State<PresenceDrawer> {
 
                 // Título
                 Text(
-                  'Presenças confirmadas',
+                  i18n.translate('presence_confirmed_title'),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
@@ -130,7 +131,7 @@ class _PresenceDrawerState extends State<PresenceDrawer> {
                   debugPrint('❌ Erro no StreamBuilder: ${snapshot.error}');
                   return Center(
                     child: GlimpseEmptyState.standard(
-                      text: 'Erro ao carregar presenças',
+                      text: i18n.translate('presence_load_error'),
                     ),
                   );
                 }
@@ -150,7 +151,7 @@ class _PresenceDrawerState extends State<PresenceDrawer> {
                 if (applications.isEmpty) {
                   return Center(
                     child: GlimpseEmptyState.standard(
-                      text: 'Ninguém confirmou presença ainda',
+                      text: i18n.translate('presence_none_confirmed'),
                     ),
                   );
                 }
@@ -272,6 +273,19 @@ class _PresenceBadge extends StatelessWidget {
 
   final String presence;
 
+  String _localizedPresenceLabel(AppLocalizations i18n) {
+    switch (presence) {
+      case 'Vou':
+        return i18n.translate('presence_yes');
+      case 'Talvez':
+        return i18n.translate('presence_maybe');
+      case 'Não vou':
+        return i18n.translate('presence_no');
+      default:
+        return presence;
+    }
+  }
+
   String _getEmoji() {
     switch (presence) {
       case 'Vou':
@@ -313,6 +327,9 @@ class _PresenceBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+    final label = _localizedPresenceLabel(i18n);
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 10,
@@ -323,7 +340,7 @@ class _PresenceBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
-        '${_getEmoji()} $presence',
+        '${_getEmoji()} $label',
         style: GoogleFonts.getFont(
           FONT_PLUS_JAKARTA_SANS,
           fontSize: 12,

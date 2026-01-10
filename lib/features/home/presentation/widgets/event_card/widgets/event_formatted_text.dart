@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Widget burro que exibe texto formatado de um evento
 /// 
@@ -27,6 +28,8 @@ class EventFormattedText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     final baseStyle = GoogleFonts.getFont(
       FONT_PLUS_JAKARTA_SANS,
       fontSize: 18,
@@ -45,7 +48,7 @@ class EventFormattedText extends StatelessWidget {
           ),
           
           // Conectivo
-          const TextSpan(text: ' quer '),
+          TextSpan(text: ' ${i18n.translate('event_formatted_wants')} '),
           
           // Atividade
           TextSpan(
@@ -55,7 +58,7 @@ class EventFormattedText extends StatelessWidget {
           
           // Local (clicável, sem sublinhado)
           if (locationName.isNotEmpty) ...[
-            const TextSpan(text: ' em '),
+            TextSpan(text: ' ${i18n.translate('event_formatted_in')} '),
             TextSpan(
               text: locationName,
               style: baseStyle.copyWith(color: GlimpseColors.primary),
@@ -71,7 +74,7 @@ class EventFormattedText extends StatelessWidget {
           
           // Horário
           if (timeText.isNotEmpty) ...[
-            const TextSpan(text: ' às '),
+            TextSpan(text: ' ${i18n.translate('event_formatted_at')} '),
             TextSpan(text: timeText),
           ],
         ],

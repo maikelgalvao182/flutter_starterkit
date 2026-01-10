@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/data/services/people_map_discovery_service.dart';
 import 'package:partiu/features/home/presentation/widgets/people_button_controller.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
@@ -36,6 +37,8 @@ class _PeopleButtonState extends State<PeopleButton> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return ValueListenableBuilder<int>(
       valueListenable: _peopleCountService.nearbyPeopleCount,
       builder: (context, boundsCount, _) {
@@ -44,6 +47,12 @@ class _PeopleButtonState extends State<PeopleButton> {
           builder: (context, __) {
             final user = _controller.recentUser;
             final count = (boundsCount > 0 ? boundsCount : _controller.nearbyCount).clamp(0, 1 << 30);
+
+            final peopleNearYouLabel = i18n.translate('people_near_you');
+            final countTemplate = count == 1
+                ? i18n.translate('nearby_people_count_singular')
+                : i18n.translate('nearby_people_count_plural');
+            final peopleCountLabel = countTemplate.replaceAll('{count}', count.toString());
         
         // Se não tiver ninguém ou estiver carregando, mostra estado vazio ou loading?
         // O design original mostrava avatar se tivesse users.
@@ -51,7 +60,7 @@ class _PeopleButtonState extends State<PeopleButton> {
 
             return Material(
               elevation: 8,
-              shadowColor: Colors.black.withOpacity(0.3),
+              shadowColor: Colors.black.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(100),
               child: InkWell(
                 onTap: widget.onPressed,
@@ -105,7 +114,7 @@ class _PeopleButtonState extends State<PeopleButton> {
                         children: [
                           // Texto "Perto de você"
                           Text(
-                            'Perto de você',
+                            peopleNearYouLabel,
                             style: GoogleFonts.getFont(
                               FONT_PLUS_JAKARTA_SANS,
                               fontSize: 14,
@@ -115,7 +124,7 @@ class _PeopleButtonState extends State<PeopleButton> {
                           ),
                           // Contagem (baseada no bounding box do mapa)
                           Text(
-                            '$count pessoas',
+                            peopleCountLabel,
                             style: GoogleFonts.getFont(
                               FONT_PLUS_JAKARTA_SANS,
                               fontSize: 12,

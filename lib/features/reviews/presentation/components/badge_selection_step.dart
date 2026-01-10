@@ -3,6 +3,7 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/reviews/domain/constants/review_badges.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Step de seleção de badges (Step 2)
 class BadgeSelectionStep extends StatelessWidget {
@@ -15,8 +16,17 @@ class BadgeSelectionStep extends StatelessWidget {
     super.key,
   });
 
+  String _badgesSelectedLabel(AppLocalizations i18n, int count) {
+    final template = count == 1
+        ? i18n.translate('badges_selected_count_singular')
+        : i18n.translate('badges_selected_count_plural');
+    return template.replaceAll('{count}', count.toString());
+  }
+
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Column(
       children: [
         // Grid de badges
@@ -51,11 +61,11 @@ class BadgeSelectionStep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: GlimpseColors.primary.withOpacity(0.1),
+                color: GlimpseColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${selectedBadges.length} ${selectedBadges.length == 1 ? "badge selecionado" : "badges selecionados"}',
+                _badgesSelectedLabel(i18n, selectedBadges.length),
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 13,
@@ -83,6 +93,8 @@ class _BadgeItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -111,7 +123,7 @@ class _BadgeItem extends StatelessWidget {
             
             // Título
             Text(
-              badge.title,
+              badge.localizedTitle(i18n),
               style: GoogleFonts.getFont(
                 FONT_PLUS_JAKARTA_SANS,
                 fontSize: 12,

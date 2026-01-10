@@ -122,6 +122,14 @@ class GoogleMapViewState extends State<GoogleMapView> {
     
     // Listener para atualizar markers quando eventos mudarem
     widget.viewModel.addListener(_onEventsChanged);
+
+    // ⚡ Se o Splash/AppInitializer já gerou markers, usa como estado inicial.
+    // Isso faz os markers aparecerem junto com o mapa, sem esperar rebuild assíncrono.
+    final preloadedMarkers = widget.viewModel.googleMarkers;
+    if (preloadedMarkers.isNotEmpty) {
+      _markers = preloadedMarkers;
+      debugPrint('⚡ GoogleMapView: Usando ${_markers.length} markers pré-carregados do MapViewModel');
+    }
     
     // Verificar se eventos e markers já foram pré-carregados pelo AppInitializerService
     WidgetsBinding.instance.addPostFrameCallback((_) {

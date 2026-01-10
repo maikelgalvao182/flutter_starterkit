@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Serviço para corte de imagens
 class ImageCropService {
@@ -12,6 +13,13 @@ class ImageCropService {
   /// Corta a imagem selecionada
   Future<File?> cropImage(File imageFile, {bool isCircle = true}) async {
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(
+        AppLocalizations.currentLocale,
+      );
+      final title = i18n.translate('image_crop_edit_photo_title').isNotEmpty
+          ? i18n.translate('image_crop_edit_photo_title')
+          : 'Editar Foto';
+
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: imageFile.path,
         aspectRatio: isCircle
@@ -22,7 +30,7 @@ class ImageCropService {
         maxHeight: 1080,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Editar Foto',
+            toolbarTitle: title,
             toolbarColor: Colors.black,
             toolbarWidgetColor: Colors.white,
             backgroundColor: Colors.black,
@@ -31,7 +39,7 @@ class ImageCropService {
             lockAspectRatio: true,
           ),
           IOSUiSettings(
-            title: 'Editar Foto',
+            title: title,
             aspectRatioLockEnabled: true,
             resetAspectRatioEnabled: false,
             cropStyle: isCircle ? CropStyle.circle : CropStyle.rectangle,
@@ -59,6 +67,13 @@ class ImageCropService {
     int compressQuality = 85,
   }) async {
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(
+        AppLocalizations.currentLocale,
+      );
+      final title = i18n.translate('image_crop_edit_photo_title').isNotEmpty
+          ? i18n.translate('image_crop_edit_photo_title')
+          : 'Editar Foto';
+
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: imageFile.path,
         aspectRatio: CropAspectRatio(ratioX: ratioX, ratioY: ratioY),
@@ -67,7 +82,7 @@ class ImageCropService {
         maxHeight: maxHeight,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Editar Foto',
+            toolbarTitle: title,
             toolbarColor: Colors.black,
             toolbarWidgetColor: Colors.white,
             backgroundColor: Colors.black,
@@ -76,7 +91,7 @@ class ImageCropService {
             lockAspectRatio: true,
           ),
           IOSUiSettings(
-            title: 'Editar Foto',
+            title: title,
             aspectRatioLockEnabled: true,
             resetAspectRatioEnabled: false,
             cropStyle: cropStyle,

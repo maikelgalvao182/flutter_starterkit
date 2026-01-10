@@ -5,6 +5,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:partiu/core/models/didit_session.dart';
 import 'package:partiu/core/services/didit_verification_service.dart';
 import 'package:partiu/core/services/face_verification_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/utils/app_logger.dart';
 
 /// Tela de verificação usando Didit WebView
@@ -55,7 +56,7 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
       if (session == null) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Não foi possível criar sessão de verificação';
+          _errorMessage = 'verification_session_create_failed';
         });
         return;
       }
@@ -82,7 +83,7 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
       
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Erro ao iniciar verificação: $error';
+        _errorMessage = 'verification_start_error';
       });
     }
   }
@@ -213,7 +214,7 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
 
   /// Processa erro na verificação
   void _handleVerificationError(Map<String, dynamic>? result) {
-    final errorMessage = result?['error'] as String? ?? 'Erro na verificação';
+    final errorMessage = result?['error'] as String? ?? 'verification_error_default';
     AppLogger.error('Verificação falhou: $errorMessage', tag: _tag);
     
     if (mounted) {
@@ -223,9 +224,13 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
 
   /// Mostra mensagem de erro
   void _showError(String message) {
+    final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(message);
+    final displayMessage = translated.isNotEmpty ? translated : message;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(displayMessage),
         backgroundColor: Colors.red,
       ),
     );
@@ -233,10 +238,12 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Verificação de Identidade'),
+        title: Text(i18n.translate('identity_verification_title')),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -262,17 +269,19 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
 
   /// Constrói o loading
   Widget _buildLoading() {
-    return const Center(
+    final i18n = AppLocalizations.of(context);
+
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
+          const CircularProgressIndicator(
             color: Colors.white,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
-            'Preparando verificação...',
-            style: TextStyle(
+            i18n.translate('verification_preparing'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
             ),
@@ -284,6 +293,10 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
 
   /// Constrói a mensagem de erro
   Widget _buildError() {
+    final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(_errorMessage!);
+    final displayMessage = translated.isNotEmpty ? translated : _errorMessage!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -297,7 +310,7 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              _errorMessage!,
+              displayMessage,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -311,7 +324,7 @@ class _DiditVerificationScreenState extends State<DiditVerificationScreen> {
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
-              child: const Text('Tentar Novamente'),
+              child: Text(i18n.translate('try_again')),
             ),
           ],
         ),

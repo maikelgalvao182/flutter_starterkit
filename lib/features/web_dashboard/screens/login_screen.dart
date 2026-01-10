@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/features/web_dashboard/services/web_auth_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,8 +23,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await WebAuthService.signInWithGoogle();
       // Navigation is handled by the auth state stream in main_web.dart
     } catch (e) {
+      if (!mounted) return;
+      final i18n = AppLocalizations.of(context);
       setState(() {
-        _errorMessage = 'Erro ao fazer login: $e';
+        _errorMessage = '${i18n.translate('web_dashboard_login_error')}: $e';
       });
     } finally {
       if (mounted) {
@@ -36,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     return Scaffold(
       body: Center(
         child: Container(
@@ -61,16 +65,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: Colors.deepPurple,
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Partiu Dashboard',
+              Text(
+                i18n.translate('web_dashboard_title'),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Faça login para acessar o painel administrativo',
+              Text(
+                i18n.translate('web_dashboard_login_subtitle'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.grey,
@@ -103,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
                       )
                     : const Icon(Icons.login),
-                  label: const Text('Entrar com Google'),
+                  label: Text(i18n.translate('sign_in_with_google')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
                     foregroundColor: Colors.white,

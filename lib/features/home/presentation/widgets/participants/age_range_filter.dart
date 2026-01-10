@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Widget de filtro de idade com RangeSlider
 class AgeRangeFilter extends StatelessWidget {
@@ -19,6 +20,8 @@ class AgeRangeFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -38,7 +41,7 @@ class AgeRangeFilter extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                'Filtrar idade',
+                i18n.translate('age_range'),
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 14,

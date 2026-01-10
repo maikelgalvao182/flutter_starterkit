@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/animated_expandable.dart';
 
 /// Widget de seleção de número de pessoas para a atividade
@@ -22,13 +22,21 @@ class PeoplePicker extends StatelessWidget {
   final VoidCallback onToggle;
   final ValueChanged<int> onCountChanged;
 
-  String get _displayText {
-    if (selectedCount == 0) return 'Aberto';
-    return '$selectedCount ${selectedCount == 1 ? 'pessoa' : 'pessoas'}';
-  }
-
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
+    String peopleCountLabel(int count) {
+      final template = count == 1
+          ? i18n.translate('people_count_singular')
+          : i18n.translate('people_count_plural');
+      return template.replaceAll('{count}', count.toString());
+    }
+
+    final selectedLabel = selectedCount == 0
+        ? i18n.translate('privacy_type_open_title')
+        : peopleCountLabel(selectedCount);
+
     return Column(
       children: [
         // Card horizontal
@@ -56,7 +64,7 @@ class PeoplePicker extends StatelessWidget {
                 // Título
                 Expanded(
                   child: Text(
-                    'Definir vagas',
+                    i18n.translate('define_slots'),
                     style: GoogleFonts.getFont(
                       FONT_PLUS_JAKARTA_SANS,
                       fontSize: 14,
@@ -68,7 +76,7 @@ class PeoplePicker extends StatelessWidget {
 
                 // Valor selecionado (direita)
                 Text(
-                  _displayText,
+                  selectedLabel,
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
                     fontSize: 14,
@@ -106,7 +114,7 @@ class PeoplePicker extends StatelessWidget {
                     // Primeiro item: "Aberto"
                     Center(
                       child: Text(
-                        'Aberto',
+                        i18n.translate('privacy_type_open_title'),
                         style: GoogleFonts.getFont(
                           FONT_PLUS_JAKARTA_SANS,
                           fontSize: 14,
@@ -120,7 +128,7 @@ class PeoplePicker extends StatelessWidget {
                       20,
                       (index) => Center(
                         child: Text(
-                          '${index + 1} ${index == 0 ? 'pessoa' : 'pessoas'}',
+                          peopleCountLabel(index + 1),
                           style: GoogleFonts.getFont(
                             FONT_PLUS_JAKARTA_SANS,
                             fontSize: 14,

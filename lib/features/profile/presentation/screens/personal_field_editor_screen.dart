@@ -9,7 +9,6 @@ import 'package:partiu/features/profile/presentation/editors/languages_editor.da
 import 'package:partiu/features/profile/presentation/editors/social/instagram_editor.dart';
 import 'package:partiu/features/profile/presentation/editors/sexual_orientation_editor.dart';
 import 'package:partiu/features/profile/presentation/models/personal_field_type.dart';
-import 'package:partiu/features/auth/presentation/widgets/origin_brazilian_city_selector.dart';
 import 'package:flutter/material.dart';
 
 /// Tela genérica de edição de campo pessoal no formato Instagram/TikTok
@@ -86,7 +85,6 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
       case PersonalFieldType.locality:
         widget.controllers['locality']!.addListener(_validateField);
       case PersonalFieldType.state:
-      case PersonalFieldType.country:
       case PersonalFieldType.languages:
       case PersonalFieldType.instagram:
         // State, country, languages e instagram são opcionais, não precisam de listeners de validação
@@ -113,7 +111,6 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
       case PersonalFieldType.locality:
         widget.controllers['locality']!.removeListener(_validateField);
       case PersonalFieldType.state:
-      case PersonalFieldType.country:
       case PersonalFieldType.languages:
       case PersonalFieldType.instagram:
         // State, country, languages e instagram são opcionais, não precisam remover listeners
@@ -140,7 +137,6 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
       case PersonalFieldType.school:
       case PersonalFieldType.locality:
       case PersonalFieldType.state:
-      case PersonalFieldType.country:
       case PersonalFieldType.languages:
       case PersonalFieldType.instagram:
         isValid = true;
@@ -242,18 +238,6 @@ class _PersonalFieldEditorScreenState extends State<PersonalFieldEditorScreen> {
         // Locality é read-only - atualizado automaticamente pelo LocationBackgroundUpdater
         // Não deve mais abrir tela de edição
         return const SizedBox.shrink();
-
-      case PersonalFieldType.country:
-        return OriginBrazilianCitySelector(
-          initialValue: widget.controllers['country']!.text.trim().isEmpty 
-              ? null 
-              : widget.controllers['country']!.text.trim(),
-          onChanged: (value) {
-            if (value != null) {
-              widget.controllers['country']!.text = value;
-            }
-          },
-        );
 
       case PersonalFieldType.languages:
         return LanguagesEditor(

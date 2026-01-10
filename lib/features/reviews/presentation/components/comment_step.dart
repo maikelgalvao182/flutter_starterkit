@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_text_field.dart';
 import 'package:partiu/shared/widgets/pending_participants_stack.dart';
 
@@ -20,6 +18,8 @@ class CommentStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -27,7 +27,7 @@ class CommentStep extends StatelessWidget {
         GlimpseTextField(
           controller: controller,
           focusNode: focusNode,
-          hintText: 'Ex: Foi uma experiência incrível! A pessoa é muito...',
+          hintText: i18n.translate('review_comment_hint'),
           maxLines: 6,
           maxLength: 500,
           textCapitalization: TextCapitalization.sentences,

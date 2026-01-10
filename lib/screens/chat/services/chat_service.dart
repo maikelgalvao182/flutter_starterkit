@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:partiu/models/user_model.dart' as core_user_model;
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/repositories/chat_repository.dart';
 import 'package:partiu/dialogs/common_dialogs.dart';
@@ -195,12 +194,11 @@ class ChatService {
           Navigator.of(context).pop();
           
           // Buscar traduções
-          final title = i18n.translate('delete_conversation');
           final subtitle = i18n.translate('conversation_deleted_successfully');
           
           // Show success toast após fechar a tela
           ToastService.showSuccess(
-            message: subtitle.isNotEmpty ? subtitle : 'A conversa foi excluída com sucesso',
+            message: subtitle,
           );
         }
       },

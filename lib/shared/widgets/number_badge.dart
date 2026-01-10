@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Badge genérico para exibir números com sufixo opcional
 /// Pode ser usado para contadores, percentuais, rankings, etc.
@@ -48,6 +49,12 @@ class NumberBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+    final template = i18n.translate('number_badge_value_suffix');
+    final text = template.isNotEmpty
+        ? template.replaceAll('{value}', value.toString()).replaceAll('{suffix}', suffix)
+        : '$value$suffix';
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -59,7 +66,7 @@ class NumberBadge extends StatelessWidget {
         ),
       ),
       child: Text(
-        '$value$suffix',
+        text,
         style: TextStyle(
           color: textColor,
           fontSize: fontSize,

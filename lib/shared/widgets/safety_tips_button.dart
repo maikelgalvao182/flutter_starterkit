@@ -4,6 +4,7 @@ import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -12,10 +13,11 @@ class SafetyTipsButton extends StatelessWidget {
   const SafetyTipsButton({super.key});
 
   void _showSafetyDialog(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Dismiss',
+      barrierLabel: i18n.translate('close'),
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
@@ -86,6 +88,8 @@ class _SafetyDialogContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -94,7 +98,7 @@ class _SafetyDialogContent extends StatelessWidget {
         children: [
           // Título
           Text(
-            'Dicas de Segurança',
+            i18n.translate('safety_tips_title'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 22,
@@ -105,7 +109,7 @@ class _SafetyDialogContent extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Fique seguro durante os encontros',
+            i18n.translate('safety_tips_subtitle'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 16,
@@ -119,32 +123,32 @@ class _SafetyDialogContent extends StatelessWidget {
           // Dicas
           _SafetyTipItem(
             icon: IconsaxPlusLinear.people,
-            title: 'Priorize locais públicos',
-            description: 'Prefira locais públicos, bem iluminados e com outras pessoas por perto.',
+            title: i18n.translate('safety_tip_public_places_title'),
+            description: i18n.translate('safety_tip_public_places_description'),
           ),
           const SizedBox(height: 16),
           _SafetyTipItem(
             icon: IconsaxPlusLinear.car,
-            title: 'Tenha controle sobre seu transporte',
-            description: 'Vá e volte por conta própria, assim você pode ir embora quando quiser.',
+            title: i18n.translate('safety_tip_transport_title'),
+            description: i18n.translate('safety_tip_transport_description'),
           ),
           const SizedBox(height: 16),
           _SafetyTipItem(
             icon: Iconsax.eye,
-            title: 'Fique atenta(o) às bebidas',
-            description: 'Cuide da sua bebida e não aceite bebidas de desconhecidos.',
+            title: i18n.translate('safety_tip_drinks_title'),
+            description: i18n.translate('safety_tip_drinks_description'),
           ),
           const SizedBox(height: 16),
           _SafetyTipItem(
             icon: IconsaxPlusLinear.message_text,
-            title: 'Mantenha a conversa dentro do app',
-            description: 'Use o chat do app para ter conversas mais seguras e moderadas.',
+            title: i18n.translate('safety_tip_in_app_chat_title'),
+            description: i18n.translate('safety_tip_in_app_chat_description'),
           ),
           const SizedBox(height: 16),
           _SafetyTipItem(
             icon: IconsaxPlusLinear.user_tag,
-            title: 'Avise alguém de confiança',
-            description: 'Compartilhe os detalhes do encontro e a localização com um amigo ou familiar.',
+            title: i18n.translate('safety_tip_trusted_person_title'),
+            description: i18n.translate('safety_tip_trusted_person_description'),
           ),
           const SizedBox(height: 24),
 
@@ -161,7 +165,7 @@ class _SafetyDialogContent extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Saiba mais sobre dicas de segurança',
+                  i18n.translate('safety_tips_learn_more'),
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
                     fontSize: 14,
@@ -169,7 +173,6 @@ class _SafetyDialogContent extends StatelessWidget {
                     color: GlimpseColors.primary,
                     decoration: TextDecoration.underline,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -178,9 +181,8 @@ class _SafetyDialogContent extends StatelessWidget {
 
           // Botão Fechar
           GlimpseButton(
-            text: 'Fechar',
+            text: i18n.translate('close'),
             backgroundColor: GlimpseColors.primary,
-            textColor: Colors.white,
             height: 52,
             noPadding: true,
             onTap: () => Navigator.of(context).pop(),
@@ -207,12 +209,11 @@ class _SafetyTipItem extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Ícone com fundo
         Container(
           width: 40,
           height: 40,
           decoration: const BoxDecoration(
-            color: GlimpseColors.primaryLight,
+            color: GlimpseColors.lightTextField,
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -222,7 +223,6 @@ class _SafetyTipItem extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        // Título e descrição
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

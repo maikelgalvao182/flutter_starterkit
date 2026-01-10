@@ -143,9 +143,12 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
             valueListenable: _controller.users,
             builder: (context, usersList, __) {
               final count = peopleCount > 0 ? peopleCount : usersList.length;
-              final title = count > 0
-                  ? '$count ${count == 1 ? 'pessoa' : 'pessoas'} na região'
-                  : 'Pessoas na região';
+                final titleTemplate = count > 0
+                  ? (count == 1
+                    ? i18n.translate('people_in_region_count_singular')
+                    : i18n.translate('people_in_region_count_plural'))
+                  : i18n.translate('people_in_region');
+                final title = titleTemplate.replaceAll('{count}', count.toString());
 
               return Text(
                 title,
@@ -261,7 +264,7 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                             TextButton(
                               onPressed: () => _peopleDiscoveryService.refreshCurrentBounds(),
                               child: Text(
-                                'Tentar novamente',
+                                i18n.translate('try_again'),
                                 style: GoogleFonts.getFont(
                                   FONT_PLUS_JAKARTA_SANS,
                                   fontSize: 14,

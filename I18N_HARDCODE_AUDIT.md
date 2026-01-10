@@ -8,17 +8,15 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 
 - Telas detectadas: 76
 - Widgets detectados: 188
-- Arquivos com strings hardcoded (prováveis): 73
+- Arquivos com strings hardcoded (prováveis): 0
 
 ## Telas
 
-- ⚠️ lib/features/auth/presentation/screens/blocked_account_screen_router.dart
-  - L12 (Text): Blocked Account Screen - TODO
+- ✅ lib/features/auth/presentation/screens/blocked_account_screen_router.dart
 - ✅ lib/features/auth/presentation/screens/email_auth_screen.dart
 - ✅ lib/features/auth/presentation/screens/forgot_password_screen.dart
 - ✅ lib/features/auth/presentation/screens/sign_in_screen_refactored.dart
-- ⚠️ lib/features/auth/presentation/screens/signup_wizard_screen.dart
-  - L254 (Text): OK
+- ✅ lib/features/auth/presentation/screens/signup_wizard_screen.dart
 - ✅ lib/features/auth/presentation/screens/signup_wizard_viewmodel.dart
 - ✅ lib/features/events/presentation/screens/group_info/group_info_controller.dart
 - ✅ lib/features/events/presentation/screens/group_info/group_info_screen.dart
@@ -30,8 +28,7 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/features/home/presentation/screens/discover_screen.dart
 - ✅ lib/features/home/presentation/screens/discover_tab.dart
 - ✅ lib/features/home/presentation/screens/find_people/find_people_controller.dart
-- ⚠️ lib/features/home/presentation/screens/find_people_screen.dart
-  - L263 (Text): Tentar novamente
+- ✅ lib/features/home/presentation/screens/find_people_screen.dart
 - ✅ lib/features/home/presentation/screens/home_screen_refactored.dart
 - ✅ lib/features/home/presentation/screens/location_picker/location_picker_controller.dart
 - ✅ lib/features/home/presentation/screens/location_picker/location_picker_map.dart
@@ -43,39 +40,22 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/features/home/presentation/screens/location_picker/widgets/meeting_point_info_card.dart
 - ✅ lib/features/home/presentation/screens/location_picker/widgets/nearby_places_carousel.dart
 - ✅ lib/features/home/presentation/screens/profile_tab.dart
-- ⚠️ lib/features/home/presentation/screens/ranking_tab.dart
-  - L492 (Text): ${ranking.totalEventsHosted} eventos
+- ✅ lib/features/home/presentation/screens/ranking_tab.dart
 - ✅ lib/features/home/presentation/screens/splash_screen.dart
-- ⚠️ lib/features/location/presentation/screens/update_location_screen_refactored.dart
-  - L177 (Text): OK
-  - L252 (Text): OK
+- ✅ lib/features/location/presentation/screens/update_location_screen_refactored.dart
 - ✅ lib/features/location/presentation/screens/update_location_screen_router.dart
 - ✅ lib/features/notifications/widgets/simplified_notification_screen.dart
 - ✅ lib/features/profile/presentation/screens/blocked_users_screen.dart
-- ⚠️ lib/features/profile/presentation/screens/edit_profile_screen_advanced.dart
-  - L290 (named): Foto atualizada com sucesso!
+- ✅ lib/features/profile/presentation/screens/edit_profile_screen_advanced.dart
 - ✅ lib/features/profile/presentation/screens/personal_field_editor_screen.dart
 - ✅ lib/features/profile/presentation/screens/profile_screen_optimized.dart
 - ✅ lib/features/profile/presentation/screens/profile_screen_router.dart
-- ⚠️ lib/features/profile/presentation/screens/profile_visits_screen.dart
-  - L47 (named): Visitas ao Perfil
-- ⚠️ lib/features/profile/presentation/screens/update_location_screen_router.dart
-  - L12 (Text): Update Location - TODO
-- ⚠️ lib/features/web_dashboard/screens/dashboard_layout.dart
-  - L37 (Text): Usuários
-  - L42 (Text): Eventos
-- ⚠️ lib/features/web_dashboard/screens/events_table_screen.dart
-  - L13 (Text): Gerenciamento de Eventos
-  - L25 (Text): Erro: ${snapshot.error}
-  - L45 (Text): ID
-- ⚠️ lib/features/web_dashboard/screens/login_screen.dart
-  - L64 (Text): Partiu Dashboard
-  - L72 (Text): Faça login para acessar o painel administrativo
-  - L106 (Text): Entrar com Google
-- ⚠️ lib/features/web_dashboard/screens/users_table_screen.dart
-  - L12 (Text): Gerenciamento de Usuários
-  - L24 (Text): Erro: ${snapshot.error}
-  - L41 (Text): Total de usuários: ${users.length}
+- ✅ lib/features/profile/presentation/screens/profile_visits_screen.dart
+- ✅ lib/features/profile/presentation/screens/update_location_screen_router.dart
+- ✅ lib/features/web_dashboard/screens/dashboard_layout.dart
+- ✅ lib/features/web_dashboard/screens/events_table_screen.dart
+- ✅ lib/features/web_dashboard/screens/login_screen.dart
+- ✅ lib/features/web_dashboard/screens/users_table_screen.dart
 - ✅ lib/screens/chat/chat_screen_refactored.dart
 - ✅ lib/screens/chat/components/glimpse_chat_input.dart
 - ✅ lib/screens/chat/components/glimpse_image_picker.dart
@@ -91,40 +71,22 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/screens/chat/viewmodels/chat_view_model.dart
 - ✅ lib/screens/chat/widgets/chat_app_bar_widget.dart
 - ✅ lib/screens/chat/widgets/chat_avatar_widget.dart
-- ⚠️ lib/screens/chat/widgets/confirm_presence_widget.dart
-  - L140 (Text): 🙋
-  - L145 (Text): Confirme sua presença
-- ⚠️ lib/screens/chat/widgets/dummy_presence_header.dart
-  - L35 (Text): 🙋
-  - L40 (Text): Confirme sua presença
-- ⚠️ lib/screens/chat/widgets/event_info_row.dart
-  - L55 (Text): ·
+- ✅ lib/screens/chat/widgets/confirm_presence_widget.dart
+- ✅ lib/screens/chat/widgets/dummy_presence_header.dart
+- ✅ lib/screens/chat/widgets/event_info_row.dart
 - ✅ lib/screens/chat/widgets/event_name_text.dart
 - ✅ lib/screens/chat/widgets/glimpse_chat_bubble.dart
 - ✅ lib/screens/chat/widgets/image_lightbox.dart
 - ✅ lib/screens/chat/widgets/message_list_widget.dart
-- ⚠️ lib/screens/chat/widgets/presence_drawer.dart
-  - L89 (Text): Presenças confirmadas
-  - L325 (Text): ${_getEmoji()} $presence
-- ⚠️ lib/screens/chat/widgets/reply_bubble_widget.dart
-  - L131 (Text): Foto
-  - L155 (Text): Áudio
+- ✅ lib/screens/chat/widgets/presence_drawer.dart
+- ✅ lib/screens/chat/widgets/reply_bubble_widget.dart
 - ✅ lib/screens/chat/widgets/reply_preview_widget.dart
 - ✅ lib/screens/chat/widgets/user_location_time_widget.dart
 - ✅ lib/screens/chat/widgets/user_presence_status_widget.dart
-- ⚠️ lib/screens/profile_tab/widgets/dialogs/delete_account_confirm_dialog.dart
-  - L23 (Text): Cancelar
-  - L30 (Text): Excluir
-- ⚠️ lib/screens/verification/didit_verification_example.dart
-  - L93 (Text): Verificação de Identidade
-  - L131 (Text): Verificar Identidade
-  - L139 (Text): Benefícios da Verificação:
-- ⚠️ lib/screens/verification/didit_verification_screen.dart
-  - L239 (Text): Verificação de Identidade
-  - L273 (Text): Preparando verificação...
-  - L314 (Text): Tentar Novamente
-- ⚠️ lib/shared/screens/media_viewer_screen.dart
-  - L123 (Text): ${_current + 1} / ${widget.items.length}
+- ✅ lib/screens/profile_tab/widgets/dialogs/delete_account_confirm_dialog.dart
+- ✅ lib/screens/verification/didit_verification_example.dart
+- ✅ lib/screens/verification/didit_verification_screen.dart
+- ✅ lib/shared/screens/media_viewer_screen.dart
 - ✅ lib/shared/widgets/glimpse_loading_screen.dart
 
 ## Widgets
@@ -136,16 +98,11 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/features/auth/presentation/widgets/instagram_widget.dart
 - ✅ lib/features/auth/presentation/widgets/job_title_widget.dart
 - ✅ lib/features/auth/presentation/widgets/onboarding_list_widget.dart
-- ⚠️ lib/features/auth/presentation/widgets/origin_brazilian_city_selector.dart
-  - L105 (Text): Cidade e Estado
-  - L133 (named): Buscar Estado
-  - L237 (named): Buscar Cidade
+- ✅ lib/features/auth/presentation/widgets/origin_brazilian_city_selector.dart
 - ✅ lib/features/auth/presentation/widgets/origin_selector_widget.dart
 - ✅ lib/features/auth/presentation/widgets/personal_info_widget.dart
 - ✅ lib/features/auth/presentation/widgets/profile_photo_widget.dart
-- ⚠️ lib/features/auth/presentation/widgets/sexual_orientation_widget.dart
-  - L37 (named): Orientação Sexual
-  - L38 (named): Selecione sua orientação sexual
+- ✅ lib/features/auth/presentation/widgets/sexual_orientation_widget.dart
 - ✅ lib/features/auth/presentation/widgets/signup_success_widget.dart
 - ✅ lib/features/auth/presentation/widgets/signup_widgets.dart
 - ✅ lib/features/auth/presentation/widgets/specialty_selector_widget.dart
@@ -169,67 +126,40 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/features/home/presentation/widgets/event_card/event_card_controller.dart
 - ✅ lib/features/home/presentation/widgets/event_card/event_card_handler.dart
 - ✅ lib/features/home/presentation/widgets/event_card/widgets/event_action_buttons.dart
-- ⚠️ lib/features/home/presentation/widgets/event_card/widgets/event_formatted_text.dart
-  - L38 (TextSpan.text): quer
-  - L51 (TextSpan.text): em
-  - L59 (TextSpan.text): às
-- ⚠️ lib/features/home/presentation/widgets/event_card/widgets/participants_avatars_list.dart
-  - L365 (Text): +$count
-- ⚠️ lib/features/home/presentation/widgets/event_card/widgets/participants_counter.dart
-  - L44 (Text): $count ${count == 1 ? singularLabel : pluralLabel}
+- ✅ lib/features/home/presentation/widgets/event_card/widgets/event_formatted_text.dart
+- ✅ lib/features/home/presentation/widgets/event_card/widgets/participants_avatars_list.dart
+- ✅ lib/features/home/presentation/widgets/event_card/widgets/participants_counter.dart
 - ✅ lib/features/home/presentation/widgets/google_map_view.dart
 - ✅ lib/features/home/presentation/widgets/helpers/marker_bitmap_generator.dart
 - ✅ lib/features/home/presentation/widgets/helpers/marker_color_helper.dart
-- ⚠️ lib/features/home/presentation/widgets/home_app_bar.dart
-  - L210 (Text): Oi, Visitante 👋
-  - L222 (Text): Localização não definida
+- ✅ lib/features/home/presentation/widgets/home_app_bar.dart
 - ✅ lib/features/home/presentation/widgets/home_app_bar_controller.dart
 - ✅ lib/features/home/presentation/widgets/home_bottom_navigation_bar.dart
 - ✅ lib/features/home/presentation/widgets/list_button.dart
-- ⚠️ lib/features/home/presentation/widgets/list_card.dart
-  - L145 (Text): +$totalCount
+- ✅ lib/features/home/presentation/widgets/list_card.dart
 - ✅ lib/features/home/presentation/widgets/list_card/list_card_controller.dart
 - ✅ lib/features/home/presentation/widgets/list_card_shimmer.dart
 - ✅ lib/features/home/presentation/widgets/list_drawer.dart
 - ✅ lib/features/home/presentation/widgets/list_drawer/list_drawer_controller.dart
 - ✅ lib/features/home/presentation/widgets/navigate_to_user_button.dart
-- ⚠️ lib/features/home/presentation/widgets/participants/age_range_filter.dart
-  - L40 (Text): Filtrar idade
-  - L136 (Text): ${minAge.round()}
-  - L152 (Text): ${maxAge.round()}
-- ⚠️ lib/features/home/presentation/widgets/participants/privacy_type_selector.dart
-  - L32 (named): Aberto
-  - L45 (named): Privado
+- ✅ lib/features/home/presentation/widgets/participants/age_range_filter.dart
+- ✅ lib/features/home/presentation/widgets/participants/privacy_type_selector.dart
 - ✅ lib/features/home/presentation/widgets/participants_drawer.dart
-- ⚠️ lib/features/home/presentation/widgets/people_button.dart
-  - L107 (Text): Perto de você
-  - L117 (Text): $count pessoas
+- ✅ lib/features/home/presentation/widgets/people_button.dart
 - ✅ lib/features/home/presentation/widgets/people_button_controller.dart
-- ⚠️ lib/features/home/presentation/widgets/people_ranking_card.dart
-  - L247 (Text): ${widget.ranking.totalReviews} avalia${widget.ranking.totalReviews != 1 ?
-  - L272 (Text): ${widget.totalComments} comentário${widget.totalComments != 1 ?
+- ✅ lib/features/home/presentation/widgets/people_ranking_card.dart
 - ✅ lib/features/home/presentation/widgets/people_ranking_card_shimmer.dart
-- ⚠️ lib/features/home/presentation/widgets/place_card/place_card.dart
-  - L216 (TextSpan.text): Visitado por
-  - L244 (TextSpan.text): & $othersCount outros
-  - L261 (TextSpan.text): & $othersCount outros
+- ✅ lib/features/home/presentation/widgets/place_card/place_card.dart
 - ✅ lib/features/home/presentation/widgets/place_card/place_card_controller.dart
 - ✅ lib/features/home/presentation/widgets/schedule/horizontal_week_calendar.dart
-- ⚠️ lib/features/home/presentation/widgets/schedule/people_picker.dart
-  - L58 (Text): Definir vagas
-  - L108 (Text): Aberto
-  - L122 (Text): ${index + 1} ${index == 0 ?
+- ✅ lib/features/home/presentation/widgets/schedule/people_picker.dart
 - ✅ lib/features/home/presentation/widgets/schedule/time_picker_widget.dart
-- ⚠️ lib/features/home/presentation/widgets/schedule/time_type_selector.dart
-  - L32 (named): Horário flexível
-  - L45 (named): Horário específico
-- ⚠️ lib/features/home/presentation/widgets/schedule_drawer.dart
-  - L221 (Text): Sua atividade vai continuar visível no mapa até meia noite.
+- ✅ lib/features/home/presentation/widgets/schedule/time_type_selector.dart
+- ✅ lib/features/home/presentation/widgets/schedule_drawer.dart
 - ✅ lib/features/home/presentation/widgets/user_card.dart
 - ✅ lib/features/home/presentation/widgets/user_card/user_card_controller.dart
 - ✅ lib/features/home/presentation/widgets/user_card_shimmer.dart
-- ⚠️ lib/features/home/presentation/widgets/vip_locked_card.dart
-  - L108 (Text): Desbloqueie com VIP
+- ✅ lib/features/home/presentation/widgets/vip_locked_card.dart
 - ✅ lib/features/notifications/widgets/notification_filter.dart
 - ✅ lib/features/notifications/widgets/notification_filter_shimmer.dart
 - ✅ lib/features/notifications/widgets/notification_horizontal_filters.dart
@@ -237,19 +167,16 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/features/notifications/widgets/simplified_notification_screen_wrapper.dart
 - ✅ lib/features/profile/presentation/editors/birth_date_widget.dart
 - ✅ lib/features/profile/presentation/widgets/about_me_section.dart
-- ⚠️ lib/features/profile/presentation/widgets/add_remove_fields_component.dart
-  - L125 (Text): Add item
+- ✅ lib/features/profile/presentation/widgets/add_remove_fields_component.dart
 - ✅ lib/features/profile/presentation/widgets/app_section_card.dart
 - ✅ lib/features/profile/presentation/widgets/basic_information_profile_section.dart
 - ✅ lib/features/profile/presentation/widgets/blocked_user_card.dart
 - ✅ lib/features/profile/presentation/widgets/comment_card.dart
 - ✅ lib/features/profile/presentation/widgets/components.dart
 - ✅ lib/features/profile/presentation/widgets/dialogs/delete_account_confirm_dialog.dart
-- ⚠️ lib/features/profile/presentation/widgets/edit_profile_app_bar.dart
-  - L72 (Text): Salvar
+- ✅ lib/features/profile/presentation/widgets/edit_profile_app_bar.dart
 - ✅ lib/features/profile/presentation/widgets/edit_profile_styles.dart
-- ⚠️ lib/features/profile/presentation/widgets/field_preview_card.dart
-  - L108 (Text): *
+- ✅ lib/features/profile/presentation/widgets/field_preview_card.dart
 - ✅ lib/features/profile/presentation/widgets/gallery_profile_section.dart
 - ✅ lib/features/profile/presentation/widgets/gallery_skeleton.dart
 - ✅ lib/features/profile/presentation/widgets/interests_profile_section.dart
@@ -261,32 +188,19 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/features/profile/presentation/widgets/profile_location_chip.dart
 - ✅ lib/features/profile/presentation/widgets/profile_photo_component.dart
 - ✅ lib/features/profile/presentation/widgets/profile_photo_widget.dart
-- ⚠️ lib/features/profile/presentation/widgets/profile_visits_chip.dart
-  - L54 (Text): Visitas recebidas
-- ⚠️ lib/features/profile/presentation/widgets/user_images_grid.dart
-  - L177 (Text): Usuário não autenticado
-- ⚠️ lib/features/reviews/presentation/widgets/review_card.dart
-  - L53 (Text): Erro: Review inválido detectado (autoavaliação). Entre em contato com o suporte.
-  - L89 (TextSpan.text): Avalie os participantes do evento
-  - L90 (TextSpan.text): ${pendingReview.eventEmoji} ${pendingReview.eventTitle}
+- ✅ lib/features/profile/presentation/widgets/profile_visits_chip.dart
+- ✅ lib/features/profile/presentation/widgets/user_images_grid.dart
+- ✅ lib/features/reviews/presentation/widgets/review_card.dart
 - ✅ lib/features/subscription/presentation/widgets/subscription_active_badge.dart
-- ⚠️ lib/features/subscription/presentation/widgets/subscription_benefits_list.dart
-  - L44 (named): Desbloqueie a lista completa de pessoas
-  - L51 (named): Mais visibilidade no app
-  - L58 (named): Veja quem visitou seu perfil
+- ✅ lib/features/subscription/presentation/widgets/subscription_benefits_list.dart
 - ✅ lib/features/subscription/presentation/widgets/subscription_footer.dart
 - ✅ lib/features/subscription/presentation/widgets/subscription_header.dart
 - ✅ lib/features/subscription/presentation/widgets/subscription_plan_card.dart
 - ✅ lib/features/subscription/presentation/widgets/subscription_states.dart
-- ⚠️ lib/plugins/locationpicker/widgets/near_by_place_item.dart
-  - L98 (Text): ${nearbyPlace.name}
-- ⚠️ lib/plugins/locationpicker/widgets/place_picker.dart
-  - L758 (Text): Location is disabled
-  - L759 (Text): To use location, go to your Settings App > Privacy > Location Services.
-  - L764 (Text): Cancel
+- ✅ lib/plugins/locationpicker/widgets/near_by_place_item.dart
+- ✅ lib/plugins/locationpicker/widgets/place_picker.dart
 - ✅ lib/plugins/locationpicker/widgets/rich_suggestion.dart
-- ⚠️ lib/plugins/locationpicker/widgets/search_input.dart
-  - L70 (named): Search place
+- ✅ lib/plugins/locationpicker/widgets/search_input.dart
 - ✅ lib/plugins/locationpicker/widgets/select_place_action.dart
 - ✅ lib/plugins/locationpicker/widgets/widgets.dart
 - ✅ lib/shared/widgets/AnimatedSlideIn.dart
@@ -296,30 +210,22 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/shared/widgets/animated_expandable.dart
 - ✅ lib/shared/widgets/auth_protected_wrapper.dart
 - ✅ lib/shared/widgets/auto_scroll_list_handler.dart
-- ⚠️ lib/shared/widgets/badge_card.dart
-  - L54 (Text): $count
-- ⚠️ lib/shared/widgets/badge_chip.dart
-  - L57 (Text): $count
+- ✅ lib/shared/widgets/badge_card.dart
+- ✅ lib/shared/widgets/badge_chip.dart
 - ✅ lib/shared/widgets/basic_information_section.dart
 - ✅ lib/shared/widgets/cached_svg_icon.dart
 - ✅ lib/shared/widgets/confetti_celebration.dart
-- ⚠️ lib/shared/widgets/criteria_bars.dart
-  - L101 (Text): $label:
+- ✅ lib/shared/widgets/criteria_bars.dart
 - ✅ lib/shared/widgets/dialogs/cupertino_dialog.dart
 - ✅ lib/shared/widgets/dialogs/dialog_styles.dart
-- ⚠️ lib/shared/widgets/dialogs/language_selector_dialog.dart
-  - L12 (Text): Selecionar Idioma
-  - L32 (Text): Cancelar
+- ✅ lib/shared/widgets/dialogs/language_selector_dialog.dart
 - ✅ lib/shared/widgets/emoji_container.dart
 - ✅ lib/shared/widgets/event_emoji_avatar.dart
 - ✅ lib/shared/widgets/filters/age_range_filter_widget.dart
 - ✅ lib/shared/widgets/filters/gender_filter_widget.dart
 - ✅ lib/shared/widgets/filters/interests_filter_widget.dart
-- ⚠️ lib/shared/widgets/filters/radius_filter_widget.dart
-  - L79 (Text): Os eventos no mapa serão atualizados automaticamente
-- ⚠️ lib/shared/widgets/filters/sexual_orientation_filter_widget.dart
-  - L42 (Text): Orientação Sexual
-  - L54 (named): Selecione
+- ✅ lib/shared/widgets/filters/radius_filter_widget.dart
+- ✅ lib/shared/widgets/filters/sexual_orientation_filter_widget.dart
 - ✅ lib/shared/widgets/filters/verified_filter_widget.dart
 - ✅ lib/shared/widgets/glimpse_action_menu_button.dart
 - ✅ lib/shared/widgets/glimpse_app_bar.dart
@@ -342,14 +248,12 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/shared/widgets/list_emoji_avatar.dart
 - ✅ lib/shared/widgets/my_circular_progress.dart
 - ✅ lib/shared/widgets/no_data.dart
-- ⚠️ lib/shared/widgets/number_badge.dart
-  - L61 (Text): $value$suffix
+- ✅ lib/shared/widgets/number_badge.dart
 - ✅ lib/shared/widgets/outline_horizontal_filter.dart
 - ✅ lib/shared/widgets/pending_participants_stack.dart
 - ✅ lib/shared/widgets/place_details_modal.dart
 - ✅ lib/shared/widgets/processing.dart
-- ⚠️ lib/shared/widgets/profile_completeness_ring.dart
-  - L103 (Text): $percentage%
+- ✅ lib/shared/widgets/profile_completeness_ring.dart
 - ✅ lib/shared/widgets/pull_to_refresh.dart
 - ✅ lib/shared/widgets/reactive/reactive_online_indicator.dart
 - ✅ lib/shared/widgets/reactive/reactive_profile_completeness_ring.dart
@@ -362,67 +266,34 @@ Observação: é uma varredura por regex (pode ter falsos positivos/negativos).
 - ✅ lib/shared/widgets/reactive/reactive_widgets.dart
 - ✅ lib/shared/widgets/report_event_button.dart
 - ✅ lib/shared/widgets/report_widget.dart
-- ⚠️ lib/shared/widgets/safety_tips_button.dart
-  - L96 (Text): Dicas de Segurança
-  - L107 (Text): Fique seguro durante os encontros
-  - L122 (named): Priorize locais públicos
+- ✅ lib/shared/widgets/safety_tips_button.dart
 - ✅ lib/shared/widgets/skeletons/conversation_list_skeleton.dart
 - ✅ lib/shared/widgets/skeletons/profile_header_skeleton.dart
 - ✅ lib/shared/widgets/stable_avatar.dart
-- ⚠️ lib/shared/widgets/stacked_avatars.dart
-  - L117 (Text): $totalCount ${totalCount == 1 ?
+- ✅ lib/shared/widgets/stacked_avatars.dart
 - ✅ lib/shared/widgets/star_badge.dart
 - ✅ lib/shared/widgets/star_rating_display.dart
 - ✅ lib/shared/widgets/svg_icon.dart
 - ✅ lib/shared/widgets/swipeable_member_card.dart
 - ✅ lib/shared/widgets/tag_vendor.dart
 - ✅ lib/shared/widgets/typing_indicator.dart
-- ⚠️ lib/shared/widgets/verification_card.dart
-  - L103 (Text): Seja verificado
-  - L115 (Text): Verifique seu perfil e conquiste a confiança das pessoas
+- ✅ lib/shared/widgets/verification_card.dart
 - ✅ lib/widgets/skeletons/notification_list_skeleton.dart
 
 ## Outros arquivos com strings hardcoded
 
-- ⚠️ lib/common/services/image_crop_service.dart
-  - L34 (named): Editar Foto
-  - L79 (named): Editar Foto
-- ⚠️ lib/core/router/app_router.dart
-  - L304 (Text): Erro: ${state.error}
-  - L308 (Text): Voltar ao Login
-- ⚠️ lib/core/services/image_picker_service.dart
-  - L120 (named): Recortar Imagem
-- ⚠️ lib/features/notifications/templates/notification_templates.dart
-  - L73 (named): $activityName $emoji
-  - L95 (named): $activityName $emoji
-  - L112 (named): $activityName $emoji
-- ⚠️ lib/features/profile/presentation/editors/sexual_orientation_editor.dart
-  - L35 (named): Orientação Sexual
-  - L36 (named): Selecione sua orientação sexual
-- ⚠️ lib/features/reviews/domain/constants/review_badges.dart
-  - L39 (named): Mega simpático(a)
-  - L45 (named): Muito engraçado(a)
-  - L51 (named): Muito inteligente
-- ⚠️ lib/features/reviews/presentation/components/badge_selection_step.dart
-  - L57 (Text): ${selectedBadges.length} ${selectedBadges.length == 1 ? "badge selecionado" : "badges selecionados"}
-- ⚠️ lib/features/reviews/presentation/components/comment_step.dart
-  - L30 (named): Ex: Foi uma experiência incrível! A pessoa é muito...
-- ⚠️ lib/features/reviews/presentation/components/participant_confirmation_step.dart
-  - L42 (TextSpan.text): Selecione apenas quem apareceu na sua atividade
-  - L51 (TextSpan.text): $eventEmoji
-  - L65 (TextSpan.text): no dia
-- ⚠️ lib/features/reviews/presentation/components/review_badges_section.dart
-  - L31 (Text): Elogios mais recebidos
-- ⚠️ lib/features/reviews/presentation/components/review_comments_section.dart
-  - L45 (Text): Últimos comentários
-- ⚠️ lib/features/reviews/presentation/components/review_dialog_reviewee_info.dart
-  - L73 (Text): ${controller.currentParticipantIndex + 1} de ${controller.selectedParticipants.length}
-- ⚠️ lib/features/reviews/presentation/components/review_stats_section.dart
-  - L35 (Text): Avaliações
-  - L74 (Text): ${stats.totalReviews} ${stats.totalReviews == 1 ? "avaliação" : "avaliações"}
-- ⚠️ lib/features/reviews/presentation/dialogs/review_dialog.dart
-  - L98 (named): Como foi a experiência?
-  - L110 (named): Destaque qualidades
-  - L121 (named): Deixe um comentário
-- ⚠️ lib/main_web.dart
-  - L26 (named): Partiu Dashboard
+- ✅ lib/common/services/image_crop_service.dart
+- ✅ lib/core/router/app_router.dart
+- ✅ lib/core/services/image_picker_service.dart
+- ✅ lib/features/notifications/templates/notification_templates.dart
+- ✅ lib/features/profile/presentation/editors/sexual_orientation_editor.dart
+- ✅ lib/features/reviews/domain/constants/review_badges.dart
+- ✅ lib/features/reviews/presentation/components/badge_selection_step.dart
+- ✅ lib/features/reviews/presentation/components/comment_step.dart
+- ✅ lib/features/reviews/presentation/components/participant_confirmation_step.dart
+- ✅ lib/features/reviews/presentation/components/review_badges_section.dart
+- ✅ lib/features/reviews/presentation/components/review_comments_section.dart
+- ✅ lib/features/reviews/presentation/components/review_dialog_reviewee_info.dart
+- ✅ lib/features/reviews/presentation/components/review_stats_section.dart
+- ✅ lib/features/reviews/presentation/dialogs/review_dialog.dart
+- ✅ lib/main_web.dart

@@ -369,7 +369,6 @@ class SocialAuth {
         debugPrint('❌ [GOOGLE_AUTH] Identificado como cancelamento');
         onError(FirebaseAuthException(
           code: 'sign_in_canceled',
-          message: 'Login cancelado pelo usuário',
         ));
       } else {
         debugPrint('❌ [GOOGLE_AUTH] Erro desconhecido');

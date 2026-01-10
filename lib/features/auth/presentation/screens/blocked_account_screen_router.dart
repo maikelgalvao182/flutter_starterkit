@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Placeholder - Tela de conta bloqueada
 /// TODO: Implementar tela real
@@ -7,9 +8,10 @@ class BlockedAccountScreenRouter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final i18n = AppLocalizations.of(context);
+    return Scaffold(
       body: Center(
-        child: Text('Blocked Account Screen - TODO'),
+        child: Text(i18n.translate('blocked_account_placeholder')),
       ),
     );
   }

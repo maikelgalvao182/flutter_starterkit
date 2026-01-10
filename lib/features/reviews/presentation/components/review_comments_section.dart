@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/glimpse_styles.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/profile/presentation/widgets/comment_card.dart';
 
@@ -23,6 +24,8 @@ class _ReviewCommentsSectionState extends State<ReviewCommentsSection> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     // Filtrar apenas reviews que têm comentário
     final reviewsWithComments = widget.reviews.where((review) => 
       review.comment != null && review.comment!.trim().isNotEmpty
@@ -43,7 +46,7 @@ class _ReviewCommentsSectionState extends State<ReviewCommentsSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Últimos comentários',
+            i18n.translate('review_comments_section_title'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontWeight: FontWeight.w700,
@@ -53,9 +56,7 @@ class _ReviewCommentsSectionState extends State<ReviewCommentsSection> {
           ),
           const SizedBox(height: 12),
           
-          ...displayedReviews.map((review) {
-            return CommentCard(review: review);
-          }).toList(),
+          ...displayedReviews.map((review) => CommentCard(review: review)),
           
           // Botão Ver mais / Ver menos
           if (hasMoreReviews)
@@ -69,7 +70,7 @@ class _ReviewCommentsSectionState extends State<ReviewCommentsSection> {
                     });
                   },
                   child: Text(
-                    _isExpanded ? 'Ver menos' : 'Ver mais',
+                    _isExpanded ? i18n.translate('see_less') : i18n.translate('see_more'),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

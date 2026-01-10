@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Representa um item de mídia (apenas imagens)
 class MediaViewerItem {
@@ -121,7 +122,7 @@ class _MediaViewerScreenState extends State<MediaViewerScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${_current + 1} / ${widget.items.length}',
+                        _buildPageIndicatorText(context),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -135,6 +136,19 @@ class _MediaViewerScreenState extends State<MediaViewerScreen> {
         ],
       ),
     );
+  }
+
+  String _buildPageIndicatorText(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+    final template = i18n.translate('media_viewer_page_indicator');
+    final current = (_current + 1).toString();
+    final total = widget.items.length.toString();
+
+    if (template.isEmpty) {
+      return '$current / $total';
+    }
+
+    return template.replaceAll('{current}', current).replaceAll('{total}', total);
   }
 
   Widget _buildImagePage(MediaViewerItem item) {

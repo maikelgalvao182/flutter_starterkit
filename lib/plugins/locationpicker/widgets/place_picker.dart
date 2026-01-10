@@ -7,6 +7,7 @@ import 'package:partiu/plugins/locationpicker/place_picker.dart';
 import 'package:partiu/plugins/locationpicker/uuid.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -750,24 +751,23 @@ class PlacePickerState extends State<PlacePicker> {
   }
 
   Future<bool?> _showLocationDisabledAlertDialog(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     if (Platform.isIOS) {
       return showCupertinoDialog(
         context: context,
         builder: (BuildContext ctx) {
           return CupertinoAlertDialog(
-            title: const Text('Location is disabled'),
-            content: const Text(
-              'To use location, go to your Settings App > Privacy > Location Services.',
-            ),
+            title: Text(i18n.translate('location_disabled_title')),
+            content: Text(i18n.translate('location_disabled_ios_instructions')),
             actions: [
               CupertinoDialogAction(
-                child: const Text('Cancel'),
+                child: Text(i18n.translate('cancel')),
                 onPressed: () {
                   Navigator.of(context).pop(false);
                 },
               ),
               CupertinoDialogAction(
-                child: const Text('Ok'),
+                child: Text(i18n.translate('ok')),
                 onPressed: () {
                   Navigator.of(context).pop(true);
                 },
@@ -781,19 +781,17 @@ class PlacePickerState extends State<PlacePicker> {
         context: context,
         builder: (BuildContext ctx) {
           return AlertDialog(
-            title: const Text('Location is disabled'),
-            content: const Text(
-              'Boora needs to access your location. Please enable location service.',
-            ),
+            title: Text(i18n.translate('location_disabled_title')),
+            content: Text(i18n.translate('location_disabled_android_instructions')),
             actions: [
               TextButton(
-                child: const Text('Cancel'),
+                child: Text(i18n.translate('cancel')),
                 onPressed: () async {
                   Navigator.of(context).pop(false);
                 },
               ),
               TextButton(
-                child: const Text('OK'),
+                child: Text(i18n.translate('ok')),
                 onPressed: () async {
                   await Geolocator.openLocationSettings();
                   Future(() => Navigator.of(context).pop(true));

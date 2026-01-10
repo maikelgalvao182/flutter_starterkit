@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/review_dialog_controller.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
@@ -19,6 +20,8 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     // PRÉ-CARREGAMENTO: Usar getters do controller
     // Dados já estão em memória via PendingReviewModel enriquecido
     final displayName = controller.currentRevieweeName;
@@ -36,7 +39,7 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
         // Avatar
         CircleAvatar(
           radius: 32,
-          backgroundColor: GlimpseColors.primary.withOpacity(0.2),
+          backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
           backgroundImage: displayPhotoUrl != null
               ? NetworkImage(displayPhotoUrl)
               : null,
@@ -71,7 +74,10 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
             controller.selectedParticipants.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
-            '${controller.currentParticipantIndex + 1} de ${controller.selectedParticipants.length}',
+            i18n
+                .translate('review_dialog_step_counter')
+                .replaceAll('{current}', (controller.currentParticipantIndex + 1).toString())
+                .replaceAll('{total}', controller.selectedParticipants.length.toString()),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 13,

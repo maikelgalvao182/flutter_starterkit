@@ -5,7 +5,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/widgets.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fire_auth;
 import 'package:partiu/features/notifications/helpers/app_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:partiu/firebase_options.dart';
@@ -63,8 +62,24 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Backend envia apenas dados brutos, Flutter formata usando templates
 Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
   try {
+    WidgetsFlutterBinding.ensureInitialized();
+
     final data = message.data;
     final nType = data['n_type'] ?? data['type'] ?? data['sub_type'] ?? '';
+
+    // Resolve idioma salvo (se existir) para traduzir sem BuildContext
+    String? languageCode = AppLocalizations.currentLocale;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedLocale = prefs.getString('app_locale');
+      if (savedLocale != null && savedLocale.trim().isNotEmpty) {
+        languageCode = savedLocale.split('_').first;
+      }
+    } catch (_) {
+      // Ignore: fallback para AppLocalizations.currentLocale
+    }
+
+    final i18n = await AppLocalizations.loadForLanguageCode(languageCode);
     
     // Se já veio com título e corpo do backend, usa direto (fallback)
     if (message.notification?.title != null && message.notification!.title!.isNotEmpty) {
@@ -72,7 +87,7 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
       return message;
     }
 
-    NotificationMessage? template;
+    late final NotificationMessage template;
     
     // Aplicar template baseado no tipo
     switch (nType) {
@@ -80,20 +95,22 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
       case 'chat_message':
       case 'new_message':
       case NOTIF_TYPE_MESSAGE:
-        final senderName = data['n_sender_name'] ?? data['senderName'] ?? 'Alguém';
+        final senderName = data['n_sender_name'] ?? data['senderName'] ?? i18n.translate('someone');
         final messagePreview = data['n_message'] ?? data['messagePreview'];
         template = NotificationTemplates.newMessage(
+          i18n: i18n,
           senderName: senderName,
           messagePreview: messagePreview,
         );
         break;
 
       case 'event_chat_message':
-        final senderName = data['n_sender_name'] ?? data['senderName'] ?? 'Alguém';
-        final eventName = data['eventName'] ?? data['eventTitle'] ?? data['activityText'] ?? 'Evento';
+        final senderName = data['n_sender_name'] ?? data['senderName'] ?? i18n.translate('someone');
+        final eventName = data['eventName'] ?? data['eventTitle'] ?? data['activityText'] ?? i18n.translate('event_default');
         final emoji = data['emoji'] ?? data['eventEmoji'] ?? '🎉';
         final messagePreview = data['n_message'] ?? data['messagePreview'];
         template = NotificationTemplates.eventChatMessage(
+          i18n: i18n,
           senderName: senderName,
           eventName: eventName,
           emoji: emoji,
@@ -103,11 +120,12 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
 
       // ===== ATIVIDADES =====
       case 'activity_created':
-        final creatorName = data['n_sender_name'] ?? data['creatorName'] ?? 'Alguém';
-        final activityName = data['activityName'] ?? data['eventTitle'] ?? 'Atividade';
+        final creatorName = data['n_sender_name'] ?? data['creatorName'] ?? i18n.translate('someone');
+        final activityName = data['activityName'] ?? data['eventTitle'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         final commonInterests = (data['commonInterests'] as String?)?.split(',') ?? [];
         template = NotificationTemplates.activityCreated(
+          i18n: i18n,
           creatorName: creatorName,
           activityName: activityName,
           emoji: emoji,
@@ -116,10 +134,11 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         break;
 
       case 'activity_join_request':
-        final requesterName = data['n_sender_name'] ?? data['requesterName'] ?? 'Alguém';
-        final activityName = data['activityName'] ?? 'Atividade';
+        final requesterName = data['n_sender_name'] ?? data['requesterName'] ?? i18n.translate('someone');
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         template = NotificationTemplates.activityJoinRequest(
+          i18n: i18n,
           requesterName: requesterName,
           activityName: activityName,
           emoji: emoji,
@@ -127,28 +146,31 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         break;
 
       case 'activity_join_approved':
-        final activityName = data['activityName'] ?? 'Atividade';
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         template = NotificationTemplates.activityJoinApproved(
+          i18n: i18n,
           activityName: activityName,
           emoji: emoji,
         );
         break;
 
       case 'activity_join_rejected':
-        final activityName = data['activityName'] ?? 'Atividade';
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         template = NotificationTemplates.activityJoinRejected(
+          i18n: i18n,
           activityName: activityName,
           emoji: emoji,
         );
         break;
 
       case 'activity_new_participant':
-        final participantName = data['n_sender_name'] ?? data['participantName'] ?? 'Alguém';
-        final activityName = data['activityName'] ?? 'Atividade';
+        final participantName = data['n_sender_name'] ?? data['participantName'] ?? i18n.translate('someone');
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         template = NotificationTemplates.activityNewParticipant(
+          i18n: i18n,
           participantName: participantName,
           activityName: activityName,
           emoji: emoji,
@@ -156,11 +178,12 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         break;
 
       case 'activity_heating_up':
-        final activityName = data['activityName'] ?? 'Atividade';
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
-        final creatorName = data['n_sender_name'] ?? data['creatorName'] ?? 'Alguém';
+        final creatorName = data['n_sender_name'] ?? data['creatorName'] ?? i18n.translate('someone');
         final participantCount = int.tryParse(data['n_participant_count'] ?? data['participantCount'] ?? '2') ?? 2;
         template = NotificationTemplates.activityHeatingUp(
+          i18n: i18n,
           activityName: activityName,
           emoji: emoji,
           creatorName: creatorName,
@@ -169,10 +192,11 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         break;
 
       case 'activity_expiring_soon':
-        final activityName = data['activityName'] ?? 'Atividade';
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         final hoursRemaining = int.tryParse(data['hoursRemaining'] ?? '1') ?? 1;
         template = NotificationTemplates.activityExpiringSoon(
+          i18n: i18n,
           activityName: activityName,
           emoji: emoji,
           hoursRemaining: hoursRemaining,
@@ -180,9 +204,10 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         break;
 
       case 'activity_canceled':
-        final activityName = data['activityName'] ?? 'Atividade';
+        final activityName = data['activityName'] ?? i18n.translate('activity_default');
         final emoji = data['emoji'] ?? '🎉';
         template = NotificationTemplates.activityCanceled(
+          i18n: i18n,
           activityName: activityName,
           emoji: emoji,
         );
@@ -194,6 +219,7 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         final lastViewedAt = data['lastViewedAt'];
         final viewerNames = (data['viewerNames'] as String?)?.split(',');
         template = NotificationTemplates.profileViewsAggregated(
+          i18n: i18n,
           count: count,
           lastViewedAt: lastViewedAt,
           viewerNames: viewerNames,
@@ -202,10 +228,11 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
 
       case 'review_pending':
       case 'new_review_received':
-        final reviewerName = data['n_sender_name'] ?? data['reviewerName'] ?? 'Alguém';
+        final reviewerName = data['n_sender_name'] ?? data['reviewerName'] ?? i18n.translate('someone');
         final rating = double.tryParse(data['rating'] ?? '5.0') ?? 5.0;
         final comment = data['comment'];
         template = NotificationTemplates.newReviewReceived(
+          i18n: i18n,
           reviewerName: reviewerName,
           rating: rating,
           comment: comment,
@@ -215,7 +242,7 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
       // ===== SYSTEM & CUSTOM =====
       case 'alert':
       case 'system_alert':
-        final alertMessage = data['message'] ?? data['body'] ?? 'Alerta';
+        final alertMessage = data['message'] ?? data['body'] ?? i18n.translate('notification_default');
         final alertTitle = data['title'] ?? APP_NAME;
         template = NotificationTemplates.systemAlert(
           message: alertMessage,
@@ -235,11 +262,13 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
       // ===== OUTROS =====
       case 'event_join':
         // Mensagem de entrada no evento (do index.ts)
-        final userName = data['n_sender_name'] ?? data['userName'] ?? 'Alguém';
-        final activityText = data['activityText'] ?? data['eventTitle'] ?? 'Evento';
+        final userName = data['n_sender_name'] ?? data['userName'] ?? i18n.translate('someone');
+        final activityText = data['activityText'] ?? data['eventTitle'] ?? i18n.translate('event_default');
         template = NotificationTemplates.custom(
           title: activityText,
-          body: '$userName entrou no evento',
+          body: i18n
+              .translate('notification_template_event_join_body')
+              .replaceAll('{userName}', userName),
         );
         break;
 
@@ -247,17 +276,11 @@ Future<RemoteMessage> _translateMessage(RemoteMessage message) async {
         print('⚠️ [Translator] Tipo desconhecido: $nType');
         // Fallback para mensagem genérica
         final fallbackTitle = data['title'] ?? message.notification?.title ?? APP_NAME;
-        final fallbackBody = data['body'] ?? message.notification?.body ?? 'Nova notificação';
+        final fallbackBody = data['body'] ?? message.notification?.body ?? i18n.translate('notification_default');
         template = NotificationTemplates.custom(
           title: fallbackTitle,
           body: fallbackBody,
         );
-    }
-
-    // Se não encontrou template, retorna original
-    if (template == null) {
-      print('⚠️ [Translator] Template nulo, usando mensagem original');
-      return message;
     }
 
     print('✅ [Translator] Mensagem formatada: ${template.title}');

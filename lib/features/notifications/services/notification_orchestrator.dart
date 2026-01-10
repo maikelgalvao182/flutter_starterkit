@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/domain/models/activity_model.dart';
 import 'package:partiu/features/notifications/models/activity_notification_types.dart';
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
@@ -160,6 +161,8 @@ class NotificationOrchestrator {
     final receivers = affinityMap.keys.toList();
     print('🎯 [Orchestrator] Receivers IDs: $receivers');
 
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     await _sendBatchNotifications(
       receivers: receivers,
       type: ActivityNotificationTypes.activityCreated,
@@ -170,6 +173,7 @@ class NotificationOrchestrator {
       buildParams: (userId) {
         final interests = affinityMap[userId]!;
         final template = NotificationTemplates.activityCreated(
+          i18n: i18n,
           creatorName: creator.fullName,
           activityName: activity.name,
           emoji: activity.emoji,
@@ -200,6 +204,8 @@ class NotificationOrchestrator {
   }) async {
     if (participantIds.isEmpty) return;
 
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     await _sendBatchNotifications(
       receivers: participantIds,
       type: ActivityNotificationTypes.activityHeatingUp,
@@ -209,6 +215,7 @@ class NotificationOrchestrator {
       senderPhoto: creator.photoUrl,
       buildParams: (_) {
         final template = NotificationTemplates.activityHeatingUp(
+          i18n: i18n,
           activityName: activity.name,
           emoji: activity.emoji,
           creatorName: creator.fullName,
@@ -232,7 +239,10 @@ class NotificationOrchestrator {
     required String ownerId,
     required UserInfo requester,
   }) async {
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     final template = NotificationTemplates.activityJoinRequest(
+      i18n: i18n,
       requesterName: requester.fullName,
       activityName: activity.name,
       emoji: activity.emoji,
@@ -261,7 +271,10 @@ class NotificationOrchestrator {
     required String approvedUserId,
     required UserInfo owner,
   }) async {
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     final template = NotificationTemplates.activityJoinApproved(
+      i18n: i18n,
       activityName: activity.name,
       emoji: activity.emoji,
     );
@@ -289,7 +302,10 @@ class NotificationOrchestrator {
     required String rejectedUserId,
     required UserInfo owner,
   }) async {
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     final template = NotificationTemplates.activityJoinRejected(
+      i18n: i18n,
       activityName: activity.name,
       emoji: activity.emoji,
     );
@@ -317,7 +333,10 @@ class NotificationOrchestrator {
     required String ownerId,
     required UserInfo participant,
   }) async {
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     final template = NotificationTemplates.activityNewParticipant(
+      i18n: i18n,
       participantName: participant.fullName,
       activityName: activity.name,
       emoji: activity.emoji,
@@ -346,12 +365,15 @@ class NotificationOrchestrator {
     required List<String> participantIds,
     required int hoursRemaining,
   }) async {
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     await _sendBatchNotifications(
       receivers: participantIds,
       type: ActivityNotificationTypes.activityExpiringSoon,
       relatedId: activity.id,
       buildParams: (_) {
         final template = NotificationTemplates.activityExpiringSoon(
+          i18n: i18n,
           activityName: activity.name,
           emoji: activity.emoji,
           hoursRemaining: hoursRemaining,
@@ -373,12 +395,15 @@ class NotificationOrchestrator {
     required ActivityModel activity,
     required List<String> participantIds,
   }) async {
+    final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
     await _sendBatchNotifications(
       receivers: participantIds,
       type: ActivityNotificationTypes.activityCanceled,
       relatedId: activity.id,
       buildParams: (_) {
         final template = NotificationTemplates.activityCanceled(
+          i18n: i18n,
           activityName: activity.name,
           emoji: activity.emoji,
         );

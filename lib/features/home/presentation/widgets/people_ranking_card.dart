@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/data/models/user_ranking_model.dart';
 import 'package:partiu/shared/widgets/animated_expandable.dart';
 import 'package:partiu/shared/widgets/badge_card.dart';
@@ -203,6 +204,20 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
   }
 
   Widget _buildRatingSummary() {
+    final i18n = AppLocalizations.of(context);
+    final totalReviews = widget.ranking.totalReviews;
+    final totalComments = widget.totalComments;
+
+    final reviewsText = (totalReviews == 1
+            ? i18n.translate('reviews_count_singular')
+            : i18n.translate('reviews_count_plural'))
+        .replaceAll('{count}', totalReviews.toString());
+
+    final commentsText = (totalComments == 1
+            ? i18n.translate('comments_count_singular')
+            : i18n.translate('comments_count_plural'))
+        .replaceAll('{count}', totalComments.toString());
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -245,7 +260,7 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
               // Total de reviews
               Flexible(
                 child: Text(
-                  '${widget.ranking.totalReviews} avalia${widget.ranking.totalReviews != 1 ? 'ções' : 'ção'}',
+                  reviewsText,
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
                     fontSize: 12,
@@ -257,7 +272,7 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
               ),
               
               // Comentários (se houver)
-              if (widget.totalComments > 0) ...[
+              if (totalComments > 0) ...[
                 const SizedBox(width: 4),
                 Container(
                   width: 3,
@@ -270,7 +285,7 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
-                    '${widget.totalComments} comentário${widget.totalComments != 1 ? 's' : ''}',
+                    commentsText,
                     style: GoogleFonts.getFont(
                       FONT_PLUS_JAKARTA_SANS,
                       fontSize: 12,
@@ -366,7 +381,7 @@ class _PeopleRankingCardState extends State<PeopleRankingCard> {
 
   String _getLocationText() {
     if (widget.ranking.locality.isEmpty && (widget.ranking.state ?? '').isEmpty) {
-      return 'Localização não informada';
+      return AppLocalizations.of(context).translate('location_not_defined');
     }
     
     if (widget.ranking.state != null && widget.ranking.state!.isNotEmpty) {

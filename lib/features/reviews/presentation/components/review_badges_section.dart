@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/core/constants/glimpse_styles.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/badge_card.dart';
 
 class ReviewBadgesSection extends StatelessWidget {
@@ -19,6 +19,8 @@ class ReviewBadgesSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final i18n = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.only(
         left: 20,
@@ -29,7 +31,7 @@ class ReviewBadgesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Elogios mais recebidos',
+            i18n.translate('review_badges_section_title'),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontWeight: FontWeight.w700,

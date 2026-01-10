@@ -1,5 +1,4 @@
 import 'package:partiu/core/constants/glimpse_styles.dart';
-import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/profile/presentation/widgets/components.dart';
 import 'package:partiu/features/profile/presentation/models/edit_profile_models.dart';
@@ -257,7 +256,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final translated = i18n.translate(command.messageKey);
     
     ToastService.showSuccess(
-      message: translated.isNotEmpty ? translated : 'Salvo com sucesso!',
+      message: translated.isNotEmpty ? translated : i18n.translate('profile_updated_successfully'),
     );
     
     // Removido redirecionamento - usuário permanece na tela após salvar
@@ -270,7 +269,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final translated = i18n.translate(command.messageKey);
     
     ToastService.showError(
-      message: translated.isNotEmpty ? translated : 'Erro ao salvar',
+      message: translated.isNotEmpty ? translated : i18n.translate('save_profile_error'),
     );
   }
   
@@ -279,20 +278,11 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final i18n = AppLocalizations.of(context);
     
     final titleKey = command.messageKey;
-    final subtitleKey = '${command.messageKey}_subtitle';
-    
-    
     final title = i18n.translate(titleKey);
-    final subtitle = i18n.translate(subtitleKey);
-    
-    
+
     // Fallback para valores padrão se tradução não funcionar
-    final displayTitle = title.isNotEmpty ? title : 'Foto atualizada com sucesso!';
-    final displaySubtitle = subtitle.isNotEmpty && subtitle != subtitleKey 
-        ? subtitle 
-        : '';
-    
-    
+    final displayTitle = title.isNotEmpty ? title : i18n.translate('photo_updated_successfully');
+
     // [OK] Invalida cache de markers do mapa para refletir nova foto
     try {
       final viewModel = context.read<vm.EditProfileViewModelRefactored>();
@@ -322,7 +312,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     final translated = i18n.translate(command.messageKey);
     
     ToastService.showError(
-      message: translated.isNotEmpty ? translated : 'Erro ao atualizar foto',
+      message: translated.isNotEmpty ? translated : i18n.translate('photo_update_error'),
     );
   }
   
@@ -333,15 +323,15 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     if (command.isError) {
       ToastService.showError(
-        message: translated.isNotEmpty ? translated : 'Erro',
+        message: translated.isNotEmpty ? translated : i18n.translate('error'),
       );
     } else if (command.isSuccess) {
       ToastService.showSuccess(
-        message: translated.isNotEmpty ? translated : 'Sucesso!',
+        message: translated.isNotEmpty ? translated : i18n.translate('success'),
       );
     } else {
       ToastService.showInfo(
-        message: translated.isNotEmpty ? translated : 'Informação',
+        message: translated.isNotEmpty ? translated : i18n.translate('info'),
       );
     }
   }
@@ -353,7 +343,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
     
     // Mostra toast genérico
     ToastService.showError(
-      message: translated.isNotEmpty ? translated : 'Validação falhou',
+      message: translated.isNotEmpty ? translated : i18n.translate('validation_failed'),
     );
     
     // Poderia destacar campos com erro na UI aqui
@@ -380,7 +370,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       final i18n = AppLocalizations.of(context);
       final translated = i18n.translate('please_fill_required_fields');
       ToastService.showError(
-        message: translated.isNotEmpty ? translated : 'Preencha os campos obrigatórios',
+        message: translated.isNotEmpty ? translated : i18n.translate('validation_failed'),
       );
       return;
     }
@@ -597,7 +587,6 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
       birthMonthController: _birthMonthController,
       birthYearController: _birthYearController,
       localityController: _localityController,
-      countryController: _countryController,
       languagesController: _languagesController,
       instagramController: _instagramController,
       validateBio: (value) => viewModel.validateField('bio', value),

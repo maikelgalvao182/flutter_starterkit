@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/infinite_list_view.dart';
@@ -41,10 +42,12 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: GlimpseAppBar(
-        title: 'Visitas ao Perfil',
+        title: i18n.translate('profile_visits_title'),
       ),
       body: AnimatedBuilder(
         animation: ProfileVisitsController.instance,
@@ -74,7 +77,7 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
           if (controller.isEmpty) {
             return Center(
               child: GlimpseEmptyState.standard(
-                text: 'Nenhuma visita ainda',
+                text: i18n.translate('profile_visits_empty'),
               ),
             );
           }

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:partiu/core/router/app_router.dart';
 
@@ -15,6 +16,7 @@ class ProfileVisitsChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     final userId = AppState.currentUserId ?? '';
     
     // Show skeleton if user not loaded yet
@@ -59,7 +61,7 @@ class ProfileVisitsChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'Visitas recebidas',
+              i18n.translate('profile_visits'),
               style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                 color: Colors.black,
                 fontWeight: FontWeight.w700,

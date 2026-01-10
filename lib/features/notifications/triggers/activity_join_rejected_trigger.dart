@@ -3,6 +3,7 @@ import 'package:partiu/features/notifications/models/activity_notification_types
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// TRIGGER 4: Dono recusou entrada na atividade privada
 /// 
@@ -21,6 +22,8 @@ class ActivityJoinRejectedTrigger extends BaseActivityTrigger {
     Map<String, dynamic> context,
   ) async {
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
       final rejectedUserId = context['rejectedUserId'] as String?;
 
       if (rejectedUserId == null) {
@@ -36,6 +39,7 @@ class ActivityJoinRejectedTrigger extends BaseActivityTrigger {
 
       // Gera mensagem usando template
       final template = NotificationTemplates.activityJoinRejected(
+        i18n: i18n,
         activityName: activity.name,
         emoji: activity.emoji,
       );

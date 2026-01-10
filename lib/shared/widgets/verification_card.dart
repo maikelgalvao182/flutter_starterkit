@@ -68,12 +68,12 @@ class VerificationCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             color: GlimpseColors.primaryColorLight,
           ),
-          child: const Stack(
+          child: Stack(
             children: [
               // Ícone decorativo atrás (ordem anterior para ficar no fundo)
-              _BackgroundIcon(),
+              const _BackgroundIcon(),
               // Conteúdo principal acima do ícone
-              Padding(
+              const Padding(
                 padding: EdgeInsets.all(16),
                 child: _CardContent(),
               ),
@@ -91,6 +91,8 @@ class _CardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Row(
       children: [
         Expanded(
@@ -101,7 +103,7 @@ class _CardContent extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
-                  'Seja verificado',
+                  i18n.translate('verification_card_title'),
                   style: GoogleFonts.getFont(
                     FONT_PLUS_JAKARTA_SANS,
                     fontWeight: FontWeight.w800,
@@ -113,12 +115,12 @@ class _CardContent extends StatelessWidget {
                 ),
               ),
               Text(
-                'Verifique seu perfil e conquiste a confiança das pessoas',
+                i18n.translate('verification_card_subtitle'),
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

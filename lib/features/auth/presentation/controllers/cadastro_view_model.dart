@@ -28,7 +28,6 @@ class CadastroViewModel extends ChangeNotifier {
   String instagram = '';
   String jobTitle = '';
   String? country;
-  String? from; // Cidade e Estado de origem
   
   // Origin
   String? originSource;
@@ -48,7 +47,6 @@ class CadastroViewModel extends ChangeNotifier {
     instagram = '';
     jobTitle = '';
     country = null;
-    from = null;
     originSource = null;
     agreeTerms = false;
     notifyListeners();
@@ -123,11 +121,6 @@ class CadastroViewModel extends ChangeNotifier {
   }
   void setCountry(String? countryCode) {
     country = countryCode;
-    notifyListeners();
-  }
-  
-  void setFrom(String? cityState) {
-    from = cityState;
     notifyListeners();
   }
   
@@ -210,7 +203,6 @@ class CadastroViewModel extends ChangeNotifier {
         'jobTitle': onboardingData['jobTitle'],
         'gender': onboardingData['gender'],
         'bio': onboardingData['bio'],
-        'from': onboardingData['from'], // País de origem
         'originSource': onboardingData['originSource'],
         
         // Avatar

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/domain/constants/review_badges.dart';
 
 /// Widget compartilhado para exibir badge com contador
@@ -19,13 +20,14 @@ class BadgeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     final badge = ReviewBadge.fromKey(badgeKey);
     if (badge == null) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: badge.color.withOpacity(0.12),
+        color: badge.color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -37,7 +39,7 @@ class BadgeChip extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            badge.title,
+            badge.localizedTitle(i18n),
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 11,
@@ -51,7 +53,7 @@ class BadgeChip extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: badge.color.withOpacity(0.2),
+                color: badge.color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

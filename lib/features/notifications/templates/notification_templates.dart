@@ -1,6 +1,7 @@
 // lib/features/notifications/templates/notification_templates.dart
 
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Mensagem estruturada de notificação com title, body, preview e extras
 class NotificationMessage {
@@ -45,13 +46,23 @@ class NotificationTemplates {
   // ---------------------------
   //  HELPER: formata lista de interesses
   // ---------------------------
-  static String formatInterests(List<String> interests) {
-    if (interests.isEmpty) return "";
+  static String formatInterests({
+    required AppLocalizations i18n,
+    required List<String> interests,
+  }) {
+    if (interests.isEmpty) return '';
     if (interests.length == 1) return interests.first;
     if (interests.length == 2) {
-      return "${interests[0]} e ${interests[1]}";
+      return i18n
+          .translate('notification_interests_two')
+          .replaceAll('{first}', interests[0])
+          .replaceAll('{second}', interests[1]);
     }
-    return "${interests.take(2).join(', ')} e mais ${interests.length - 2}";
+
+    return i18n
+        .translate('notification_interests_more')
+        .replaceAll('{firstTwo}', interests.take(2).join(', '))
+        .replaceAll('{remaining}', (interests.length - 2).toString());
   }
 
   // --------------------------------------------------
@@ -60,19 +71,21 @@ class NotificationTemplates {
   /// Formato: "{activityName} {emoji}" no topo
   /// Mensagem: "{creatorName} criou esta atividade. Vai participar?"
   static NotificationMessage activityCreated({
+    required AppLocalizations i18n,
     required String creatorName,
     required String activityName,
     required String emoji,
     List<String> commonInterests = const [],
   }) {
-    final interestsText = commonInterests.isNotEmpty 
-        ? " • Interesses em comum: ${formatInterests(commonInterests)}" 
-        : "";
-
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "$creatorName quer $activityName, bora?",
-      preview: "$creatorName criou uma nova atividade",
+      body: i18n
+          .translate('notification_template_activity_created_body')
+          .replaceAll('{creatorName}', creatorName)
+          .replaceAll('{activityName}', activityName),
+      preview: i18n
+          .translate('notification_template_activity_created_preview')
+          .replaceAll('{creatorName}', creatorName),
       extra: {
         'commonInterests': commonInterests,
         'emoji': emoji,
@@ -87,14 +100,17 @@ class NotificationTemplates {
   /// Texto atual: "{requesterName} pediu para entrar na sua atividade"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityJoinRequest({
+    required AppLocalizations i18n,
     required String requesterName,
     required String activityName,
     required String emoji,
   }) {
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "$requesterName pediu para entrar na sua atividade",
-      preview: "Novo pedido de entrada",
+      body: i18n
+          .translate('notification_template_activity_join_request_body')
+          .replaceAll('{requesterName}', requesterName),
+      preview: i18n.translate('notification_template_activity_join_request_preview'),
       extra: {},
     );
   }
@@ -105,13 +121,14 @@ class NotificationTemplates {
   /// Texto atual: "Você foi aprovado para participar!"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityJoinApproved({
+    required AppLocalizations i18n,
     required String activityName,
     required String emoji,
   }) {
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "Você foi aprovado para participar!",
-      preview: "Entrada aprovada 🎉",
+      body: i18n.translate('notification_template_activity_join_approved_body'),
+      preview: i18n.translate('notification_template_activity_join_approved_preview'),
       extra: {},
     );
   }
@@ -122,13 +139,14 @@ class NotificationTemplates {
   /// Texto atual: "Seu pedido para entrar foi recusado"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityJoinRejected({
+    required AppLocalizations i18n,
     required String activityName,
     required String emoji,
   }) {
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "Seu pedido para entrar foi recusado",
-      preview: "Pedido recusado",
+      body: i18n.translate('notification_template_activity_join_rejected_body'),
+      preview: i18n.translate('notification_template_activity_join_rejected_preview'),
       extra: {},
     );
   }
@@ -139,14 +157,19 @@ class NotificationTemplates {
   /// Texto atual: "{participantName} entrou na sua atividade!"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityNewParticipant({
+    required AppLocalizations i18n,
     required String participantName,
     required String activityName,
     required String emoji,
   }) {
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "$participantName entrou na sua atividade!",
-      preview: "$participantName entrou",
+      body: i18n
+          .translate('notification_template_activity_new_participant_body')
+          .replaceAll('{participantName}', participantName),
+      preview: i18n
+          .translate('notification_template_activity_new_participant_preview')
+          .replaceAll('{participantName}', participantName),
       extra: {},
     );
   }
@@ -158,15 +181,18 @@ class NotificationTemplates {
   /// Texto linha 2: "As pessoas estão participando da atividade de {creatorName}! Não fique de fora!"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityHeatingUp({
+    required AppLocalizations i18n,
     required String activityName,
     required String emoji,
     required String creatorName,
     required int participantCount,
   }) {
     return NotificationMessage(
-      title: "Atividade bombando!🔥",
-      body: "As pessoas estão entrando na atividade de $creatorName! Não fique de fora!",
-      preview: "Atividade bombando 🔥",
+      title: i18n.translate('notification_template_activity_heating_up_title'),
+      body: i18n
+          .translate('notification_template_activity_heating_up_body')
+          .replaceAll('{creatorName}', creatorName),
+      preview: i18n.translate('notification_template_activity_heating_up_preview'),
       extra: {
         'participantCount': participantCount,
         'activityName': activityName,
@@ -181,14 +207,15 @@ class NotificationTemplates {
   /// Texto atual: "Esta atividade está quase acabando. Última chance!"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityExpiringSoon({
+    required AppLocalizations i18n,
     required String activityName,
     required String emoji,
     required int hoursRemaining,
   }) {
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "Esta atividade está quase acabando. Última chance!",
-      preview: "Atividade quase expirando ⏰",
+      body: i18n.translate('notification_template_activity_expiring_soon_body'),
+      preview: i18n.translate('notification_template_activity_expiring_soon_preview'),
       extra: {
         'hoursRemaining': hoursRemaining,
       },
@@ -201,13 +228,14 @@ class NotificationTemplates {
   /// Texto atual: "Esta atividade foi cancelada"
   /// Título: "{activityName} {emoji}"
   static NotificationMessage activityCanceled({
+    required AppLocalizations i18n,
     required String activityName,
     required String emoji,
   }) {
     return NotificationMessage(
       title: "$activityName $emoji",
-      body: "Esta atividade foi cancelada",
-      preview: "Atividade cancelada 🚫",
+      body: i18n.translate('notification_template_activity_canceled_body'),
+      preview: i18n.translate('notification_template_activity_canceled_preview'),
       extra: {},
     );
   }
@@ -220,17 +248,25 @@ class NotificationTemplates {
   /// IMPORTANTE: Esta notificação é APENAS para push notification (FCM)
   /// NÃO deve ser salva na coleção Notifications (in-app)
   static NotificationMessage newMessage({
+    required AppLocalizations i18n,
     required String senderName,
     String? messagePreview,
   }) {
     final body = messagePreview != null && messagePreview.isNotEmpty
-        ? "$senderName: $messagePreview"
-        : "$senderName enviou uma mensagem";
+        ? i18n
+            .translate('notification_template_new_message_body_with_preview')
+            .replaceAll('{senderName}', senderName)
+            .replaceAll('{messagePreview}', messagePreview)
+        : i18n
+            .translate('notification_template_new_message_body')
+            .replaceAll('{senderName}', senderName);
 
     return NotificationMessage(
-      title: "Nova mensagem",
+      title: i18n.translate('notification_template_new_message_title'),
       body: body,
-      preview: "Nova mensagem de $senderName",
+      preview: i18n
+          .translate('notification_template_new_message_preview')
+          .replaceAll('{senderName}', senderName),
       extra: {
         if (messagePreview != null) 'messagePreview': messagePreview,
       },
@@ -245,19 +281,27 @@ class NotificationTemplates {
   /// IMPORTANTE: Esta notificação é APENAS para push notification (FCM)
   /// NÃO deve ser salva na coleção Notifications (in-app)
   static NotificationMessage eventChatMessage({
+    required AppLocalizations i18n,
     required String senderName,
     required String eventName,
     required String emoji,
     String? messagePreview,
   }) {
     final body = messagePreview != null && messagePreview.isNotEmpty
-        ? "$senderName: $messagePreview"
-        : "$senderName enviou uma mensagem";
+        ? i18n
+            .translate('notification_template_new_message_body_with_preview')
+            .replaceAll('{senderName}', senderName)
+            .replaceAll('{messagePreview}', messagePreview)
+        : i18n
+            .translate('notification_template_new_message_body')
+            .replaceAll('{senderName}', senderName);
 
     return NotificationMessage(
       title: "$eventName $emoji",
       body: body,
-      preview: "$senderName no grupo",
+      preview: i18n
+          .translate('notification_template_event_chat_message_preview')
+          .replaceAll('{senderName}', senderName),
       extra: {
         if (messagePreview != null) 'messagePreview': messagePreview,
       },
@@ -278,18 +322,25 @@ class NotificationTemplates {
   /// - "1 pessoa visualizou seu perfil 👏"
   /// - "5 pessoas visualizaram seu perfil 👏"
   static NotificationMessage profileViewsAggregated({
+    required AppLocalizations i18n,
     required int count,
     String? lastViewedAt,
     List<String>? viewerNames,
   }) {
     final title = count == 1
-        ? "1 pessoa visualizou seu perfil 👏"
-        : "$count pessoas visualizaram seu perfil 👏";
+        ? i18n.translate('notification_template_profile_views_title_singular')
+        : i18n
+            .translate('notification_template_profile_views_title_plural')
+            .replaceAll('{count}', count.toString());
+
+    final preview = count == 1
+        ? i18n.translate('notification_template_profile_views_preview_singular').replaceAll('{count}', count.toString())
+        : i18n.translate('notification_template_profile_views_preview_plural').replaceAll('{count}', count.toString());
 
     return NotificationMessage(
       title: title,
-      body: "Novos amigos?",
-      preview: "$count ${count == 1 ? 'nova visita' : 'novas visitas'}",
+      body: i18n.translate('notification_template_profile_views_body'),
+      preview: preview,
       extra: {
         'count': count,
         'emoji': '👀', // Emoji para o avatar da notificação
@@ -339,18 +390,25 @@ class NotificationTemplates {
   /// Texto: "{reviewerName} avaliou você!"
   /// Título: "Nova avaliação ⭐️"
   static NotificationMessage newReviewReceived({
+    required AppLocalizations i18n,
     required String reviewerName,
     required double rating,
     String? comment,
   }) {
     final body = comment != null && comment.isNotEmpty
-        ? "$reviewerName te avaliou: \"$comment\""
-        : "$reviewerName te avaliou com ${rating.toStringAsFixed(1)} estrelas!";
+        ? i18n
+            .translate('notification_template_new_review_received_body_with_comment')
+            .replaceAll('{reviewerName}', reviewerName)
+            .replaceAll('{comment}', comment)
+        : i18n
+            .translate('notification_template_new_review_received_body')
+            .replaceAll('{reviewerName}', reviewerName)
+            .replaceAll('{rating}', rating.toStringAsFixed(1));
 
     return NotificationMessage(
-      title: "Nova avaliação ⭐️",
+      title: i18n.translate('notification_template_new_review_received_title'),
       body: body,
-      preview: "Você recebeu uma nova avaliação",
+      preview: i18n.translate('notification_template_new_review_received_preview'),
       extra: {
         'rating': rating,
       },

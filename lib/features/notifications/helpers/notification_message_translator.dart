@@ -88,6 +88,7 @@ class NotificationMessageTranslator {
         final count = int.tryParse(params?['count']?.toString() ?? '0') ?? 0;
         
         return NotificationTemplates.profileViewsAggregated(
+          i18n: i18n,
           count: count,
           viewerNames: null,
         ).body;

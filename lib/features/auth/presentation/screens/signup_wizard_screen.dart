@@ -175,8 +175,6 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return model.bio.trim().isNotEmpty;
       case SignupWizardStep.interests:
         return model.interests.trim().isNotEmpty;
-      case SignupWizardStep.brazilianCity:
-        return model.from != null && model.from!.isNotEmpty;
       case SignupWizardStep.instagram:
         return true; // Opcional
       case SignupWizardStep.origin:
@@ -208,7 +206,6 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
       'instagram': model.instagram.trim(), // Usuário do Instagram
       'jobTitle': '', // Será preenchido posteriormente
       'bio': model.bio.trim(), // Obrigatório
-      'from': model.from ?? '', // Obrigatório - Cidade/Estado
       'originSource': model.originSource ?? '',
       'agreeTerms': model.agreeTerms,
       'vip_priority': 2,
@@ -250,7 +247,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
               TextButton(
                 onPressed: () => context.pop(),
                 child: Text(
-                  'OK',
+                  i18n.translate('ok'),
                   style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
                     fontWeight: FontWeight.bold,
                   ),
@@ -277,8 +274,6 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return i18n.translate('tell_us_about_yourself');
       case SignupWizardStep.interests:
         return i18n.translate('select_interests');
-      case SignupWizardStep.brazilianCity:
-        return i18n.translate('select_your_city');
       case SignupWizardStep.instagram:
         return i18n.translate('instagram_username');
       case SignupWizardStep.origin:
@@ -302,8 +297,6 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
         return i18n.translate('share_a_bit_about_yourself');
       case SignupWizardStep.interests:
         return i18n.translate('select_activity_categories');
-      case SignupWizardStep.brazilianCity:
-        return i18n.translate('help_us_connect_you');
       case SignupWizardStep.instagram:
         return i18n.translate('instagram_subtitle');
       case SignupWizardStep.origin:
@@ -464,21 +457,6 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
             child: SpecialtySelectorWidget(
               initialSpecialty: _cadastroViewModel.interests,
               onSpecialtyChanged: (value) => _cadastroViewModel.setInterests(value ?? ''),
-            ),
-          ),
-        );
-      
-      case SignupWizardStep.brazilianCity:
-        return Container(
-          color: Colors.white,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: OriginBrazilianCitySelector(
-              initialValue: _cadastroViewModel.from,
-              onChanged: (value) {
-                _cadastroViewModel.setFrom(value);
-                _onCadastroChanged(); // Força update do botão
-              },
             ),
           ),
         );

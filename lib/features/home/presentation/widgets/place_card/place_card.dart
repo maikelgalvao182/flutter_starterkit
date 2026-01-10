@@ -7,7 +7,7 @@ import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/nearby_places_carousel.dart';
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card_controller.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
-import 'package:partiu/shared/widgets/glimpse_button.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Card que exibe informações de localização de um evento
@@ -230,15 +230,25 @@ class _PlaceCardState extends State<PlaceCard> {
 
   /// Constrói os TextSpans para "Visitado por Nome1, Nome2 & xx outros" com cores diferentes
   List<TextSpan> _buildVisitorsTextSpans(List<Map<String, dynamic>> visitors, int othersCount) {
+    final i18n = AppLocalizations.of(context);
+    final unknownUserLabel = i18n.translate('user_label');
+
     final names = visitors
-        .map((v) => v['fullName'] as String? ?? 'Usuário')
+      .map((v) => v['fullName'] as String? ?? unknownUserLabel)
         .toList();
 
     if (names.isEmpty) return [];
 
     final spans = <TextSpan>[
-      TextSpan(text: 'Visitado por '),
+      TextSpan(text: i18n.translate('place_visited_by')),
     ];
+
+    String othersText(int count) {
+      final template = count == 1
+          ? i18n.translate('place_visited_by_others_singular')
+          : i18n.translate('place_visited_by_others_plural');
+      return template.replaceAll('{count}', count.toString());
+    }
 
     if (names.length == 1) {
       spans.add(TextSpan(
@@ -246,7 +256,7 @@ class _PlaceCardState extends State<PlaceCard> {
         style: const TextStyle(color: GlimpseColors.primaryColorLight),
       ));
       if (othersCount > 0) {
-        spans.add(TextSpan(text: ' & $othersCount outros'));
+        spans.add(TextSpan(text: othersText(othersCount)));
       }
       return spans;
     }
@@ -262,7 +272,7 @@ class _PlaceCardState extends State<PlaceCard> {
           text: names[1],
           style: const TextStyle(color: GlimpseColors.primaryColorLight),
         ));
-        spans.add(TextSpan(text: ' & $othersCount outros'));
+        spans.add(TextSpan(text: othersText(othersCount)));
       } else {
         spans.add(TextSpan(text: ' & '));
         spans.add(TextSpan(
@@ -283,7 +293,7 @@ class _PlaceCardState extends State<PlaceCard> {
       text: names[1],
       style: const TextStyle(color: GlimpseColors.primaryColorLight),
     ));
-    spans.add(TextSpan(text: ' & ${othersCount + (names.length - 2)} outros'));
+    spans.add(TextSpan(text: othersText(othersCount + (names.length - 2))));
 
     return spans;
   }

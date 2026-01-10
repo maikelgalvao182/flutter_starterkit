@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/widgets/people_ranking_card.dart';
@@ -18,7 +18,6 @@ import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
 import 'package:partiu/shared/widgets/outline_horizontal_filter.dart';
-import 'package:partiu/shared/widgets/infinite_list_view.dart';
 import 'package:partiu/shared/widgets/pull_to_refresh.dart';
 
 /// Tela de ranking (Tab 2)
@@ -119,15 +118,24 @@ class _RankingTabState extends State<RankingTab> {
     }
   }
 
+  String _eventsCountLabel(AppLocalizations i18n, int count) {
+    final template = count == 1
+        ? i18n.translate('events_count_singular')
+        : i18n.translate('events_count_plural');
+    return template.replaceAll('{count}', count.toString());
+  }
+
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
             GlimpseTabAppBar(
-              title: LocalizationService.of(context).translate('ranking') ?? 'Ranking',
+              title: i18n.translate('ranking_title'),
             ),
             
             const SizedBox(height: 8),
@@ -138,7 +146,10 @@ class _RankingTabState extends State<RankingTab> {
               onSearchTap: () {
                 // TODO: Implementar busca
               },
-              tabLabels: const ['Pessoas', 'Lugares'],
+              tabLabels: [
+                i18n.translate('ranking_tab_people'),
+                i18n.translate('ranking_tab_places'),
+              ],
               selectedTabIndex: _selectedTabIndex,
               onTabTap: (index) {
                 debugPrint('🔄 [RankingTab] Mudando para tab: ${index == 0 ? "Pessoas" : "Lugares"}');
@@ -444,7 +455,7 @@ class _RankingTabState extends State<RankingTab> {
                   height: MediaQuery.of(context).size.height * 0.5,
                   child: Center(
                     child: GlimpseEmptyState.standard(
-                      text: 'Nenhum local no ranking ainda',
+                      text: AppLocalizations.of(context).translate('ranking_places_empty'),
                     ),
                   ),
                 );
@@ -453,10 +464,6 @@ class _RankingTabState extends State<RankingTab> {
               debugPrint('   ✅ Renderizando PlaceCard - index: $index');
               final ranking = _locationState.displayedRankings[index];
               
-              // Calcular posição real no ranking (considerando filtros)
-              final allFiltered = _locationState.filteredItems;
-              final position = allFiltered.indexOf(ranking) + 1;
-
               // Criar controller com dados do ranking
               final controller = PlaceCardController(
                 eventId: 'ranking_${ranking.placeId}',
@@ -490,7 +497,7 @@ class _RankingTabState extends State<RankingTab> {
                       borderRadius: BorderRadius.circular(100),
                     ),
                     child: Text(
-                      '${ranking.totalEventsHosted} eventos',
+                      _eventsCountLabel(AppLocalizations.of(context), ranking.totalEventsHosted),
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 11,
@@ -514,9 +521,10 @@ class _RankingTabState extends State<RankingTab> {
 
   Widget _buildLocationStateFilter(List<String> states) {
     final selectedState = _locationState.filter.state;
+    final i18n = AppLocalizations.of(context);
     
     // Criar lista com "Todos" + estados
-    final items = ['Todos', ...states];
+    final items = [i18n.translate('all'), ...states];
     
     // Index selecionado (0 = Todos, 1+ = estados)
     final selectedIndex = selectedState == null 

@@ -77,6 +77,7 @@ class _AddRemoveFieldsComponentState extends State<AddRemoveFieldsComponent> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     return SizedBox(
@@ -123,7 +124,7 @@ class _AddRemoveFieldsComponentState extends State<AddRemoveFieldsComponent> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Add item',
+                    i18n.translate('add_item'),
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: widget.accentColor ?? Colors.black,
                       fontWeight: FontWeight.w600,
@@ -139,7 +140,7 @@ class _AddRemoveFieldsComponentState extends State<AddRemoveFieldsComponent> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                AppLocalizations.of(context).translate('max_items_reached').replaceAll('{count}', '${widget.maxItems}'),
+                i18n.translate('max_items_reached').replaceAll('{count}', '${widget.maxItems}'),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: widget.accentColor ?? Colors.grey[500],
                   fontStyle: FontStyle.italic,

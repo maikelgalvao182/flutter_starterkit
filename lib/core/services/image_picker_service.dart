@@ -5,6 +5,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:partiu/features/profile/domain/models/photo_upload_models.dart';
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Serviço responsável por abstrair lógica de seleção e processamento de imagens
 /// 
@@ -102,13 +103,20 @@ class ImagePickerService {
     AppLogger.info('Starting image crop...', tag: _tag);
     
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(
+        AppLocalizations.currentLocale,
+      );
+      final title = i18n.translate('image_crop_crop_image_title').isNotEmpty
+          ? i18n.translate('image_crop_crop_image_title')
+          : 'Recortar Imagem';
+
       final result = await ImageCropper().cropImage(
         sourcePath: sourcePath,
         aspectRatio: aspectRatio,
         compressQuality: 80,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Recortar Imagem',
+            toolbarTitle: title,
             toolbarColor: const Color(0xFF6C63FF), // Primary color
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.square,
@@ -117,7 +125,7 @@ class ImagePickerService {
             showCropGrid: true,
           ),
           IOSUiSettings(
-            title: 'Recortar Imagem',
+            title: title,
             aspectRatioLockEnabled: true,
             resetAspectRatioEnabled: false,
             aspectRatioPickerButtonHidden: true,

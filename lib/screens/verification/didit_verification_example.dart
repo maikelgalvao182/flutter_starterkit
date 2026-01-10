@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/core/services/face_verification_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/screens/verification/didit_verification_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -43,6 +44,8 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
     final cameraStatus = await Permission.camera.request();
     final microphoneStatus = await Permission.microphone.request();
 
+    if (!mounted) return;
+
     if (!cameraStatus.isGranted || !microphoneStatus.isGranted) {
       _showError('camera_microphone_permissions_required');
       return;
@@ -57,6 +60,8 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
       ),
     );
 
+    if (!mounted) return;
+
     // 3. Processar resultado
     if (result == true) {
       setState(() => _isVerified = true);
@@ -67,9 +72,13 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
   }
 
   void _showSuccess(String message) {
+    final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(message);
+    final displayMessage = translated.isNotEmpty ? translated : message;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(displayMessage),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 3),
       ),
@@ -77,9 +86,13 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
   }
 
   void _showError(String message) {
+    final i18n = AppLocalizations.of(context);
+    final translated = i18n.translate(message);
+    final displayMessage = translated.isNotEmpty ? translated : message;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(displayMessage),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
       ),
@@ -88,9 +101,11 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Verificação de Identidade'),
+        title: Text(i18n.translate('identity_verification_title')),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -108,8 +123,8 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
                   const SizedBox(height: 24),
                   Text(
                     _isVerified
-                        ? 'Perfil Verificado'
-                        : 'Perfil Não Verificado',
+                        ? i18n.translate('identity_verified_title')
+                        : i18n.translate('identity_not_verified_title'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -118,8 +133,8 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
                   const SizedBox(height: 16),
                   Text(
                     _isVerified
-                        ? 'Sua identidade foi verificada com sucesso. Você tem acesso a todos os recursos premium do app.'
-                        : 'Verifique sua identidade para garantir segurança e acessar recursos premium.',
+                        ? i18n.translate('identity_verified_description')
+                        : i18n.translate('identity_not_verified_description'),
                     style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
@@ -128,7 +143,7 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
                     ElevatedButton.icon(
                       onPressed: _startVerification,
                       icon: const Icon(Icons.verified_user),
-                      label: const Text('Verificar Identidade'),
+                      label: Text(i18n.translate('verify_identity_button')),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.all(16),
                         textStyle: const TextStyle(fontSize: 18),
@@ -136,18 +151,18 @@ class _DiditVerificationExampleState extends State<DiditVerificationExample> {
                     ),
                   if (_isVerified) ...[
                     const Divider(height: 40),
-                    const Text(
-                      'Benefícios da Verificação:',
-                      style: TextStyle(
+                    Text(
+                      i18n.translate('verification_benefits_title'),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildBenefit('Selo de perfil verificado'),
-                    _buildBenefit('Maior visibilidade'),
-                    _buildBenefit('Acesso a eventos premium'),
-                    _buildBenefit('Maior confiança dos usuários'),
+                    _buildBenefit(i18n.translate('verification_benefit_verified_badge')),
+                    _buildBenefit(i18n.translate('verification_benefit_more_visibility')),
+                    _buildBenefit(i18n.translate('verification_benefit_premium_events')),
+                    _buildBenefit(i18n.translate('verification_benefit_more_trust')),
                   ],
                 ],
               ),

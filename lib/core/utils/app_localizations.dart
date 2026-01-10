@@ -28,6 +28,9 @@ class AppLocalizations {
  // Localized strings map
  late Map<String, String> _localizedStrings;
 
+ // Cache para uso fora de BuildContext (services/handlers)
+ static final Map<String, AppLocalizations> _cachedByLanguageCode = {};
+
  // Load the json language file from the "lang folder"
  Future<bool> load() async {
    // Save current locale for static access
@@ -46,6 +49,33 @@ class AppLocalizations {
  // Translate method - will be called from every widget which needs a localized text
  String translate(String key) {
    return _localizedStrings[key] ?? '';
+ }
+
+ /// Carrega e retorna um AppLocalizations pronto para uso fora de BuildContext.
+ ///
+ /// Útil para services, triggers e background handlers que precisam traduzir
+ /// strings sem ter acesso a um context.
+ static Future<AppLocalizations> loadForLanguageCode(
+   String? languageCode, {
+   String fallbackLanguageCode = 'pt',
+ }) async {
+   final code = (languageCode ?? '').trim().isNotEmpty
+       ? languageCode!.trim().toLowerCase()
+       : fallbackLanguageCode;
+
+   final supported = SUPPORTED_LOCALES.any((l) => l.languageCode == code)
+       ? code
+       : fallbackLanguageCode;
+
+   final cached = _cachedByLanguageCode[supported];
+   if (cached != null) {
+     return cached;
+   }
+
+   final localizations = AppLocalizations(Locale(supported));
+   await localizations.load();
+   _cachedByLanguageCode[supported] = localizations;
+   return localizations;
  }
 
 

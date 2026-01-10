@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Custom Search input field, showing the search and clear icons.
 class SearchInput extends StatefulWidget {
@@ -53,6 +54,7 @@ class SearchInputState extends State<SearchInput> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
@@ -66,8 +68,10 @@ class SearchInputState extends State<SearchInput> {
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
-              decoration: const InputDecoration(
-                  hintText: 'Search place', border: InputBorder.none),
+              decoration: InputDecoration(
+                hintText: i18n.translate('search_place_hint'),
+                border: InputBorder.none,
+              ),
               controller: editController,
               onChanged: (value) {
                 setState(() {

@@ -21,26 +21,26 @@ class SexualOrientationFilterWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
     
-    // Opções disponíveis
-    const optionAll = 'Todas';
-    const optionHeterosexual = 'Heterossexual';
-    const optionHomosexual = 'Homossexual';
-    const optionBisexual = 'Bissexual';
-    const optionOther = 'Outro';
-    
-    final displayItems = [
-      optionAll,
-      optionHeterosexual,
-      optionHomosexual,
-      optionBisexual,
-      optionOther,
+    // Valores internos (NÃO traduzir): usados em persistência/filtros
+    const valueAll = 'all';
+    const valueHeterosexual = 'Heterossexual';
+    const valueHomosexual = 'Homossexual';
+    const valueBisexual = 'Bissexual';
+    const valueOther = 'Outro';
+
+    final items = [
+      valueAll,
+      valueHeterosexual,
+      valueHomosexual,
+      valueBisexual,
+      valueOther,
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Orientação Sexual', // Idealmente viria do i18n
+          i18n.translate('sexual_orientation_label'),
           style: GoogleFonts.getFont(
             FONT_PLUS_JAKARTA_SANS,
             fontWeight: FontWeight.w600,
@@ -51,24 +51,38 @@ class SexualOrientationFilterWidget extends StatelessWidget {
         const SizedBox(height: 12),
         GlimpseDropdown(
           labelText: '',
-          hintText: 'Selecione',
-          items: displayItems,
-          selectedValue: _getDisplayValue(selectedOrientation, optionAll),
-          onChanged: (value) {
-            if (value == optionAll) {
-              onChanged('all');
-            } else {
-              onChanged(value);
+          hintText: i18n.translate('select'),
+          items: items,
+          selectedValue: _getSelectedValue(selectedOrientation),
+          itemBuilder: (item) {
+            if (item == valueAll) {
+              return i18n.translate('sexual_orientation_filter_all');
             }
+            if (item == valueHeterosexual) {
+              return i18n.translate('sexual_orientation_heterosexual');
+            }
+            if (item == valueHomosexual) {
+              return i18n.translate('sexual_orientation_homosexual');
+            }
+            if (item == valueBisexual) {
+              return i18n.translate('sexual_orientation_bisexual');
+            }
+            if (item == valueOther) {
+              return i18n.translate('sexual_orientation_other');
+            }
+            return item;
+          },
+          onChanged: (value) {
+            onChanged(value);
           },
         ),
       ],
     );
   }
 
-  String _getDisplayValue(String? internalValue, String optionAll) {
+  String _getSelectedValue(String? internalValue) {
     if (internalValue == null || internalValue == 'all' || internalValue.isEmpty) {
-      return optionAll;
+      return 'all';
     }
     return internalValue;
   }

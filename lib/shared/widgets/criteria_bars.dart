@@ -85,21 +85,27 @@ class CriteriaBars extends StatelessWidget {
             padding: EdgeInsets.only(bottom: isLast ? 0 : (showEmojis ? 12 : 6)),
             child: showEmojis
                 ? _buildDetailedBar(key, rating, label ?? key, emoji ?? '⭐')
-                : _buildSimpleBar(key, rating, label ?? key),
+                : _buildSimpleBar(context, key, rating, label ?? key),
           );
         }),
       ],
     );
   }
 
-  Widget _buildSimpleBar(String key, double rating, String label) {
+  Widget _buildSimpleBar(BuildContext context, String key, double rating, String label) {
+    final i18n = AppLocalizations.of(context);
+    final template = i18n.translate('criteria_label_with_colon');
+    final labelText = template.isNotEmpty
+        ? template.replaceAll('{label}', label)
+        : '$label:';
+
     return Row(
       children: [
         // Label
         SizedBox(
           width: 90,
           child: Text(
-            '$label:',
+            labelText,
             style: GoogleFonts.getFont(
               FONT_PLUS_JAKARTA_SANS,
               fontSize: 12,

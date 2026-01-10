@@ -3,6 +3,7 @@ import 'package:partiu/features/notifications/models/activity_notification_types
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// TRIGGER 7: Atividade quase expirando
 /// 
@@ -19,6 +20,8 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
     Map<String, dynamic> context,
   ) async {
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
       final hoursRemaining = context['hoursRemaining'] as int?;
 
       if (hoursRemaining == null) {
@@ -42,6 +45,7 @@ class ActivityExpiringSoonTrigger extends BaseActivityTrigger {
 
       // Gera mensagem usando template
       final template = NotificationTemplates.activityExpiringSoon(
+        i18n: i18n,
         activityName: activity.name,
         emoji: activity.emoji,
         hoursRemaining: hoursRemaining,

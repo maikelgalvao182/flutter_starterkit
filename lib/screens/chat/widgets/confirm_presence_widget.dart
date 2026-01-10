@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/services/toast_service.dart';
@@ -82,7 +81,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
       if (mounted) {
         final i18n = AppLocalizations.of(context);
         ToastService.showSuccess(
-          message: i18n.translate('presence_updated') ?? 'Presença atualizada!',
+          message: i18n.translate('presence_updated'),
         );
       }
     } catch (e) {
@@ -93,7 +92,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
       if (mounted) {
         final i18n = AppLocalizations.of(context);
         ToastService.showError(
-          message: i18n.translate('presence_update_error') ?? 'Erro ao atualizar presença',
+          message: i18n.translate('presence_update_error'),
         );
       }
     }
@@ -110,6 +109,8 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return RepaintBoundary(
       child: Container(
         decoration: const BoxDecoration(
@@ -143,7 +144,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Confirme sua presença',
+                      i18n.translate('confirm_presence'),
                       style: GoogleFonts.getFont(
                         FONT_PLUS_JAKARTA_SANS,
                         fontSize: 14,
@@ -177,7 +178,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                     Expanded(
                       child: _PresenceButton(
                         emoji: '✅',
-                        label: 'Eu vou',
+                        label: i18n.translate('presence_yes'),
                         isSelected: _currentPresence == 'Vou',
                         onTap: _isUpdating ? null : () => _updatePresence('Vou'),
                       ),
@@ -186,7 +187,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                     Expanded(
                       child: _PresenceButton(
                         emoji: '🤔',
-                        label: 'Talvez',
+                        label: i18n.translate('presence_maybe'),
                         isSelected: _currentPresence == 'Talvez',
                         onTap: _isUpdating ? null : () => _updatePresence('Talvez'),
                       ),
@@ -195,7 +196,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                     Expanded(
                       child: _PresenceButton(
                         emoji: '❌',
-                        label: 'Não vou',
+                        label: i18n.translate('presence_no'),
                         isSelected: _currentPresence == 'Não vou',
                         onTap: _isUpdating ? null : () => _updatePresence('Não vou'),
                       ),
@@ -204,7 +205,7 @@ class _ConfirmPresenceWidgetState extends State<ConfirmPresenceWidget> {
                     Expanded(
                       child: _PresenceButton(
                         emoji: '👁️',
-                        label: 'Ver lista',
+                        label: i18n.translate('presence_view_list'),
                         isSelected: false,
                         onTap: _isUpdating ? null : _openPresenceDrawer,
                       ),

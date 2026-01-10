@@ -5,6 +5,7 @@ import 'package:partiu/features/notifications/services/user_affinity_service.dar
 import 'package:partiu/features/notifications/templates/notification_templates.dart';
 import 'package:partiu/features/notifications/triggers/base_activity_trigger.dart';
 import 'package:partiu/core/utils/app_logger.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// TRIGGER 6: Atividade começando a esquentar (threshold de pessoas)
 /// 
@@ -41,6 +42,8 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
     Map<String, dynamic> context,
   ) async {
     try {
+      final i18n = await AppLocalizations.loadForLanguageCode(AppLocalizations.currentLocale);
+
       final currentCount = context['currentCount'] as int?;
 
       if (currentCount == null) {
@@ -81,9 +84,10 @@ class ActivityHeatingUpTrigger extends BaseActivityTrigger {
 
       // PASSO 5: Gerar template de mensagem
       final template = NotificationTemplates.activityHeatingUp(
+        i18n: i18n,
         activityName: activity.name,
         emoji: activity.emoji,
-        creatorName: creatorInfo['fullName'] ?? 'Alguém',
+        creatorName: creatorInfo['fullName'] ?? i18n.translate('someone'),
         participantCount: currentCount,
       );
 

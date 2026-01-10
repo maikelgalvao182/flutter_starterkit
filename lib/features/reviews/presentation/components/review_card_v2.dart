@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/data/models/review_model.dart';
 import 'package:partiu/features/reviews/domain/constants/review_badges.dart';
 import 'package:partiu/shared/widgets/reactive/reactive_user_name_with_badge.dart';
@@ -157,6 +158,7 @@ class _ReviewCardV2State extends State<ReviewCardV2> {
   }
 
   Widget _buildBadges() {
+    final i18n = AppLocalizations.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -167,10 +169,10 @@ class _ReviewCardV2State extends State<ReviewCardV2> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: badge.color.withOpacity(0.15),
+            color: badge.color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: badge.color.withOpacity(0.3),
+              color: badge.color.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -182,7 +184,7 @@ class _ReviewCardV2State extends State<ReviewCardV2> {
               ),
               const SizedBox(width: 6),
               Text(
-                badge.title,
+                badge.localizedTitle(i18n),
                 style: GoogleFonts.getFont(
                   FONT_PLUS_JAKARTA_SANS,
                   fontSize: 12,

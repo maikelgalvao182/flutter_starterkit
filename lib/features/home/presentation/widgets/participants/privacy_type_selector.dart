@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Tipos de privacidade disponíveis
 enum PrivacyType {
@@ -24,13 +25,15 @@ class PrivacyTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return Row(
       children: [
         Expanded(
           child: _PrivacyTypeCard(
             type: PrivacyType.open,
-            title: 'Aberto',
-            subtitle: 'Livre para participar',
+            title: i18n.translate('privacy_type_open_title'),
+            subtitle: i18n.translate('privacy_type_open_subtitle'),
             icon: IconsaxPlusLinear.people,
             isSelected: selectedType == PrivacyType.open,
             onTap: () => onTypeSelected(PrivacyType.open),
@@ -42,8 +45,8 @@ class PrivacyTypeSelector extends StatelessWidget {
         Expanded(
           child: _PrivacyTypeCard(
             type: PrivacyType.private,
-            title: 'Privado',
-            subtitle: 'Precisa de aprovação',
+            title: i18n.translate('privacy_type_private_title'),
+            subtitle: i18n.translate('privacy_type_private_subtitle'),
             icon: IconsaxPlusLinear.lock,
             isSelected: selectedType == PrivacyType.private,
             onTap: () => onTypeSelected(PrivacyType.private),

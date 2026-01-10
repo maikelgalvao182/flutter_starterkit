@@ -174,7 +174,7 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: DialogStyles.positiveButtonStyle,
-                  child: Text('OK', style: DialogStyles.positiveButtonTextStyle),
+                  child: Text(_i18n.translate('ok'), style: DialogStyles.positiveButtonTextStyle),
                 ),
               ),
             ],
@@ -249,7 +249,7 @@ class UpdateLocationScreenRefactoredState extends State<UpdateLocationScreenRefa
                     onConfirm(); // Navega imediatamente
                   },
                   style: DialogStyles.successButtonStyle,
-                  child: Text('OK', style: DialogStyles.successButtonTextStyle),
+                  child: Text(_i18n.translate('ok'), style: DialogStyles.successButtonTextStyle),
                 ),
               ),
             ],

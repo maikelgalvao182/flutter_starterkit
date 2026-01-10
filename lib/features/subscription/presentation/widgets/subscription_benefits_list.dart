@@ -41,22 +41,22 @@ class SubscriptionBenefitsList extends StatelessWidget {
       // Desbloqueie a lista completa de pessoas
       _Benefit(
         icon: IconsaxPlusLinear.people,
-        title: 'Desbloqueie a lista completa de pessoas',
-        subtitle: 'Veja quem está por perto e também quem estará nos seus próximos destinos.',
+        title: i18n.translate('subscription_benefit_unlock_people_list_title'),
+        subtitle: i18n.translate('subscription_benefit_unlock_people_list_subtitle'),
       ),
 
       // Mais visibilidade no app
       _Benefit(
         icon: IconsaxPlusLinear.chart,
-        title: 'Mais visibilidade no app',
-        subtitle: 'Seu perfil aparece com prioridade no topo da lista de pessoas próximas.',
+        title: i18n.translate('subscription_benefit_more_visibility_title'),
+        subtitle: i18n.translate('subscription_benefit_more_visibility_subtitle'),
       ),
 
       // Veja quem visitou seu perfil
       _Benefit(
         icon: IconsaxPlusLinear.eye,
-        title: 'Veja quem visitou seu perfil',
-        subtitle: 'Descubra quem se interessou por você e acessou seu perfil recentemente.',
+        title: i18n.translate('subscription_benefit_profile_visits_title'),
+        subtitle: i18n.translate('subscription_benefit_profile_visits_subtitle'),
       ),
     ];
   }

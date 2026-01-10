@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/reviews/data/models/pending_review_model.dart';
 import 'package:partiu/features/reviews/data/repositories/review_repository.dart';
 import 'package:partiu/features/reviews/presentation/dialogs/review_dialog.dart';
@@ -19,6 +20,7 @@ class ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = ReviewRepository();
+    final i18n = AppLocalizations.of(context);
 
     debugPrint('🎴 ReviewCard build');
     debugPrint('   pendingReviewId: ${pendingReview.pendingReviewId}');
@@ -31,10 +33,14 @@ class ReviewCard extends StatelessWidget {
     // VALIDAÇÃO CRÍTICA: Detectar autoavaliação
     if (pendingReview.reviewerId == pendingReview.revieweeId) {
       debugPrint('❌ [ReviewCard] ERRO: Autoavaliação detectada!');
+      final translated = i18n.translate('review_card_invalid_self_review_error');
+      final errorMessage =
+          translated.isNotEmpty ? translated : i18n.translate('something_went_wrong');
+
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: GlimpseColors.error.withOpacity(0.1),
+          color: GlimpseColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: GlimpseColors.error,
@@ -51,7 +57,7 @@ class ReviewCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Erro: Review inválido detectado (autoavaliação). Entre em contato com o suporte.',
+                errorMessage,
                 style: TextStyle(
                   color: GlimpseColors.error,
                   fontWeight: FontWeight.w600,
@@ -84,9 +90,13 @@ class ReviewCard extends StatelessWidget {
         // Nenhum participante (não deveria acontecer, mas defesa)
         displayUserId = pendingReview.reviewerId; // Fallback
         displayPhotoUrl = null;
-        displayName = 'Participantes';
+        displayName = i18n.translate('participants_label');
+
+        final prefix = i18n.translate('review_card_rate_participants_prefix');
+
         textSpans = [
-          const TextSpan(text: 'Avalie os participantes do evento '),
+          TextSpan(text: prefix),
+          const TextSpan(text: ' '),
           TextSpan(
             text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -99,7 +109,11 @@ class ReviewCard extends StatelessWidget {
         
         displayUserId = firstParticipantId;
         displayPhotoUrl = firstParticipant?.photoUrl;
-        displayName = firstParticipant?.name ?? 'Participante';
+        displayName = firstParticipant?.name ?? i18n.translate('participant_label');
+
+        final needsInEvent = i18n.translate('review_card_needs_review_in_event');
+
+        final toBeReviewedInEvent = i18n.translate('review_card_to_be_reviewed_in_event');
         
         if (participantCount == 1) {
           textSpans = [
@@ -107,23 +121,37 @@ class ReviewCard extends StatelessWidget {
               text: displayName,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            const TextSpan(text: ' precisa ser avaliado(a) no evento '),
+            const TextSpan(text: ' '),
+            TextSpan(text: needsInEvent),
+            const TextSpan(text: ' '),
             TextSpan(
               text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ];
         } else {
+          final remaining = participantCount - 1;
+          final andMoreTemplate = i18n.translate('review_card_and_more_count');
+          final andMore = andMoreTemplate.replaceAll('{count}', remaining.toString());
+
+          final personNeeds = i18n.translate('review_card_person_needs');
+
+          final peopleNeed = i18n.translate('review_card_people_need');
+
           textSpans = [
             TextSpan(
               text: displayName,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-            TextSpan(text: ' e mais ${participantCount - 1} '),
+            const TextSpan(text: ' '),
+            TextSpan(text: andMore),
+            const TextSpan(text: ' '),
             TextSpan(
-              text: participantCount - 1 == 1 ? 'pessoa precisa' : 'pessoas precisam',
+              text: remaining == 1 ? personNeeds : peopleNeed,
             ),
-            const TextSpan(text: ' ser avaliados no evento '),
+            const TextSpan(text: ' '),
+            TextSpan(text: toBeReviewedInEvent),
+            const TextSpan(text: ' '),
             TextSpan(
               text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -135,13 +163,20 @@ class ReviewCard extends StatelessWidget {
       // Participant avaliando owner
       displayUserId = pendingReview.revieweeId;
       displayPhotoUrl = pendingReview.revieweePhotoUrl;
-      displayName = pendingReview.revieweeName ?? 'Organizador';
+        displayName = pendingReview.revieweeName.isNotEmpty
+          ? pendingReview.revieweeName
+          : i18n.translate('organizer_label');
+
+      final needsInEvent = i18n.translate('review_card_needs_review_in_event');
+
       textSpans = [
         TextSpan(
           text: displayName,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        const TextSpan(text: ' precisa ser avaliado(a) no evento '),
+        const TextSpan(text: ' '),
+        TextSpan(text: needsInEvent),
+        const TextSpan(text: ' '),
         TextSpan(
           text: '${pendingReview.eventEmoji} ${pendingReview.eventTitle}',
           style: const TextStyle(fontWeight: FontWeight.w700),
@@ -153,8 +188,8 @@ class ReviewCard extends StatelessWidget {
       userId: displayUserId,
       userPhotoUrl: displayPhotoUrl,
       textSpans: textSpans,
-      timeAgo: _getTimeAgo(pendingReview.createdAt),
-      primaryButtonText: 'Avaliar',
+      timeAgo: _getTimeAgo(i18n, pendingReview.createdAt),
+      primaryButtonText: i18n.translate('review_action_rate'),
       primaryButtonColor: GlimpseColors.approveButtonColor,
       onPrimaryAction: () async {
         debugPrint('🎯 [ReviewCard] Abrindo ReviewDialog...');
@@ -168,12 +203,12 @@ class ReviewCard extends StatelessWidget {
 
         // Se não completou, lança erro para evitar remoção
         if (result != true) {
-          throw Exception('Review cancelado');
+          throw Exception(i18n.translate('review_canceled'));
         }
         
         debugPrint('✅ Review completado: ${pendingReview.pendingReviewId}');
       },
-      secondaryButtonText: 'Dispensar',
+      secondaryButtonText: i18n.translate('review_action_dismiss'),
       secondaryButtonColor: GlimpseColors.rejectButtonColor,
       onSecondaryAction: () async {
         await repo.dismissPendingReview(pendingReview.pendingReviewId);
@@ -182,18 +217,33 @@ class ReviewCard extends StatelessWidget {
     );
   }
 
-  String _getTimeAgo(DateTime createdAt) {
+  String _timeAgoFromTemplate(AppLocalizations i18n, String key, int count) {
+    final template = i18n.translate(key);
+    if (template.isEmpty) return '';
+    return template.replaceAll('{count}', count.toString());
+  }
+
+  String _getTimeAgo(AppLocalizations i18n, DateTime createdAt) {
     final now = DateTime.now();
     final difference = now.difference(createdAt);
 
     if (difference.inMinutes < 1) {
-      return 'agora mesmo';
+      return i18n.translate('just_now');
     } else if (difference.inMinutes < 60) {
-      return 'há ${difference.inMinutes} minuto${difference.inMinutes > 1 ? 's' : ''}';
+      final minutes = difference.inMinutes;
+      final key = minutes == 1 ? 'time_ago_minutes_singular' : 'time_ago_minutes_plural';
+      final fromTemplate = _timeAgoFromTemplate(i18n, key, minutes);
+      return fromTemplate;
     } else if (difference.inHours < 24) {
-      return 'há ${difference.inHours} hora${difference.inHours > 1 ? 's' : ''}';
+      final hours = difference.inHours;
+      final key = hours == 1 ? 'time_ago_hours_singular' : 'time_ago_hours_plural';
+      final fromTemplate = _timeAgoFromTemplate(i18n, key, hours);
+      return fromTemplate;
     } else {
-      return 'há ${difference.inDays} dia${difference.inDays > 1 ? 's' : ''}';
+      final days = difference.inDays;
+      final key = days == 1 ? 'time_ago_days_singular' : 'time_ago_days_plural';
+      final fromTemplate = _timeAgoFromTemplate(i18n, key, days);
+      return fromTemplate;
     }
   }
 }

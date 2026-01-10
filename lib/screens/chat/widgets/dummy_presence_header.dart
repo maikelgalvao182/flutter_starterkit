@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Widget dummy que replica apenas a UI do header de presença
 /// sem carregar Firestore ou fazer qualquer operação assíncrona.
@@ -13,6 +14,8 @@ class DummyPresenceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -38,7 +41,7 @@ class DummyPresenceHeader extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Confirme sua presença',
+              i18n.translate('confirm_presence'),
               style: GoogleFonts.getFont(
                 FONT_PLUS_JAKARTA_SANS,
                 fontSize: 14,

@@ -42,8 +42,9 @@ class _UserImagesGridState extends State<UserImagesGrid> {
     
     // Captura traduções antes do await
     final imageDeletedMsg = i18n.translate('image_deleted');
-    final imageRemovedMsg = i18n.translate('image_removed_successfully');
+    final imageRemovedMsg = i18n.translate('image_removed');
     final deleteFailedMsg = i18n.translate('delete_failed');
+    final failedToRemoveMsg = i18n.translate('failed_to_remove_image');
     
     final result = await vm.deleteGalleryImageAtIndex(index: index);
     
@@ -55,16 +56,14 @@ class _UserImagesGridState extends State<UserImagesGrid> {
     if (result.success) {
       debugPrint('[UserImagesGrid] ✅ Delete SUCCESS for index: $index');
       if (!context.mounted) return;
-      final i18n = AppLocalizations.of(context);
       ToastService.showSuccess(
-        message: imageDeletedMsg ?? i18n.translate('image_removed'),
+        message: imageDeletedMsg.isNotEmpty ? imageDeletedMsg : imageRemovedMsg,
       );
     } else {
       debugPrint('[UserImagesGrid] ❌ Delete FAILED for index: $index - ${result.errorMessage}');
       if (!context.mounted) return;
-      final i18n = AppLocalizations.of(context);
       ToastService.showError(
-        message: deleteFailedMsg ?? i18n.translate('failed_to_remove_image'),
+        message: deleteFailedMsg.isNotEmpty ? deleteFailedMsg : failedToRemoveMsg,
       );
     }
   }
@@ -169,12 +168,13 @@ class _UserImagesGridState extends State<UserImagesGrid> {
   Widget build(BuildContext context) {
     debugPrint('=== [UserImagesGrid] 🏗️ BUILD CALLED ===');
     debugPrint('[UserImagesGrid] 🏗️ Building widget - ${DateTime.now()}');
+    final i18n = AppLocalizations.of(context);
     final uid = AppState.currentUserId;
     debugPrint('[UserImagesGrid] 👤 Current userId: $uid');
     
     if (uid == null) {
       debugPrint('[UserImagesGrid] ❌ No authenticated user');
-      return const Center(child: Text('Usuário não autenticado'));
+      return Center(child: Text(i18n.translate('user_not_authenticated')));
     }
 
     // ✅ REATIVO: Usa StreamBuilder para atualizações em tempo real

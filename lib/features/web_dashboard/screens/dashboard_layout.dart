@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/features/web_dashboard/screens/events_table_screen.dart';
 import 'package:partiu/features/web_dashboard/screens/users_table_screen.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 class DashboardLayout extends StatefulWidget {
   const DashboardLayout({super.key});
@@ -19,6 +20,7 @@ class _DashboardLayoutState extends State<DashboardLayout> {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = AppLocalizations.of(context);
     return Scaffold(
       body: Row(
         children: [
@@ -30,16 +32,16 @@ class _DashboardLayoutState extends State<DashboardLayout> {
               });
             },
             labelType: NavigationRailLabelType.all,
-            destinations: const [
+            destinations: [
               NavigationRailDestination(
-                icon: Icon(Icons.people),
-                selectedIcon: Icon(Icons.people_alt),
-                label: Text('Usuários'),
+                icon: const Icon(Icons.people),
+                selectedIcon: const Icon(Icons.people_alt),
+                label: Text(i18n.translate('web_dashboard_users_tab')),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.event),
-                selectedIcon: Icon(Icons.event_available),
-                label: Text('Eventos'),
+                icon: const Icon(Icons.event),
+                selectedIcon: const Icon(Icons.event_available),
+                label: Text(i18n.translate('web_dashboard_events_tab')),
               ),
             ],
           ),

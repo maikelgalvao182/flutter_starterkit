@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:partiu/app/services/locale_service.dart';
+import 'package:partiu/core/utils/app_localizations.dart';
 
 /// Diálogo para seleção de idioma
 class LanguageSelectorDialog {
@@ -9,7 +10,7 @@ class LanguageSelectorDialog {
     showDialog(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Selecionar Idioma'),
+        title: Text(AppLocalizations.of(context).translate('select_app_language')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: LocaleService.supportedLocales.map((locale) {
@@ -29,7 +30,7 @@ class LanguageSelectorDialog {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
+            child: Text(AppLocalizations.of(context).translate('cancel')),
           ),
         ],
       ),
