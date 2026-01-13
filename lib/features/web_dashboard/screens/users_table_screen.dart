@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/shared/models/user_model.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
@@ -66,7 +67,7 @@ class UsersTableScreen extends StatelessWidget {
                             user.photoUrl != null
                                 ? CircleAvatar(
                                     radius: 15,
-                                    backgroundImage: NetworkImage(user.photoUrl!),
+                                    backgroundImage: CachedNetworkImageProvider(user.photoUrl!),
                                   )
                                 : const CircleAvatar(
                                     radius: 15,

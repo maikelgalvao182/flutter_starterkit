@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
@@ -453,7 +454,9 @@ class _RatingsSheetState extends State<_RatingsSheet> {
             CircleAvatar(
               radius: 28,
               backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
-              backgroundImage: widget.revieweePhotoUrl != null ? NetworkImage(widget.revieweePhotoUrl!) : null,
+              backgroundImage: widget.revieweePhotoUrl != null
+                ? CachedNetworkImageProvider(widget.revieweePhotoUrl!)
+                : null,
               child: widget.revieweePhotoUrl == null
                   ? Text(
                       widget.revieweeName.isNotEmpty ? widget.revieweeName[0].toUpperCase() : '?',
@@ -596,7 +599,9 @@ class _BadgesSheetState extends State<_BadgesSheet> {
             CircleAvatar(
               radius: 28,
               backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
-              backgroundImage: widget.revieweePhotoUrl != null ? NetworkImage(widget.revieweePhotoUrl!) : null,
+                backgroundImage: widget.revieweePhotoUrl != null
+                  ? CachedNetworkImageProvider(widget.revieweePhotoUrl!)
+                  : null,
               child: widget.revieweePhotoUrl == null
                   ? Text(
                       widget.revieweeName.isNotEmpty ? widget.revieweeName[0].toUpperCase() : '?',
@@ -745,7 +750,9 @@ class _CommentSheetState extends State<_CommentSheet> {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
-                    backgroundImage: widget.revieweePhotoUrl != null ? NetworkImage(widget.revieweePhotoUrl!) : null,
+                    backgroundImage: widget.revieweePhotoUrl != null
+                      ? CachedNetworkImageProvider(widget.revieweePhotoUrl!)
+                      : null,
                     child: widget.revieweePhotoUrl == null
                         ? Text(
                             widget.revieweeName.isNotEmpty ? widget.revieweeName[0].toUpperCase() : '?',

@@ -61,6 +61,31 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_hasInitialized) {
+      // 🔒 Gate de verificação de e-mail (provider=password)
+      // Impede completar onboarding sem confirmar o e-mail.
+      final currentUser = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        // Sem usuário Firebase => não há como finalizar cadastro
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.signIn);
+        });
+        return;
+      }
+
+      final isPasswordProvider = currentUser.providerData.any((p) => p.providerId == 'password');
+      if (isPasswordProvider && currentUser.emailVerified == false) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.go(
+            AppRoutes.emailVerification,
+            extra: {
+              'email': currentUser.email,
+            },
+          );
+        });
+        return;
+      }
+
       // Obtém CadastroViewModel do ServiceLocator com DI
       final serviceLocator = DependencyProvider.of(context).serviceLocator;
       _cadastroViewModel = serviceLocator.get<CadastroViewModel>();
@@ -387,6 +412,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
               isContinueEnabled: isValid,
               isProcessing: _isLoading,
               showBackButton: !_wizardViewModel.isFirstStep,
+              showLogo: _wizardViewModel.isFirstStep,
             ),
           ),
         ),
@@ -529,6 +555,7 @@ class _SignupWizardScreenState extends State<SignupWizardScreen> {
               isContinueEnabled: isValid,
               isProcessing: _isLoading,
               showBackButton: !_wizardViewModel.isFirstStep,
+              showLogo: _wizardViewModel.isFirstStep,
             ),
           ),
           // Conteúdo do step atual (sem PageView, widget direto)

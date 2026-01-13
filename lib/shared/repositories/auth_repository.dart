@@ -197,15 +197,6 @@ class AuthRepository implements IAuthRepository {
   }
 
   @override
-  Future<void> signInWithFacebook({
-    required VoidCallback checkUserAccount,
-    required Function(dynamic) onError,
-  }) async {
-    // TODO: Implementar Facebook Auth
-    onError({'code': 'not-implemented', 'message': 'Facebook sign in not implemented yet'});
-  }
-
-  @override
   Future<void> signInWithGoogle({
     required VoidCallback checkUserAccount,
     required Function(dynamic) onError,
@@ -355,6 +346,7 @@ class AuthRepository implements IAuthRepository {
       
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
+        cacheControl: 'private,max-age=31536000,immutable',
         customMetadata: {
           'userId': user.uid,
           'uploadTimestamp': timestamp.toString(),
@@ -412,6 +404,7 @@ class AuthRepository implements IAuthRepository {
       
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
+        cacheControl: 'private,max-age=31536000,immutable',
         customMetadata: {
           'userId': user.uid,
           'index': index.toString(),

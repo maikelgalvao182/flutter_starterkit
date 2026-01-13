@@ -12,6 +12,7 @@ import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/shared/widgets/event_emoji_avatar.dart';
 import 'package:partiu/shared/stores/user_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -26,6 +27,7 @@ class ConversationTile extends StatelessWidget {
     required this.isLast,
     required this.onTap,
     required this.chatService,
+    this.showAvatarLoadingOverlay = false,
     super.key,
   });
   final String conversationId;
@@ -34,6 +36,7 @@ class ConversationTile extends StatelessWidget {
   final bool isLast;
   final VoidCallback onTap;
   final ChatService chatService;
+  final bool showAvatarLoadingOverlay;
 
   @override
   Widget build(BuildContext context) {
@@ -81,17 +84,41 @@ class ConversationTile extends StatelessWidget {
             final messageRead = data?['message_read'] as bool? ?? true;
             final hasUnread = unreadCount > 0 || !messageRead;
 
-            final displayName = cleanName(data?['activityText']).isNotEmpty
-              ? cleanName(data?['activityText'])
-              : (cleanName(data?['fullname']).isNotEmpty
-                ? cleanName(data?['fullname'])
+            final isEventChat =
+                data?['is_event_chat'] == true ||
+                data?['event_id'] != null ||
+                rawData['is_event_chat'] == true ||
+                rawData['event_id'] != null;
+
+            String extractOtherUserName(Map<String, dynamic>? src) {
+              if (src == null) return '';
+              final candidates = <dynamic>[
+                src['other_user_name'],
+                src['otherUserName'],
+                src['userFullname'],
+                src['user_fullname'],
+              ];
+              for (final c in candidates) {
+                final cleaned = cleanName(c);
+                if (cleaned.isNotEmpty) return cleaned;
+              }
+              return '';
+            }
+
+            // ⚠️ 1:1: NÃO usar fullname/activityText do summary (pode refletir sender da última msg).
+            // Use UserStore no build do title e deixe aqui apenas um fallback seguro.
+            final otherNameFromSnap = extractOtherUserName(data);
+            final otherNameFromRaw = extractOtherUserName(rawData);
+
+            final displayName = isEventChat
+              ? (cleanName(data?['activityText']).isNotEmpty
+                ? cleanName(data?['activityText'])
                 : (cleanName(rawData['activityText']).isNotEmpty
                   ? cleanName(rawData['activityText'])
-                  : (cleanName(rawData['fullname']).isNotEmpty
-                    ? cleanName(rawData['fullname'])
-                    : (cleanName(displayData.fullName).isNotEmpty
-                      ? cleanName(displayData.fullName)
-                      : cleanName(displayData.displayName)))));
+                  : cleanName(displayData.fullName)))
+              : (otherNameFromSnap.isNotEmpty
+                ? otherNameFromSnap
+                : (otherNameFromRaw.isNotEmpty ? otherNameFromRaw : ''));
 
             final emoji = data?['emoji']?.toString() ?? 
                          rawData['emoji']?.toString() ?? 
@@ -248,14 +275,16 @@ class ConversationTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: (!isEventChat && isPlaceholderName(displayName) && displayData.otherUserId.isNotEmpty)
+            // ✅ 1:1: sempre resolver via UserStore (evita alternar com sender)
+            child: (!isEventChat && displayData.otherUserId.isNotEmpty)
                 ? ValueListenableBuilder<String?>(
-                    valueListenable: UserStore.instance.getNameNotifier(displayData.otherUserId),
+                    valueListenable:
+                        UserStore.instance.getNameNotifier(displayData.otherUserId),
                     builder: (context, name, _) {
                       final resolved = (name ?? '').trim();
                       final effective = (!isPlaceholderName(resolved) && resolved.isNotEmpty)
                           ? resolved
-                          : '';
+                          : (isPlaceholderName(displayName) ? '' : displayName);
 
                       return ConversationStyles.buildEventNameText(
                         name: effective.isNotEmpty ? truncateName(effective) : '',
@@ -312,6 +341,26 @@ class ConversationTile extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               tile,
+              if (showAvatarLoadingOverlay)
+                Positioned(
+                  left: 16,
+                  top: 8,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: ConversationStyles.avatarSize,
+                      height: ConversationStyles.avatarSize,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0x59000000),
+                      ),
+                      alignment: Alignment.center,
+                      child: const CupertinoActivityIndicator(
+                        radius: 10,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               // Badge posicionado absolutamente sobre o avatar
               if (hasUnread)
                 Positioned(

@@ -256,6 +256,7 @@ class _ProfileHeaderContent extends StatelessWidget {
               await _uploadProfilePhoto(context, file);
             },
             cropToSquare: true,
+            requireCrop: true,
             minWidth: 800,
             minHeight: 800,
             quality: 85,

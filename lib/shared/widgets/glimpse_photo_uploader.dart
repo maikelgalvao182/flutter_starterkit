@@ -42,9 +42,6 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
         decoration: BoxDecoration(
           color: GlimpseColors.lightTextField,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: GlimpseColors.borderColorLight,
-          ),
           image: widget.imageFile != null
               ? DecorationImage(
                   image: FileImage(widget.imageFile!),
@@ -102,6 +99,7 @@ class _GlimpsePhotoUploaderState extends State<GlimpsePhotoUploader> {
               if (mounted) setState(() => _processing = false);
             },
             cropToSquare: true,
+            requireCrop: true,
             minWidth: 800,
             minHeight: 800,
             quality: 85,

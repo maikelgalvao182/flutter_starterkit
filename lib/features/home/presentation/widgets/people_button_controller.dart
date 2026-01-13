@@ -3,6 +3,7 @@ import 'package:partiu/shared/models/user_model.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/features/home/presentation/services/geo_service.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 class NearbyButtonController extends ChangeNotifier {
   static final NearbyButtonController _instance = NearbyButtonController._internal();
@@ -66,8 +67,19 @@ class NearbyButtonController extends ChangeNotifier {
       }
 
       _hasLoaded = true;
-    } catch (e) {
-      debugPrint('Erro ao carregar dados do botão Perto de Você: $e');
+    } catch (e, stackTrace) {
+      AppLogger.warning(
+        'Erro ao carregar dados do PeopleButton (NearbyButtonController): $e',
+        tag: 'PEOPLE_BUTTON',
+      );
+      if (AppLogger.verbose) {
+        AppLogger.error(
+          'StackTrace PeopleButton loadData',
+          tag: 'PEOPLE_BUTTON',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
     } finally {
       isLoading = false;
       _inFlight = null;

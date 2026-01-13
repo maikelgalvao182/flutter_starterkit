@@ -2,16 +2,20 @@
 /// 
 /// Classe utilitária que centraliza todas as regras de validação
 /// para email, senha e outros campos do fluxo de auth/cadastro.
+/// 
+/// Os métodos aceitam um parâmetro opcional [translate] para internacionalização.
+/// Se não fornecido, usa os textos padrão em inglês como fallback.
 class AuthValidators {
   // Previne instanciação
   AuthValidators._();
   
   /// Valida formato de email
   /// 
+  /// [translate] - Função opcional para traduzir mensagens de erro
   /// Retorna mensagem de erro ou null se válido.
-  static String? validateEmail(String? value) {
+  static String? validateEmail(String? value, {String Function(String)? translate}) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your email';
+      return translate?.call('please_enter_email') ?? 'Please enter your email';
     }
     
     final emailRegex = RegExp(
@@ -19,7 +23,7 @@ class AuthValidators {
     );
     
     if (!emailRegex.hasMatch(value.trim())) {
-      return 'Please enter a valid email';
+      return translate?.call('please_enter_valid_email') ?? 'Please enter a valid email';
     }
     
     return null;
@@ -28,14 +32,15 @@ class AuthValidators {
   /// Valida senha
   /// 
   /// [isSignUp] - Se true, aplica regras mais rigorosas (mínimo 6 caracteres)
+  /// [translate] - Função opcional para traduzir mensagens de erro
   /// Retorna mensagem de erro ou null se válida.
-  static String? validatePassword(String? value, {bool isSignUp = false}) {
+  static String? validatePassword(String? value, {bool isSignUp = false, String Function(String)? translate}) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your password';
+      return translate?.call('please_enter_password') ?? 'Please enter your password';
     }
     
     if (isSignUp && value.length < 6) {
-      return 'Password must be at least 6 characters';
+      return translate?.call('password_min_6_characters') ?? 'Password must be at least 6 characters';
     }
     
     return null;

@@ -84,7 +84,10 @@ class StableAvatar extends StatelessWidget {
   }) {
     // ResizeImage usa pixels físicos; isso reduz uso de memória e evita evictions.
     final cacheSize = (size * devicePixelRatio).round().clamp(1, 4096);
-    final resizedProvider = ResizeImage(provider, width: cacheSize, height: cacheSize);
+    // Importante: passar width E height pode distorcer imagens não-quadradas (alguns decoders
+    // tratam como escala exata). Com apenas uma dimensão, o engine preserva o aspect ratio,
+    // e o BoxFit.cover faz o recorte sem “amassar” a foto.
+    final resizedProvider = ResizeImage(provider, width: cacheSize);
 
     return Image(
       key: ValueKey(keyId),

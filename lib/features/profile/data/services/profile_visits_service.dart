@@ -378,7 +378,8 @@ class ProfileVisitsService {
 
   /// Busca contador de visitas (one-time fetch)
   /// 
-  /// Nota: Usa aggregation query (`count()`) para evitar leituras de documentos.
+  /// Nota: O app registra visitas incrementando o campo `visitCount` por visitante.
+  /// Aqui retornamos a soma desse campo (não apenas quantidade de documentos).
   Future<int> getVisitsCount(String userId) async {
     if (userId.isEmpty) return 0;
 
@@ -389,14 +390,28 @@ class ProfileVisitsService {
     }
 
     try {
-      // count() é otimizado e não conta como leituras de documentos
-      final countResult = await _firestore
+      // Soma `visitCount` dos docs do usuário.
+      // Mantém consistente com a forma como as visitas são registradas.
+      final snapshot = await _firestore
           .collection('ProfileVisits')
           .where('visitedUserId', isEqualTo: userId)
-          .count()
           .get();
 
-      return countResult.count ?? 0;
+      var total = 0;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final value = data['visitCount'];
+        if (value is int) {
+          total += value;
+        } else if (value is num) {
+          total += value.toInt();
+        } else {
+          // Fallback: se o doc não tem visitCount (legado), conta como 1.
+          total += 1;
+        }
+      }
+
+      return total;
     } on FirebaseException catch (e) {
       if (e.code == 'permission-denied') {
         return 0;

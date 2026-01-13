@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
@@ -41,7 +42,7 @@ class ReviewDialogRevieweeInfo extends StatelessWidget {
           radius: 32,
           backgroundColor: GlimpseColors.primary.withValues(alpha: 0.2),
           backgroundImage: displayPhotoUrl != null
-              ? NetworkImage(displayPhotoUrl)
+            ? CachedNetworkImageProvider(displayPhotoUrl)
               : null,
           child: displayPhotoUrl == null
               ? Text(

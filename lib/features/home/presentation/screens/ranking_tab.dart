@@ -1,22 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
-import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/widgets/people_ranking_card.dart';
 import 'package:partiu/features/home/presentation/widgets/people_ranking_card_shimmer.dart';
-import 'package:partiu/features/home/presentation/widgets/place_card/place_card.dart';
-import 'package:partiu/features/home/presentation/widgets/place_card/place_card_controller.dart';
 import 'package:partiu/features/home/presentation/state/people_ranking_state.dart';
-import 'package:partiu/features/home/presentation/state/location_ranking_state.dart';
 import 'package:partiu/features/notifications/widgets/notification_horizontal_filters.dart';
 import 'package:partiu/features/notifications/widgets/notification_filter_shimmer.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
-import 'package:partiu/shared/widgets/glimpse_tab_app_bar.dart';
-import 'package:partiu/shared/widgets/glimpse_tab_header.dart';
 import 'package:partiu/shared/widgets/outline_horizontal_filter.dart';
 import 'package:partiu/shared/widgets/pull_to_refresh.dart';
 
@@ -31,18 +22,18 @@ class RankingTab extends StatefulWidget {
   });
   
   final PeopleRankingViewModel peopleRankingViewModel;
-  final RankingViewModel locationsRankingViewModel;
+  // Mantido por compatibilidade com o código existente, mas a UI de "Lugares"
+  // foi desativada (página agora exibe apenas o ranking de pessoas).
+  // ignore: unused_field
+  final dynamic locationsRankingViewModel;
 
   @override
   State<RankingTab> createState() => _RankingTabState();
 }
 
 class _RankingTabState extends State<RankingTab> {
-  late final RankingViewModel _locationsViewModel;
   late final PeopleRankingViewModel _peopleViewModel;
   late final PeopleRankingState _peopleState;
-  late final LocationRankingState _locationState;
-  int _selectedTabIndex = 0; // 0 = Pessoas, 1 = Lugares
 
   @override
   void initState() {
@@ -50,46 +41,37 @@ class _RankingTabState extends State<RankingTab> {
     debugPrint('🎴 [RankingTab] initState');
     
     // Usar o ViewModel pré-carregado do AppInitializer
-    _locationsViewModel = widget.locationsRankingViewModel;
     _peopleViewModel = widget.peopleRankingViewModel;
     
     // Criar state holders com listas master
     _peopleState = PeopleRankingState(_peopleViewModel.peopleRankings);
-    _locationState = LocationRankingState(_locationsViewModel.locationRankings);
     
-    _locationsViewModel.addListener(_onLocationsViewModelChanged);
     _peopleViewModel.addListener(_onPeopleViewModelChanged);
     _peopleState.addListener(_onPeopleStateChanged);
-    _locationState.addListener(_onLocationStateChanged);
-    
-    // Não precisa inicializar nada - tudo já foi pré-carregado no AppInitializer
-    debugPrint('🎴 [RankingTab] ViewModels pré-carregados:');
-    debugPrint('   - People: ${_peopleViewModel.peopleRankings.length}');
-    debugPrint('   - Locations: ${_locationsViewModel.locationRankings.length}');
+
+    // 🚀 Lazy init por rota: Splash não garante preload completo.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      if (!_peopleViewModel.hasLoadedOnce && !_peopleViewModel.isLoading) {
+        unawaited(() async {
+          try {
+            await _peopleViewModel.initialize();
+          } catch (_) {
+            // Erro já é tratado/exposto pelo ViewModel.
+          }
+        }());
+      }
+    });
   }
 
   @override
   void dispose() {
-    _locationsViewModel.removeListener(_onLocationsViewModelChanged);
     _peopleViewModel.removeListener(_onPeopleViewModelChanged);
     _peopleState.removeListener(_onPeopleStateChanged);
-    _locationState.removeListener(_onLocationStateChanged);
     _peopleState.dispose();
-    _locationState.dispose();
     // Não fazer dispose dos ViewModels pois eles são compartilhados
     super.dispose();
-  }
-
-  void _onLocationsViewModelChanged() {
-    // Atualizar master list no state quando ViewModel recarregar
-    // 🔥 CORREÇÃO: Passar flag isRefreshing para evitar limpeza indevida
-    _locationState.updateMaster(
-      _locationsViewModel.locationRankings,
-      isRefreshing: _locationsViewModel.isRefreshing,
-    );
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   void _onPeopleViewModelChanged() {
@@ -111,73 +93,21 @@ class _RankingTabState extends State<RankingTab> {
     }
   }
 
-  void _onLocationStateChanged() {
-    // State mudou (filtro aplicado) - apenas rebuild
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  String _eventsCountLabel(AppLocalizations i18n, int count) {
-    final template = count == 1
-        ? i18n.translate('events_count_singular')
-        : i18n.translate('events_count_plural');
-    return template.replaceAll('{count}', count.toString());
-  }
-
   @override
   Widget build(BuildContext context) {
-    final i18n = AppLocalizations.of(context);
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            GlimpseTabAppBar(
-              title: i18n.translate('ranking_title'),
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Tab Header
-            GlimpseTabHeader.withTabs(
-              title: '',
-              onSearchTap: () {
-                // TODO: Implementar busca
-              },
-              tabLabels: [
-                i18n.translate('ranking_tab_people'),
-                i18n.translate('ranking_tab_places'),
-              ],
-              selectedTabIndex: _selectedTabIndex,
-              onTabTap: (index) {
-                debugPrint('🔄 [RankingTab] Mudando para tab: ${index == 0 ? "Pessoas" : "Lugares"}');
-                setState(() {
-                  _selectedTabIndex = index;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 0),
-            
-            // Conteúdo
-            Expanded(
-              child: _buildContent(),
-            ),
-          ],
-        ),
+        // Importante: UI de tabs (incluindo "Lugares" e a Glimpse tab header)
+        // foi removida. Esta página agora mostra apenas o conteúdo de "Pessoas".
+        child: _buildContent(),
       ),
     );
   }
 
   Widget _buildContent() {
-    // Selecionar ViewModel baseado na tab
-    final isInitialLoadingPeople = _selectedTabIndex == 0 && _peopleViewModel.isInitialLoading;
-    final isInitialLoadingLocations = _selectedTabIndex == 1 && _locationsViewModel.isInitialLoading;
-    
     // Loading state com shimmer (apenas no carregamento inicial)
-    if (isInitialLoadingPeople) {
+    if (_peopleViewModel.isInitialLoading) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -200,30 +130,18 @@ class _RankingTabState extends State<RankingTab> {
         ],
       );
     }
-    
-    if (isInitialLoadingLocations) {
-      return const Center(
-        child: CupertinoActivityIndicator(radius: 16),
-      );
-    }
 
     // Error state
-    final error = _selectedTabIndex == 0 
-        ? _peopleViewModel.error 
-        : _locationsViewModel.error;
-    
-    if (error != null) {
+    if (_peopleViewModel.error != null) {
       return Center(
         child: GlimpseEmptyState.standard(
-          text: error,
+          text: _peopleViewModel.error!,
         ),
       );
     }
 
-    // Mostrar tab baseado na seleção
-    return _selectedTabIndex == 0 
-        ? _buildPeopleRankingList() 
-        : _buildLocationRankingList();
+    // Mostrar apenas ranking de pessoas
+    return _buildPeopleRankingList();
   }
 
   Widget _buildPeopleRankingList() {
@@ -373,195 +291,6 @@ class _RankingTabState extends State<RankingTab> {
           _peopleState.setCityFilter(null);
         } else {
           _peopleState.setCityFilter(value);
-        }
-      },
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-    );
-  }
-
-  Widget _buildLocationRankingList() {
-    debugPrint('🏢 [RankingTab] _buildLocationRankingList');
-    
-    final master = _locationState.master;
-    final visibleIds = _locationState.visibleIds;
-    final states = _locationState.availableStates;
-    final cities = _locationState.availableCities;
-    
-    debugPrint('   - master.length: ${master.length}');
-    debugPrint('   - visibleIds.length: ${visibleIds.length}');
-    debugPrint('   - states.length: ${states.length}');
-    debugPrint('   - cities.length: ${cities.length}');
-    debugPrint('   - loadState: ${_locationsViewModel.loadState}');
-    debugPrint('   - isLoading: ${_locationsViewModel.isLoading}');
-    debugPrint('   - isInitialLoading: ${_locationsViewModel.isInitialLoading}');
-    debugPrint('   - shouldShowEmptyState: ${_locationsViewModel.shouldShowEmptyState}');
-    debugPrint('   - displayedRankings.length: ${_locationState.displayedRankings.length}');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Container para ambos os filtros (altura consistente)
-        Column(
-          children: [
-            // Filtro de Estado (padrão)
-            if (states.isNotEmpty)
-              SizedBox(
-                height: 48,
-                child: _buildLocationStateFilter(states),
-              ),
-            
-            if (states.isNotEmpty && cities.isNotEmpty)
-              const SizedBox(height: 8),
-            
-            // Filtro de Cidade (outline)
-            if (cities.isNotEmpty)
-              SizedBox(
-                height: 38,
-                child: _buildLocationCityFilter(cities),
-              ),
-          ],
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // Lista de locais - 🚀 Sempre mantém Scrollable (com empty state dentro se necessário)
-        Expanded(
-          child: PlatformPullToRefresh(
-            onRefresh: () async {
-              debugPrint('🔄 [RankingTab] Pull-to-refresh INICIADO (locais)');
-              debugPrint('   - ANTES: displayedRankings.length = ${_locationState.displayedRankings.length}');
-              debugPrint('   - ANTES: loadState = ${_locationsViewModel.loadState}');
-              debugPrint('   - ANTES: shouldShowEmptyState = ${_locationsViewModel.shouldShowEmptyState}');
-              
-              await _locationsViewModel.refresh();
-              
-              debugPrint('🔄 [RankingTab] Pull-to-refresh COMPLETO (locais)');
-              debugPrint('   - DEPOIS: displayedRankings.length = ${_locationState.displayedRankings.length}');
-              debugPrint('   - DEPOIS: loadState = ${_locationsViewModel.loadState}');
-              debugPrint('   - DEPOIS: shouldShowEmptyState = ${_locationsViewModel.shouldShowEmptyState}');
-            },
-            itemCount: _locationState.displayedRankings.isEmpty && _locationsViewModel.shouldShowEmptyState
-                ? 1 // Empty state como item único
-                : _locationState.displayedRankings.length,
-            itemBuilder: (context, index) {
-              debugPrint('🏗️ [RankingTab] itemBuilder chamado - index: $index');
-              debugPrint('   - displayedRankings.isEmpty: ${_locationState.displayedRankings.isEmpty}');
-              debugPrint('   - shouldShowEmptyState: ${_locationsViewModel.shouldShowEmptyState}');
-              
-              // Mostrar empty state quando vazio E já carregou
-              if (_locationState.displayedRankings.isEmpty && _locationsViewModel.shouldShowEmptyState) {
-                debugPrint('   ⚠️ Renderizando EMPTY STATE');
-                return SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.5,
-                  child: Center(
-                    child: GlimpseEmptyState.standard(
-                      text: AppLocalizations.of(context).translate('ranking_places_empty'),
-                    ),
-                  ),
-                );
-              }
-              
-              debugPrint('   ✅ Renderizando PlaceCard - index: $index');
-              final ranking = _locationState.displayedRankings[index];
-              
-              // Criar controller com dados do ranking
-              final controller = PlaceCardController(
-                eventId: 'ranking_${ranking.placeId}',
-                preloadedData: {
-                  'locationName': ranking.locationName,
-                  'formattedAddress': ranking.formattedAddress,
-                  'placeId': ranking.placeId,
-                  'photoReferences': ranking.photoReferences,
-                  'visitors': ranking.visitors,
-                  'totalVisitorsCount': ranking.totalVisitors,
-                },
-              );
-
-              return Container(
-                key: ValueKey(ranking.placeId),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: GlimpseColors.borderColorLight,
-                    width: 1,
-                  ),
-                ),
-                child: PlaceCard(
-                  controller: controller,
-                  customTagWidget: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: GlimpseColors.primaryLight,
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Text(
-                      _eventsCountLabel(AppLocalizations.of(context), ranking.totalEventsHosted),
-                      style: GoogleFonts.getFont(
-                        FONT_PLUS_JAKARTA_SANS,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: GlimpseColors.primaryDarker,
-                      ),
-                    ),
-                  ),
-                  onTap: () {
-                    debugPrint('🏆 Local clicado: ${ranking.placeId}');
-                  },
-                ),
-              );
-            },
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLocationStateFilter(List<String> states) {
-    final selectedState = _locationState.filter.state;
-    final i18n = AppLocalizations.of(context);
-    
-    // Criar lista com "Todos" + estados
-    final items = [i18n.translate('all'), ...states];
-    
-    // Index selecionado (0 = Todos, 1+ = estados)
-    final selectedIndex = selectedState == null 
-        ? 0 
-        : states.indexOf(selectedState) + 1;
-    
-    return NotificationHorizontalFilters(
-      items: items,
-      selectedIndex: selectedIndex,
-      onSelected: (index) {
-        if (index == 0) {
-          _locationState.setStateFilter(null);
-        } else {
-          _locationState.setStateFilter(states[index - 1]);
-        }
-      },
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-    );
-  }
-
-  Widget _buildLocationCityFilter(List<String> cities) {
-    final selectedCity = _locationState.filter.city;
-    
-    // Criar lista com "Todas" + cidades
-    final values = ['Todas', ...cities];
-    
-    // Valor selecionado (null = Todas, string = cidade específica)
-    final selected = selectedCity ?? 'Todas';
-    
-    return OutlineHorizontalFilter(
-      values: values,
-      selected: selected,
-      onSelected: (value) {
-        if (value == null || value == 'Todas') {
-          _locationState.setCityFilter(null);
-        } else {
-          _locationState.setCityFilter(value);
         }
       },
       padding: const EdgeInsets.symmetric(horizontal: 16),

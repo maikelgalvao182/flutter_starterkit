@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:partiu/features/home/presentation/widgets/google_map_view.dart';
@@ -11,10 +13,13 @@ class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({
     super.key, 
     this.onCenterUserRequested,
+    this.onFirstMapScroll,
     required this.mapViewModel,
   });
 
   final VoidCallback? onCenterUserRequested;
+  /// Callback chamado quando o primeiro scroll do mapa ocorre (para onboarding)
+  final VoidCallback? onFirstMapScroll;
   final MapViewModel mapViewModel;
 
   @override
@@ -31,6 +36,20 @@ class DiscoverScreenState extends State<DiscoverScreen> {
     // Notifica o callback quando o widget é criado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onCenterUserRequested?.call();
+
+      // 🚀 Lazy init do mapa: não travar Splash/Home.
+      // Só inicializa se ainda não houver dados (idempotência via estado do VM).
+      final vm = widget.mapViewModel;
+      final hasData = vm.mapReady || vm.events.isNotEmpty || vm.googleMarkers.isNotEmpty;
+      if (!hasData) {
+        unawaited(() async {
+          try {
+            await vm.initialize();
+          } catch (_) {
+            // Inicialização do mapa não é crítica para navegação.
+          }
+        }());
+      }
     });
   }
 
@@ -49,6 +68,7 @@ class DiscoverScreenState extends State<DiscoverScreen> {
                 _platformMapCreated = true;
               });
             },
+            onFirstMapScroll: widget.onFirstMapScroll,
           ),
         ),
 

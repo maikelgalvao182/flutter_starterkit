@@ -10,7 +10,6 @@ import 'package:partiu/shared/widgets/glimpse_back_button.dart';
 import 'package:partiu/shared/widgets/glimpse_empty_state.dart';
 import 'package:partiu/shared/widgets/pull_to_refresh.dart';
 import 'package:partiu/features/home/presentation/screens/advanced_filters_screen.dart';
-import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
 import 'package:partiu/features/home/data/services/people_map_discovery_service.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
@@ -29,7 +28,6 @@ class FindPeopleScreen extends StatefulWidget {
 }
 
 class _FindPeopleScreenState extends State<FindPeopleScreen> {
-  late final FindPeopleController _controller;
   late final ScrollController _scrollController;
   final PeopleMapDiscoveryService _peopleDiscoveryService = PeopleMapDiscoveryService();
   bool _vipDialogOpen = false;
@@ -38,17 +36,12 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
   @override
   void initState() {
     super.initState();
-    // Obtém instância singleton (não cria nova)
-    _controller = FindPeopleController();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
     
     final isVip = VipAccessService.isVip;
     debugPrint('🎯 [FindPeopleScreen] Usando controller singleton');
     debugPrint('👤 [FindPeopleScreen] Status VIP: ${isVip ? "✅ VIP ATIVO" : "❌ NÃO-VIP (bloqueio será aplicado)"}');
-    
-    // 🚀 Garante inicialização do controller (padrão lazy initialization)
-    _controller.ensureInitialized();
 
     // Se já existir um bounds conhecido do mapa, força refresh para popular a lista
     // A lista agora vem diretamente do PeopleMapDiscoveryService (igual ListDrawer)
@@ -140,15 +133,15 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
         valueListenable: _peopleDiscoveryService.nearbyPeopleCount,
         builder: (context, peopleCount, _) {
           return ValueListenableBuilder<List<User>>(
-            valueListenable: _controller.users,
+            valueListenable: _peopleDiscoveryService.nearbyPeople,
             builder: (context, usersList, __) {
               final count = peopleCount > 0 ? peopleCount : usersList.length;
-                final titleTemplate = count > 0
+              final titleTemplate = count > 0
                   ? (count == 1
-                    ? i18n.translate('people_in_region_count_singular')
-                    : i18n.translate('people_in_region_count_plural'))
+                      ? i18n.translate('people_in_region_count_singular')
+                      : i18n.translate('people_in_region_count_plural'))
                   : i18n.translate('people_in_region');
-                final title = titleTemplate.replaceAll('{count}', count.toString());
+              final title = titleTemplate.replaceAll('{count}', count.toString());
 
               return Text(
                 title,
@@ -202,6 +195,9 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                     // novos dados no stream e o controller já foi atualizado
                     if (result == true) {
                       debugPrint('✅ Filtros aplicados, aguardando atualização automática do stream');
+                      // A UI prioriza o PeopleMapDiscoveryService; então precisamos
+                      // reconsultar o bounds atual para refletir os filtros.
+                      _peopleDiscoveryService.refreshCurrentBounds();
                     }
                   },
                 ),
@@ -212,28 +208,23 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
   }
 
   Widget _buildBody(AppLocalizations i18n) {
-    // 🎯 Usar lista reativa do PeopleMapDiscoveryService (igual ListDrawer com eventos)
-    // A lista atualiza automaticamente quando o bounds do mapa muda
-    return ValueListenableBuilder<List<User>>(
-      valueListenable: _peopleDiscoveryService.nearbyPeople,
-      builder: (context, nearbyPeopleList, _) {
-        debugPrint('🔄 [FindPeopleScreen] nearbyPeople rebuild: ${nearbyPeopleList.length} pessoas');
-        
-        // Também escutar a lista do controller para fallback inicial
+    return ValueListenableBuilder<bool>(
+      valueListenable: _peopleDiscoveryService.isViewportActive,
+      builder: (context, viewportActive, _) {
+        if (!viewportActive) {
+          return Center(
+            child: GlimpseEmptyState.standard(
+              text: i18n.translate('zoom_in_to_see_people'),
+            ),
+          );
+        }
+
         return ValueListenableBuilder<List<User>>(
-          valueListenable: _controller.users,
-          builder: (context, controllerUsersList, _) {
+          valueListenable: _peopleDiscoveryService.nearbyPeople,
+          builder: (context, usersList, __) {
             return ValueListenableBuilder<bool>(
-              valueListenable: _controller.isLoading,
-              builder: (context, isLoading, _) {
-                // Priorizar lista do serviço de descoberta, fallback para controller
-                final usersList = nearbyPeopleList.isNotEmpty 
-                    ? nearbyPeopleList 
-                    : controllerUsersList;
-                
-                debugPrint('🔄 [FindPeopleScreen] Lista final: ${usersList.length} (nearby: ${nearbyPeopleList.length}, controller: ${controllerUsersList.length})');
-                
-                // Loading state - só mostra shimmer se ambas as listas estão vazias
+              valueListenable: _peopleDiscoveryService.isLoading,
+              builder: (context, isLoading, ___) {
                 if (isLoading && usersList.isEmpty) {
                   return ListView.separated(
                     padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
@@ -243,17 +234,16 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                   );
                 }
 
-                // Error state
-                return ValueListenableBuilder<String?>(
-                  valueListenable: _controller.error,
-                  builder: (context, errorMessage, _) {
-                    if (errorMessage != null && usersList.isEmpty) {
+                return ValueListenableBuilder<Object?>(
+                  valueListenable: _peopleDiscoveryService.lastError,
+                  builder: (context, error, ____) {
+                    if (error != null && usersList.isEmpty) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              errorMessage,
+                              i18n.translate('error_try_again'),
                               style: GoogleFonts.getFont(
                                 FONT_PLUS_JAKARTA_SANS,
                                 fontSize: 16,
@@ -278,7 +268,6 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                       );
                     }
 
-                    // Empty state
                     if (usersList.isEmpty) {
                       return Center(
                         child: GlimpseEmptyState.standard(
@@ -287,44 +276,34 @@ class _FindPeopleScreenState extends State<FindPeopleScreen> {
                       );
                     }
 
-                    // Success state - Lista de usuários com Pull to Refresh
                     return PlatformPullToRefresh(
                       onRefresh: () async => _peopleDiscoveryService.refreshCurrentBounds(),
                       controller: _scrollController,
                       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-                      // 🔒 Limitar a 13 itens para não-VIP (12 cards + 1 VipLockedCard)
-                      itemCount: VipAccessService.isVip 
-                        ? usersList.length 
-                        : (usersList.length > 12 ? 13 : usersList.length),
+                      itemCount: VipAccessService.isVip
+                          ? usersList.length
+                          : (usersList.length > 12 ? 13 : usersList.length),
                       itemBuilder: (context, index) {
-                        debugPrint('🎨 [ItemBuilder] Building index $index, isVip: ${VipAccessService.isVip}');
-                        
-                        // 🔒 Se não é VIP e chegou no 13º item (índice 12), mostra VipLockedCard
                         if (!VipAccessService.isVip && index == 12) {
-                          debugPrint('🔒 [ItemBuilder] Renderizando VipLockedCard no índice 12');
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: VipLockedCard(
-                              onTap: () {
-                                debugPrint('🔒 [VipLockedCard] Tap detectado!');
-                                _showVipDialog();
-                              },
+                              onTap: _showVipDialog,
                             ),
                           );
                         }
-                        
+
                         final user = usersList[index];
-                        
                         return UserCard(
-                            key: ValueKey(user.userId),
-                            userId: user.userId,
-                            user: user,
-                            overallRating: user.overallRating,
-                            index: index,
-                            onTap: () {
-                              // TODO: Navegar para perfil do usuário
-                            },
-                          );
+                          key: ValueKey(user.userId),
+                          userId: user.userId,
+                          user: user,
+                          overallRating: user.overallRating,
+                          index: index,
+                          onTap: () {
+                            // TODO: Navegar para perfil do usuário
+                          },
+                        );
                       },
                     );
                   },

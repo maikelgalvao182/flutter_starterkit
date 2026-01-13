@@ -5,6 +5,7 @@ import 'package:partiu/features/auth/presentation/screens/sign_in_screen_refacto
 import 'package:partiu/features/auth/presentation/screens/signup_wizard_screen.dart';
 import 'package:partiu/features/auth/presentation/screens/email_auth_screen.dart';
 import 'package:partiu/features/auth/presentation/screens/forgot_password_screen.dart';
+import 'package:partiu/features/auth/presentation/screens/email_verification_screen.dart';
 import 'package:partiu/features/auth/presentation/screens/blocked_account_screen_router.dart';
 import 'package:partiu/features/location/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
@@ -29,6 +30,7 @@ import 'package:partiu/features/notifications/widgets/simplified_notification_sc
 class AppRoutes {
   static const String signIn = '/sign-in';
   static const String emailAuth = '/email-auth';
+  static const String emailVerification = '/email-verification';
   static const String forgotPassword = '/forgot-password';
   static const String signupWizard = '/signup-wizard';
   static const String signupSuccess = '/signup-success';
@@ -63,6 +65,19 @@ GoRouter createAppRouter(BuildContext context) {
     redirect: (context, state) {
       try {
         final currentPath = state.uri.path;
+
+        // Rotas públicas (não necessitam autenticação)
+        // Importante: precisam permanecer acessíveis mesmo enquanto o AuthSyncService
+        // ainda está sincronizando sessão (ex.: durante login social + checagem Firestore).
+        final publicRoutes = [
+          AppRoutes.signIn,
+          AppRoutes.emailAuth,
+          AppRoutes.emailVerification,
+          AppRoutes.forgotPassword,
+          AppRoutes.signupWizard,
+          AppRoutes.signupSuccess,
+          AppRoutes.splash,
+        ];
         
         debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         debugPrint('🔀 [GoRouter] redirect CHAMADO');
@@ -77,9 +92,14 @@ GoRouter createAppRouter(BuildContext context) {
           return null;
         }
         
-        // Se ainda não inicializou, força splash
+        // Se ainda não inicializou, só força splash quando estiver saindo de rotas públicas.
+        // Isso evita reiniciar o app no meio de um login (ex.: Google/Apple) e quebrar
+        // o fluxo de navegação (callbacks com context desmontado).
         if (!authSync.initialized) {
           debugPrint('⏳ [GoRouter] Aguardando inicialização do AuthSyncService');
+          if (publicRoutes.contains(currentPath)) {
+            return null;
+          }
           return AppRoutes.splash;
         }
         
@@ -93,16 +113,6 @@ GoRouter createAppRouter(BuildContext context) {
           debugPrint('📍 [GoRouter] Splash ativo - SplashScreen controla navegação');
           return null; // Deixa o SplashScreen controlar
         }
-        
-        // Rotas públicas (não necessitam autenticação)
-        final publicRoutes = [
-          AppRoutes.signIn,
-          AppRoutes.emailAuth,
-          AppRoutes.forgotPassword,
-          AppRoutes.signupWizard,
-          AppRoutes.signupSuccess,
-          AppRoutes.splash,
-        ];
         
         final isLoggedIn = authSync.isLoggedIn;
         final isPublicRoute = publicRoutes.contains(currentPath);
@@ -140,6 +150,21 @@ GoRouter createAppRouter(BuildContext context) {
       path: AppRoutes.emailAuth,
       name: 'emailAuth',
       builder: (context, state) => const EmailAuthScreen(),
+    ),
+
+    // Tela de Verificação de E-mail
+    GoRoute(
+      path: AppRoutes.emailVerification,
+      name: 'emailVerification',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final emailFromExtra = extra?['email'] as String?;
+        final emailFromQuery = state.uri.queryParameters['email'];
+
+        return EmailVerificationScreen(
+          email: emailFromExtra ?? emailFromQuery,
+        );
+      },
     ),
     
     // Tela de Recuperação de Senha

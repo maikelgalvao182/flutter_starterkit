@@ -11,6 +11,8 @@ import 'package:partiu/core/constants/constants.dart';
 /// Componente para seleção de imagens estilo Glimpse
 class GlimpseImagePicker extends StatelessWidget {
 
+  static bool _cropInProgress = false;
+
   const GlimpseImagePicker({
     required this.onImageSelected, super.key,
   });
@@ -119,6 +121,12 @@ class GlimpseImagePicker extends StatelessWidget {
     
     // Usa um try-catch para evitar erros se o widget for desativado
     try {
+      if (_cropInProgress) {
+        return;
+      }
+
+      _cropInProgress = true;
+
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: source,
@@ -156,6 +164,8 @@ class GlimpseImagePicker extends StatelessWidget {
       }
     } catch (e) {
       // Ignore image picking/cropping errors
+    } finally {
+      _cropInProgress = false;
     }
   }
 }

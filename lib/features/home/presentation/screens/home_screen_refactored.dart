@@ -11,16 +11,15 @@ import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart'
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
+import 'package:partiu/core/services/app_initializer_service.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:provider/provider.dart';
 
 /// Tela principal do app com navegação por tabs
 /// 
-/// IMPORTANTE: A inicialização (AppInitializerService) é feita no SplashScreen.
-/// Quando esta tela é criada, todos os dados já devem estar pré-carregados:
-/// - MapViewModel: eventos, markers, localização
-/// - PeopleRankingViewModel: rankings de pessoas
-/// - RankingViewModel: rankings de locais
-/// - ConversationsViewModel: conversas
+/// IMPORTANTE:
+/// - SplashScreen executa apenas a inicialização CRÍTICA (rápida)
+/// - Warmups pesados (mapa/conversas/participantes) rodam após o primeiro frame
 class HomeScreenRefactored extends StatefulWidget {
   const HomeScreenRefactored({
     super.key, 
@@ -35,6 +34,7 @@ class HomeScreenRefactored extends StatefulWidget {
 
 class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   int _selectedIndex = 0;
+  bool _warmupStarted = false;
 
   // Lazy loading das páginas - instancia apenas quando necessário
   final List<Widget?> _pages = List<Widget?>.filled(5, null);
@@ -44,10 +44,10 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
     super.initState();
     _selectedIndex = widget.initialIndex;
     
-    // ✅ INICIALIZAÇÃO JÁ FOI FEITA NO SPLASH SCREEN
-    // Apenas criar a página inicial imediatamente
+    // Cria a página inicial e dispara warmup após o primeiro frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureInitialPage();
+      _startWarmupAfterFirstFrame();
     });
   }
 
@@ -67,12 +67,43 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
   void _ensureInitialPage() {
     if (!mounted) return;
     
-    // Verificar se dados já estão carregados (pelo SplashScreen)
+    // Log leve para confirmar status (sem bloquear UI)
     final mapViewModel = Provider.of<MapViewModel>(context, listen: false);
-    debugPrint('🏠 [HomeScreen] mapReady: ${mapViewModel.mapReady}, eventos: ${mapViewModel.events.length}');
+    AppLogger.info(
+      'Home abriu | mapReady=${mapViewModel.mapReady} | eventos=${mapViewModel.events.length}',
+      tag: 'HOME',
+    );
     
     setState(() {
       _ensurePage(_selectedIndex);
+    });
+  }
+
+  void _startWarmupAfterFirstFrame() {
+    if (!mounted) return;
+    if (_warmupStarted) return;
+    _warmupStarted = true;
+
+    final mapViewModel = Provider.of<MapViewModel>(context, listen: false);
+    final peopleRankingViewModel = Provider.of<PeopleRankingViewModel>(context, listen: false);
+    final locationsRankingViewModel = Provider.of<RankingViewModel>(context, listen: false);
+    final conversationsViewModel = Provider.of<ConversationsViewModel>(context, listen: false);
+
+    final initializer = AppInitializerService(
+      mapViewModel,
+      peopleRankingViewModel,
+      locationsRankingViewModel,
+      conversationsViewModel,
+    );
+
+    // Não await para não travar UI; warmup roda em background
+    initializer.warmupAfterFirstFrame().catchError((e, stackTrace) {
+      AppLogger.error(
+        'Warmup pós-primeiro-frame falhou',
+        tag: 'HOME',
+        error: e,
+        stackTrace: stackTrace is StackTrace ? stackTrace : StackTrace.current,
+      );
     });
   }
 
@@ -152,11 +183,11 @@ class _HomeScreenRefactoredState extends State<HomeScreenRefactored> {
             ? HomeAppBar(
                 onNotificationsTap: () {
                   // TODO: Implementar navegação para notificações
-                  debugPrint('Notificações tapped');
+                  AppLogger.info('Notificações tapped', tag: 'HOME');
                 },
                 onFilterTap: () {
                   // TODO: Implementar abertura de filtros
-                  debugPrint('Filtros tapped');
+                  AppLogger.info('Filtros tapped', tag: 'HOME');
                 },
               )
             : null,

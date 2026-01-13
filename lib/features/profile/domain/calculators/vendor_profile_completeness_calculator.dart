@@ -5,7 +5,7 @@ import 'package:partiu/core/utils/app_logger.dart';
 /// Calculadora de completude específica para Fornecedores (Vendors)
 /// 
 /// Avalia completude baseado em:
-/// - Personal Tab: Avatar, Nome, Bio, Gênero, Orientação Sexual, Data de Nascimento, Localização, País, Idiomas, Instagram, Job Title
+/// - Personal Tab: Avatar, Nome, Bio, Gênero, Orientação Sexual, Data de Nascimento, Localidade, Idiomas, Instagram, Profissão
 /// - Interests Tab: Interesses selecionados
 /// - Gallery Tab: Fotos da galeria
 class VendorProfileCompletenessCalculator implements IProfileCompletenessCalculator {
@@ -17,11 +17,10 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
   static const int _nameW = 10;             // Obrigatório
   static const int _bioW = 10;              // Obrigatório
   static const int _genderW = 5;            // Obrigatório
-  static const int _sexualOrientationW = 3; // Opcional
+  static const int _sexualOrientationW = 5; // Opcional
   static const int _birthDateW = 5;         // Obrigatório
-  static const int _locationW = 4;          // Localização (locality) - reduzido
-  static const int _countryW = 4;           // País - reduzido
-  static const int _languagesW = 4;         // Idiomas - reduzido
+  static const int _localityW = 5;          // Localidade (read-only)
+  static const int _languagesW = 5;         // Idiomas
   static const int _instagramW = 5;         // Instagram
   static const int _jobTitleW = 5;          // Profissão
   
@@ -78,36 +77,28 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
       AppLogger.debug('Missing Birth Date', tag: _tag);
     }
     
-    // 7. Localização (4)
-    final hasLocation = user.userLocality.isNotEmpty || ((user.userState ?? '').isNotEmpty);
-    if (hasLocation) {
-      score += _locationW;
+    // 7. Localidade (5)
+    if (user.userLocality.isNotEmpty) {
+      score += _localityW;
     } else {
-      AppLogger.debug('Missing Location', tag: _tag);
+      AppLogger.debug('Missing Locality', tag: _tag);
     }
     
-    // 8. País (4)
-    if (user.userCountry.isNotEmpty) {
-      score += _countryW;
-    } else {
-      AppLogger.debug('Missing Country', tag: _tag);
-    }
-    
-    // 9. Idiomas (4)
+    // 8. Idiomas (5)
     if (user.languages != null && user.languages!.isNotEmpty) {
       score += _languagesW;
     } else {
       AppLogger.debug('Missing Languages', tag: _tag);
     }
     
-    // 10. Instagram (5)
+    // 9. Instagram (5)
     if (user.userInstagram != null && user.userInstagram!.isNotEmpty) {
       score += _instagramW;
     } else {
       AppLogger.debug('Missing Instagram', tag: _tag);
     }
     
-    // 11. Job Title (5)
+    // 10. Job Title (5)
     if (user.userJobTitle.isNotEmpty) {
       score += _jobTitleW;
     } else {
@@ -170,7 +161,6 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
 
   @override
   Map<String, dynamic> getDetails(User user) {
-    final hasLocation = user.userLocality.isNotEmpty || ((user.userState ?? '').isNotEmpty);
     final hasBirth = user.userBirthDay > 0 && user.userBirthMonth > 0 && user.userBirthYear > 0;
     final hasLanguages = user.languages != null && user.languages!.isNotEmpty;
     final hasInstagram = user.userInstagram != null && user.userInstagram!.isNotEmpty;
@@ -183,8 +173,7 @@ class VendorProfileCompletenessCalculator implements IProfileCompletenessCalcula
       'gender': user.userGender.isNotEmpty ? _genderW : 0,
       'sexualOrientation': user.userSexualOrientation.isNotEmpty ? _sexualOrientationW : 0,
       'birthDate': hasBirth ? _birthDateW : 0,
-      'location': hasLocation ? _locationW : 0,
-      'country': user.userCountry.isNotEmpty ? _countryW : 0,
+      'locality': user.userLocality.isNotEmpty ? _localityW : 0,
       'languages': hasLanguages ? _languagesW : 0,
       'instagram': hasInstagram ? _instagramW : 0,
       'jobTitle': user.userJobTitle.isNotEmpty ? _jobTitleW : 0,

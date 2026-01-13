@@ -127,7 +127,11 @@ class ImageUploadService {
       final ref = _storage.ref().child(storagePath);
       
       debugPrint('[$_tag] ⬆️ Starting Firebase upload...');
-      final uploadTask = ref.putFile(file);
+      final metadata = SettableMetadata(
+        // ✅ Imagens são versionadas por nome (timestamp), então cache pode ser agressivo.
+        cacheControl: 'private,max-age=31536000,immutable',
+      );
+      final uploadTask = ref.putFile(file, metadata);
       
       // Monitora progresso
       uploadTask.snapshotEvents.listen((snapshot) {
@@ -213,6 +217,7 @@ class ImageUploadService {
       // Upload dos bytes comprimidos com metadata
       final metadata = SettableMetadata(
         contentType: 'image/jpeg',
+        cacheControl: 'private,max-age=31536000,immutable',
         customMetadata: {
           'uploadedAt': DateTime.now().toIso8601String(),
           'compressed': 'true',

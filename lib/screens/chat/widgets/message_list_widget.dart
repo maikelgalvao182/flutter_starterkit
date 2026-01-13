@@ -6,11 +6,13 @@ import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/core/helpers/time_ago_helper.dart';
 import 'package:partiu/screens/chat/models/message.dart';
 import 'package:partiu/screens/chat/models/reply_snapshot.dart';
+import 'package:partiu/screens/chat/services/chat_message_deletion_service.dart';
 import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/screens/chat/widgets/glimpse_chat_bubble.dart';
 import 'package:partiu/shared/widgets/my_circular_progress.dart';
 import 'package:partiu/shared/widgets/auto_scroll_list_handler.dart';
 import 'package:partiu/core/services/block_service.dart';
+import 'package:partiu/core/services/toast_service.dart';
 import 'package:flutter/material.dart';
 
 // Model para cache de mensagem processada
@@ -29,6 +31,8 @@ class _ProcessedMessage {
     this.avatarUrl,
     this.fullName,
     this.replyTo, // 🆕
+    required this.isDeleted,
+    required this.signature,
   });
   final String id;
   final String message;
@@ -43,6 +47,8 @@ class _ProcessedMessage {
   final String? avatarUrl;
   final String? fullName;
   final ReplySnapshot? replyTo; // 🆕
+  final bool isDeleted;
+  final int signature;
 }
 
 class MessageListWidget extends StatefulWidget {
@@ -75,6 +81,11 @@ class _MessageListWidgetState extends State<MessageListWidget> {
   // 🆕 Mensagem destacada (highlight temporário)
   String? _highlightedMessageId;
   Timer? _highlightTimer;
+
+  // 🆕 Deleção otimista (some da UI instantaneamente)
+  final Set<String> _optimisticallyDeletedMessageIds = <String>{};
+    final ChatMessageDeletionService _messageDeletionService =
+      ChatMessageDeletionService();
   
   // State for messages
   List<Message>? _messages;
@@ -204,6 +215,14 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       (messages) {
         debugPrint("📋 MessageListWidget: Received ${messages.length} messages");
         
+        // Confirmar deleções otimistas: quando o backend marcar como deleted
+        // (ou a doc sumir), removemos do set local.
+        final incomingIds = messages.map((m) => m.id).toSet();
+        final byId = <String, Message>{for (final m in messages) m.id: m};
+        _optimisticallyDeletedMessageIds.removeWhere(
+          (id) => !incomingIds.contains(id) || (byId[id]?.isDeleted == true),
+        );
+
         // Armazenar todas as mensagens para re-filtragem futura
         _allMessages = messages;
         
@@ -268,6 +287,38 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       },
     );
   }
+
+  Future<void> _deleteMessageOptimistically(String messageId) async {
+    if (messageId.isEmpty) return;
+
+    final i18n = AppLocalizations.of(context);
+
+    setState(() {
+      _optimisticallyDeletedMessageIds.add(messageId);
+      _highlightedMessageId = null;
+    });
+
+    ToastService.showInfo(
+      message: i18n.translate('message_deleted'),
+      duration: const Duration(seconds: 2),
+    );
+
+    try {
+      await _messageDeletionService.deleteMessageForEveryone(
+        conversationId: widget.remoteUserId,
+        messageId: messageId,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _optimisticallyDeletedMessageIds.remove(messageId);
+      });
+
+      ToastService.showError(
+        message: i18n.translate('an_error_has_occurred'),
+      );
+    }
+  }
   
   // Pre-processar mensagens para evitar processamento no build
   List<_ProcessedMessage> _processMessages(
@@ -284,10 +335,21 @@ class _MessageListWidgetState extends State<MessageListWidget> {
     
     for (final message in messages) {
       final docId = message.id;
+
+      final isSoftDeleted = message.isDeleted || _optimisticallyDeletedMessageIds.contains(docId);
+      final signature = Object.hash(
+        message.text,
+        message.imageUrl,
+        message.type,
+        message.isRead,
+        isSoftDeleted,
+        message.replyTo,
+      );
       
-      // Verificar se já está em cache (sempre processa mensagens novas)
-      if (_messageCache.containsKey(docId)) {
-        processedMessages.add(_messageCache[docId]!);
+      // Verificar cache, mas respeitar updates (ex.: soft delete)
+      final cached = _messageCache[docId];
+      if (cached != null && cached.signature == signature) {
+        processedMessages.add(cached);
         continue;
       }
       
@@ -339,18 +401,20 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       
       final processedMessage = _ProcessedMessage(
         id: docId,
-        message: message.text ?? '',
+        message: isSoftDeleted ? i18n.translate('message_deleted_placeholder') : (message.text ?? ''),
         isUserSender: isSender,
         time: messageTime,
         isRead: message.isRead ?? false,
-        imageUrl: message.type == 'image' ? message.imageUrl : null,
+        imageUrl: (!isSoftDeleted && message.type == 'image') ? message.imageUrl : null,
         isSystem: message.type == 'system',
-        type: message.type,
+        type: isSoftDeleted ? 'text' : message.type,
         params: message.params,
         senderId: message.senderId,
         avatarUrl: avatarUrl,
         fullName: fullName,
         replyTo: message.replyTo, // 🆕 Passar dados de reply
+        isDeleted: isSoftDeleted,
+        signature: signature,
       );
       
       // Adicionar ao cache
@@ -400,14 +464,17 @@ class _MessageListWidgetState extends State<MessageListWidget> {
       return const Center(child: MyCircularProgress());
     }
     
-    final messageCount = _messages!.length;
+    // Aplicar deleção otimista sem mexer no stream: filtra no build.
+    final visibleMessages = _messages!;
+
+    final messageCount = visibleMessages.length;
     debugPrint("📋 Rendering $messageCount messages");
 
     // Para chat estilo WhatsApp que inicia nas mensagens mais recentes:
     // - Mensagens vêm do Firestore em ordem ascending (msg1, msg2, msg3, msg4, msg5)
     // - reverse: true no ListView faz a lista crescer de baixo para cima automaticamente
     // - Resultado: mensagens mais recentes aparecem na parte inferior e o chat inicia lá
-    final processedMessages = _processMessages(_messages!, i18n);
+    final processedMessages = _processMessages(visibleMessages, i18n);
 
     return AutoScrollListHandler(
       controller: widget.messagesController,
@@ -475,6 +542,12 @@ class _MessageListWidgetState extends State<MessageListWidget> {
                   onReplyTap: processedMsg.replyTo != null 
                       ? () => widget.onReplyTap?.call(processedMsg.replyTo!.messageId) 
                       : null, // 🆕 Tap no reply
+                    onDelete: (!processedMsg.isSystem &&
+                        processedMsg.isUserSender &&
+                        !processedMsg.isDeleted &&
+                        processedMsg.id.isNotEmpty)
+                      ? () => _deleteMessageOptimistically(processedMsg.id)
+                      : null,
                 ),
               ),
             );

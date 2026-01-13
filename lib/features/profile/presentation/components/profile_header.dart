@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:circle_flags/circle_flags.dart';
 import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/core/constants/glimpse_styles.dart';
+import 'package:partiu/core/services/cache/cache_key_utils.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
 import 'package:partiu/core/constants/glimpse_variables.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
@@ -50,12 +53,16 @@ class _ProfileHeaderState extends State<ProfileHeader> {
   void _updateAvatar() {
     final avatarNotifier = UserStore.instance.getAvatarNotifier(widget.user.userId);
     final provider = avatarNotifier.value;
-    
+
+    String? url;
     if (provider is NetworkImage) {
-      final url = provider.url;
-      if (url.isNotEmpty && url != _imageUrlNotifier.value) {
-        _imageUrlNotifier.value = url;
-      }
+      url = provider.url;
+    } else if (provider is CachedNetworkImageProvider) {
+      url = provider.url;
+    }
+
+    if (url != null && url.isNotEmpty && url != _imageUrlNotifier.value) {
+      _imageUrlNotifier.value = url;
     }
   }
 
@@ -105,12 +112,33 @@ class _ProfileHeaderState extends State<ProfileHeader> {
           );
         }
 
-        return Image.network(
-          imageUrl,
+        return Builder(
+          builder: (context) {
+            final key = stableImageCacheKey(imageUrl);
+            ImageCacheStats.instance.record(
+              category: ImageCacheCategory.chatMedia,
+              url: imageUrl,
+              cacheKey: key,
+            );
+
+            return CachedNetworkImage(
+              imageUrl: imageUrl,
+              cacheManager: ChatMediaImageCache.instance,
+              cacheKey: key,
           width: double.infinity,
           height: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
+          placeholder: (context, _) {
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.grey[200],
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          },
+          errorWidget: (context, _, __) {
             return Container(
               width: double.infinity,
               height: double.infinity,
@@ -122,15 +150,6 @@ class _ProfileHeaderState extends State<ProfileHeader> {
               ),
             );
           },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: Colors.grey[200],
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
             );
           },
         );

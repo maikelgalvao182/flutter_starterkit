@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
 
 /// Serviço de cache da aplicação
 /// 
@@ -12,6 +13,10 @@ class AppCacheService {
     try {
       // Limpa cache padrão de imagens
       await DefaultCacheManager().emptyCache();
+
+      // Limpa caches custom
+      await AvatarImageCache.instance.emptyCache();
+      await ChatMediaImageCache.instance.emptyCache();
       
       // Aqui você pode adicionar outros caches específicos
       // await CustomCacheManager().emptyCache();

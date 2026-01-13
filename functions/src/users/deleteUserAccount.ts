@@ -31,6 +31,154 @@ const db = admin.firestore();
 
 const BATCH_SIZE = 500;
 
+type DeleteDirectChatResult = {
+  messages: number;
+  conversations: number;
+};
+
+/**
+ * Deleta todos os docs de uma collection em batches.
+ *
+ * Observação: não deleta subcoleções dos documentos.
+ *
+ * @param {string} label Identificador para logs/debug.
+ * @param {FirebaseFirestore.CollectionReference} collection Referência.
+ * @param {number} batchSize Tamanho do batch (máx 500).
+ * @return {Promise<number>} Quantidade de documentos deletados.
+ */
+async function deleteCollectionInBatches(
+  label: string,
+  collection: FirebaseFirestore.CollectionReference,
+  batchSize: number = BATCH_SIZE
+): Promise<number> {
+  let deleted = 0;
+
+  let hasMore = true;
+  while (hasMore) {
+    const snap = await collection.limit(batchSize).get();
+    if (snap.empty) {
+      hasMore = false;
+      continue;
+    }
+
+    const batch = db.batch();
+    for (const doc of snap.docs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+    deleted += snap.size;
+  }
+
+  // Mantém retorno explícito para agradar o lint/TS.
+  return deleted;
+}
+
+/**
+ * Deleta mensagens de um EventChat pertencentes ao usuário (por sender_id).
+ *
+ * @param {string} eventId ID do evento.
+ * @param {string} userId ID do usuário.
+ * @return {Promise<number>} Quantidade de mensagens deletadas.
+ */
+async function deleteEventChatMessagesBySender(
+  eventId: string,
+  userId: string
+): Promise<number> {
+  // EventChats/{eventId}/Messages onde sender_id == userId
+  const query = db
+    .collection("EventChats")
+    .doc(eventId)
+    .collection("Messages")
+    .where("sender_id", "==", userId);
+
+  return await batchDelete(
+    `EventChats/${eventId}/Messages(sender_id=${userId})`,
+    query
+  );
+}
+
+/**
+ * Deleta mensagens e conversas do chat 1x1 entre userId e otherUserId,
+ * removendo ambos os lados (privacidade) e limpando Conversations.
+ *
+ * @param {string} userId ID do usuário.
+ * @param {string} otherUserId ID do outro participante do chat.
+ * @return {Promise<DeleteDirectChatResult>} Contagens removidas.
+ */
+async function deleteDirectChatPair(
+  userId: string,
+  otherUserId: string
+): Promise<DeleteDirectChatResult> {
+  let messages = 0;
+  let conversations = 0;
+
+  // Mensagens do usuário
+  try {
+    const ownThread = db
+      .collection("Messages")
+      .doc(userId)
+      .collection(otherUserId);
+    messages += await deleteCollectionInBatches(
+      `Messages/${userId}/${otherUserId}`,
+      ownThread
+    );
+  } catch (error) {
+    console.warn(
+      "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao deletar Messages do usuário:",
+      userId,
+      otherUserId,
+      error
+    );
+  }
+
+  // Mensagens do outro lado (privacidade)
+  try {
+    const otherThread = db
+      .collection("Messages")
+      .doc(otherUserId)
+      .collection(userId);
+    messages += await deleteCollectionInBatches(
+      `Messages/${otherUserId}/${userId}`,
+      otherThread
+    );
+  } catch (error) {
+    console.warn(
+      "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao deletar Messages do outro lado:",
+      otherUserId,
+      userId,
+      error
+    );
+  }
+
+  // Conversas (Connections) do usuário
+  try {
+    await db
+      .collection("Connections")
+      .doc(userId)
+      .collection("Conversations")
+      .doc(otherUserId)
+      .delete();
+    conversations += 1;
+  } catch (_) {
+    // best-effort
+  }
+
+  // Conversas (Connections) do outro lado
+  try {
+    await db
+      .collection("Connections")
+      .doc(otherUserId)
+      .collection("Conversations")
+      .doc(userId)
+      .delete();
+    conversations += 1;
+  } catch (_) {
+    // best-effort
+  }
+
+  return {messages, conversations};
+}
+
 type EventDeletionStats = {
   events: number;
   eventChats: number;
@@ -615,6 +763,130 @@ export const deleteUserAccount = functions.https.onCall(
       );
       await removeUserFromOtherEvents(userId);
 
+      // 0.6 Deletar chats 1x1 e mensagens de grupo do usuário
+      // (arquitetura atual)
+      console.log(
+        "🗑️ [0.6/14] Deletando conversas e mensagens (1x1 + grupo)..."
+      );
+      const userConversationsSnap = await db
+        .collection("Connections")
+        .doc(userId)
+        .collection("Conversations")
+        .get();
+
+      for (const convDoc of userConversationsSnap.docs) {
+        const conversationId = convDoc.id;
+        if (!conversationId) continue;
+
+        // Chat de evento
+        if (conversationId.startsWith("event_")) {
+          const eventId = conversationId.replace("event_", "");
+          if (eventId) {
+            try {
+              const deleted = await deleteEventChatMessagesBySender(
+                eventId,
+                userId
+              );
+              deletionStats.eventChatMessages += deleted;
+            } catch (error) {
+              console.warn(
+                "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao deletar mensagens " +
+                  "do EventChat:",
+                eventId,
+                error
+              );
+            }
+
+            // Remover o usuário do EventChats participantIds/participants
+            // (best-effort)
+            try {
+              await db
+                .collection("EventChats")
+                .doc(eventId)
+                .set(
+                  {
+                    participantIds: admin.firestore.FieldValue.arrayRemove(
+                      userId
+                    ),
+                    participants: admin.firestore.FieldValue.arrayRemove(
+                      userId
+                    ),
+                  },
+                  {merge: true}
+                );
+            } catch (error) {
+              console.warn(
+                "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao remover participante " +
+                  "do EventChat:",
+                eventId,
+                error
+              );
+            }
+
+            // Limpar também Messages/{userId}/event_{eventId}
+            // (legacy)
+            try {
+              const legacyThread = db
+                .collection("Messages")
+                .doc(userId)
+                .collection(`event_${eventId}`);
+              deletionStats.chats += await deleteCollectionInBatches(
+                `Messages/${userId}/event_${eventId}`,
+                legacyThread
+              );
+            } catch (error) {
+              console.warn(
+                "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao limpar thread legacy " +
+                  "do evento:",
+                eventId,
+                error
+              );
+            }
+          }
+
+          // Deletar a conversa do usuário
+          try {
+            await convDoc.ref.delete();
+            deletionStats.eventConversations += 1;
+          } catch (error) {
+            console.warn(
+              "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao deletar Conversation " +
+                "do evento:",
+              conversationId,
+              error
+            );
+          }
+
+          continue;
+        }
+
+        // Chat 1x1 (conversationId == otherUserId)
+        const otherUserId = conversationId;
+        const result = await deleteDirectChatPair(userId, otherUserId);
+        deletionStats.chats += result.messages;
+        deletionStats.connections += result.conversations;
+      }
+
+      // Limpar documento raiz (best-effort)
+      try {
+        await db.collection("Messages").doc(userId).delete();
+      } catch (error) {
+        console.warn(
+          "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao deletar Messages/{userId}:",
+          userId,
+          error
+        );
+      }
+      try {
+        await db.collection("Connections").doc(userId).delete();
+      } catch (error) {
+        console.warn(
+          "🗑️ [DELETE_ACCOUNT] ⚠️ Falha ao deletar Connections/{userId}:",
+          userId,
+          error
+        );
+      }
+
       // 1. Deletar sub-coleções do documento Users
       console.log("🗑️ [1/14] Deletando sub-coleções de Users...");
       const userRef = db.collection("Users").doc(userId);
@@ -651,43 +923,8 @@ export const deleteUserAccount = functions.https.onCall(
       deletionStats.reviews += reviewsAsReviewed;
       console.log(`✅ Deletadas ${reviewsAsReviewed} reviews como reviewed`);
 
-      // 5. Remover usuário de Connections (conversas)
-      console.log("🗑️ [5/14] Removendo de Connections...");
-      const connectionsSnapshot = await db
-        .collection("Connections")
-        .where("memberIds", "array-contains", userId)
-        .get();
-
-      const connectionBatch = db.batch();
-      connectionsSnapshot.docs.forEach((doc) => {
-        const data = doc.data();
-        const memberIds = data.memberIds || [];
-        const updatedMembers = memberIds.filter((id: string) => id !== userId);
-
-        if (updatedMembers.length === 0) {
-          // Se era a única pessoa, deleta a conversa
-          connectionBatch.delete(doc.ref);
-          deletionStats.connections++;
-        } else {
-          // Remove apenas o usuário da lista de membros
-          connectionBatch.update(doc.ref, {
-            memberIds: updatedMembers,
-            [`members.${userId}`]: admin.firestore.FieldValue.delete(),
-            lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
-      });
-      await connectionBatch.commit();
-      console.log(`✅ Removido de ${connectionsSnapshot.size} Connections`);
-
-      // 6. Deletar mensagens do Chats
-      console.log("🗑️ [6/14] Deletando mensagens de Chats...");
-      const chatsDeleted = await batchDelete(
-        "Chats",
-        db.collection("Chats").where("senderId", "==", userId)
-      );
-      deletionStats.chats = chatsDeleted;
-      console.log(`✅ Deletadas ${chatsDeleted} mensagens`);
+      // 5 e 6 eram do modelo legado (Connections com memberIds + Chats).
+      // A limpeza na arquitetura atual é feita no passo 0.6.
 
       // 7. Deletar notificações
       console.log("🗑️ [7/14] Deletando Notifications...");

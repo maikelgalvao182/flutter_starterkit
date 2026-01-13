@@ -27,6 +27,7 @@ class ImageSourceBottomSheet extends StatefulWidget {
     required this.onImageSelected,
     super.key,
     this.cropToSquare = true,
+    this.requireCrop = false,
     this.minWidth = 800,
     this.minHeight = 800,
     this.quality = 85,
@@ -34,6 +35,7 @@ class ImageSourceBottomSheet extends StatefulWidget {
 
   final Function(File) onImageSelected;
   final bool cropToSquare;
+  final bool requireCrop;
   final int minWidth;
   final int minHeight;
   final int quality;
@@ -47,6 +49,42 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
   final ImagePickerService _pickerService = ImagePickerService();
   final ImageCropService _cropService = ImageCropService();
   final ImageCompressService _compressService = const ImageCompressService();
+
+  Future<File?> _resolveXFileToLocalFile(XFile xfile) async {
+    try {
+      final candidate = File(xfile.path);
+      if (await candidate.exists()) {
+        return candidate;
+      }
+
+      // Fallback: em alguns devices/versões do Android, o picker pode retornar
+      // um path não resolvível como arquivo (ex.: content://...).
+      // Copiamos o conteúdo para um arquivo temporário local antes de cropar.
+      final bytes = await xfile.readAsBytes();
+      final tmp = File(
+        '${Directory.systemTemp.path}/picked_${DateTime.now().microsecondsSinceEpoch}.jpg',
+      );
+      await tmp.writeAsBytes(bytes, flush: true);
+      if (await tmp.exists()) {
+        AppLogger.info(
+          '[ImageSourceBottomSheet] XFile resolved to temp file: ${tmp.path}',
+        );
+        return tmp;
+      }
+
+      AppLogger.error(
+        '[ImageSourceBottomSheet] Failed to create temp file from XFile: ${xfile.path}',
+      );
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        '[ImageSourceBottomSheet] Error resolving XFile to local File: $e',
+        e,
+        stackTrace,
+      );
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,8 +122,8 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
                       if (_processing) return;
                       setState(() => _processing = true);
                       try {
-                        await _getImageFromCamera();
-                        if (mounted) context.pop();
+                        final selected = await _getImageFromCamera();
+                        if (context.mounted && selected) context.pop();
                       } finally {
                         if (mounted) setState(() => _processing = false);
                       }
@@ -99,8 +137,8 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
                       if (_processing) return;
                       setState(() => _processing = true);
                       try {
-                        await _getImageFromGallery();
-                        if (mounted) context.pop();
+                        final selected = await _getImageFromGallery();
+                        if (context.mounted && selected) context.pop();
                       } finally {
                         if (mounted) setState(() => _processing = false);
                       }
@@ -154,33 +192,49 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
     );
   }
 
-  Future<void> _getImageFromCamera() async {
+  Future<bool> _getImageFromCamera() async {
     AppLogger.info('[ImageSourceBottomSheet] Starting camera image picker');
     try {
       final xfile = await _pickerService.pickImage(ImageSource.camera);
-      if (xfile == null || !mounted) return;
+      if (xfile == null || !mounted) return false;
 
-      final file = File(xfile.path);
-      await _cropAndSelectImage(file);
+      final file = await _resolveXFileToLocalFile(xfile);
+      if (file == null || !await file.exists()) {
+        AppLogger.error(
+          '[ImageSourceBottomSheet] Picked camera image is not accessible: ${xfile.path}',
+        );
+        return false;
+      }
+
+      return await _cropAndSelectImage(file);
     } catch (e) {
       AppLogger.error('[ImageSourceBottomSheet] Error picking camera image: $e');
+      return false;
     }
   }
 
-  Future<void> _getImageFromGallery() async {
+  Future<bool> _getImageFromGallery() async {
     AppLogger.info('[ImageSourceBottomSheet] Starting gallery image picker');
     try {
       final xfile = await _pickerService.pickImage(ImageSource.gallery);
-      if (xfile == null || !mounted) return;
+      if (xfile == null || !mounted) return false;
 
-      final file = File(xfile.path);
-      await _cropAndSelectImage(file);
+      final file = await _resolveXFileToLocalFile(xfile);
+      if (file == null || !await file.exists()) {
+        AppLogger.error(
+          '[ImageSourceBottomSheet] Picked gallery image is not accessible: ${xfile.path}',
+        );
+        return false;
+      }
+
+      return await _cropAndSelectImage(file);
     } catch (e) {
       AppLogger.error('[ImageSourceBottomSheet] Error picking gallery image: $e');
+      return false;
     }
   }
 
-  Future<void> _cropAndSelectImage(File imageFile) async {
+  Future<bool> _cropAndSelectImage(File imageFile) async {
     AppLogger.info('[ImageSourceBottomSheet] Starting image processing...');
     var processed = false;
     try {
@@ -195,6 +249,22 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
           processedFile = cropped;
         } else {
           AppLogger.warning('[ImageSourceBottomSheet] Image crop was cancelled');
+
+          if (widget.requireCrop) {
+            if (!mounted) return false;
+
+            final i18n = AppLocalizations.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  i18n.translate('image_crop_cancelled').isNotEmpty
+                      ? i18n.translate('image_crop_cancelled')
+                      : 'Recorte cancelado',
+                ),
+              ),
+            );
+            return false;
+          }
         }
       }
 
@@ -209,6 +279,7 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
 
       AppLogger.info('[ImageSourceBottomSheet] Image processed successfully');
       widget.onImageSelected(compressed);
+      return true;
     } catch (e) {
       AppLogger.error('[ImageSourceBottomSheet] Error processing image: $e');
       if (!processed) {
@@ -221,12 +292,16 @@ class _ImageSourceBottomSheetState extends State<ImageSourceBottomSheet> {
             quality: widget.quality,
           );
           widget.onImageSelected(compressed);
+          return true;
         } catch (e2) {
           AppLogger.error('[ImageSourceBottomSheet] Error compressing fallback image: $e2');
           // Como último recurso, usa a imagem original
           widget.onImageSelected(imageFile);
+          return true;
         }
       }
+
+      return false;
     }
   }
 }

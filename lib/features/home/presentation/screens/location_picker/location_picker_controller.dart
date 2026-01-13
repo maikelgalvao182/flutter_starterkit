@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/place_service.dart';
-import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/plugins/locationpicker/entities/localization_item.dart';
 import 'package:partiu/plugins/locationpicker/place_picker.dart';
 import 'package:partiu/plugins/locationpicker/uuid.dart';
@@ -19,14 +18,13 @@ class LocationPickerController extends ChangeNotifier {
   final LocalizationItem localizationItem;
 
   // Estado do mapa
-  LatLng? _currentLocation;
+  final LatLng? _currentLocation;
   LatLng? _selectedLocation;
   Set<Marker> _markers = {};
 
   // Estado do lugar selecionado
   LocationResult? _locationResult;
   List<String> _selectedPlacePhotos = [];
-  String? _selectedPlaceId;
 
   // Controla se deve ignorar updates automáticos do mapa
   bool _lockOnSelectedPlace = false;
@@ -41,7 +39,7 @@ class LocationPickerController extends ChangeNotifier {
   List<RichSuggestion> _suggestions = [];
   bool _hasSearchTerm = false;
   String _previousSearchTerm = '';
-  String _sessionToken = Uuid().generateV4();
+  final String _sessionToken = Uuid().generateV4();
 
   // Getters
   LatLng? get currentLocation => _currentLocation;
@@ -81,9 +79,9 @@ class LocationPickerController extends ChangeNotifier {
     final isExplicitSelection = placeId != null;
 
     if (isExplicitSelection) {
-      _selectedPlaceId = placeId;
       _lockOnSelectedPlace = true; // trava qualquer movimento automático
-      await _loadPlacePhotos(placeId);
+      // Fotos do Google Places desativadas (custo). Mantemos lista vazia.
+      _selectedPlacePhotos = [];
     }
 
     // reverse geocode NUNCA altera as fotos
@@ -124,7 +122,6 @@ class LocationPickerController extends ChangeNotifier {
   }
 
   Future<LatLng?> selectPlaceFromSuggestion(String placeId) async {
-    _selectedPlaceId = placeId;
     _lockOnSelectedPlace = true; // trava o mapa
     _isLocationConfirmed = true; // confirma a seleção
 
@@ -141,8 +138,8 @@ class LocationPickerController extends ChangeNotifier {
       _locationResult = locationResult;
       setMarker(location);
 
-      // Carregar fotos e nearby
-      await _loadPlacePhotos(placeId);
+      // Fotos do Google Places desativadas (custo). Mantemos lista vazia.
+      _selectedPlacePhotos = [];
       await _loadNearbyPlaces(location);
 
       notifyListeners();
@@ -155,20 +152,6 @@ class LocationPickerController extends ChangeNotifier {
   // -------------------------------------------------------------
   //  LOADERS
   // -------------------------------------------------------------
-
-  Future<void> _loadPlacePhotos(String placeId) async {
-    try {
-      final photos = await placeService.getPlacePhotos(
-        placeId: placeId,
-        languageCode: localizationItem.languageCode,
-      );
-
-      _selectedPlacePhotos = photos;
-      notifyListeners();
-    } catch (_) {
-      _selectedPlacePhotos = [];
-    }
-  }
 
   Future<void> _loadReverseGeocode(LatLng location) async {
     final result = await placeService.reverseGeocode(
@@ -203,7 +186,6 @@ class LocationPickerController extends ChangeNotifier {
 
   void clearPhotos() {
     _selectedPlacePhotos = [];
-    _selectedPlaceId = null;
     notifyListeners();
   }
 
@@ -214,7 +196,6 @@ class LocationPickerController extends ChangeNotifier {
       setMarker(location.latLng!);
     }
     if (location.placeId != null) {
-      _selectedPlaceId = location.placeId;
       _isLocationConfirmed = true;
     }
     notifyListeners();

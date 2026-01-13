@@ -58,8 +58,8 @@ class ConversationCacheService {
       return _displayDataCache[cacheKey]!;
     }
 
-    final displayData =
-        await ConversationDataProcessor.processConversationData(
+    final displayData = await ConversationDataProcessor.processConversationData(
+      conversationId: conversationId,
       data: data,
       isVipEffective: isVipEffective,
       i18n: i18n,
@@ -95,8 +95,8 @@ class ConversationCacheService {
     }
 
     // Create and store future
-    final future =
-        ConversationDataProcessor.processConversationData(
+    final future = ConversationDataProcessor.processConversationData(
+      conversationId: conversationId,
       data: data,
       isVipEffective: isVipEffective,
       i18n: i18n,
@@ -128,6 +128,7 @@ class ConversationCacheService {
     if (existing != null) {
       // Update value if changed to ensure UI reflects latest data (e.g. read status)
       final newData = ConversationDataProcessor.processConversationDataSync(
+        conversationId: conversationId,
         data: data,
         isVipEffective: isVipEffective,
         i18n: i18n,
@@ -148,6 +149,7 @@ class ConversationCacheService {
     // Create new notifier with initial sync data
     final initialData =
         ConversationDataProcessor.processConversationDataSync(
+      conversationId: conversationId,
       data: data,
       isVipEffective: isVipEffective,
       i18n: i18n,
@@ -160,6 +162,7 @@ class ConversationCacheService {
 
     // Async load full data
     ConversationDataProcessor.processConversationData(
+      conversationId: conversationId,
       data: data,
       isVipEffective: isVipEffective,
       i18n: i18n,
@@ -188,6 +191,7 @@ class ConversationCacheService {
         if (notifier != null && config != null) {
           final newData =
               ConversationDataProcessor.processConversationDataSync(
+            conversationId: docId,
             data: data,
             isVipEffective: config.isVipEffective,
             i18n: config.i18n,

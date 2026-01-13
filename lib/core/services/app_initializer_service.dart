@@ -1,20 +1,14 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
-import 'package:partiu/features/home/presentation/widgets/list_drawer/list_drawer_controller.dart';
-import 'package:partiu/features/home/presentation/widgets/people_button_controller.dart';
-import 'package:partiu/features/home/presentation/screens/find_people/find_people_controller.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/shared/stores/user_store.dart';
-import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
-import 'package:partiu/core/services/global_cache_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// Serviço responsável por inicializar dados globais antes do app abrir
 class AppInitializerService {
@@ -30,16 +24,17 @@ class AppInitializerService {
     this.conversationsViewModel,
   );
 
-  /// Executa toda a inicialização necessária
+  /// Executa toda a inicialização necessária (LEGADO)
+  ///
+  /// ⚠️ Preferir:
+  /// - [initializeCritical] no Splash (rápido)
+  /// - [warmupAfterFirstFrame] na Home (background)
   /// 
   /// Fluxo de inicialização:
   /// 1. Inicializa cache de bloqueios (BlockService)
   /// 2. Inicializa ListDrawerController (eventos do usuário)
   /// 3. Pré-carrega avatar do usuário (HomeAppBar)
-  /// 4. Pré-carrega PeopleButton (usuário recente + contagem)
-  /// 4.5 Pré-carrega FindPeopleController (lista de pessoas + avatares)
-  /// 5. Pré-carrega PeopleRankingViewModel (ranking e cidades)
-  /// 6. Pré-carrega LocationsRankingViewModel (ranking de locais)
+  /// 4. (Opcional) Pré-carrega rankings (pessoas/locais)
   /// 7. Pré-carrega ConversationsViewModel (conversas)
   /// 8. Pré-carrega participantes dos eventos do usuário (GroupInfo)
   /// 9. Pré-carrega pins (imagens dos markers)
@@ -59,48 +54,34 @@ class AppInitializerService {
   /// 
   /// Quando este método terminar, o mapa já estará pronto para exibir
   Future<void> initialize() async {
+    await initializeCritical();
+    await warmupAfterFirstFrame();
+  }
+
+  /// Inicialização CRÍTICA (deve rodar no Splash)
+  ///
+  /// Objetivo: reduzir tempo do splash removendo o trabalho pesado.
+  /// Mantém apenas o essencial para a Home abrir sem travar.
+  Future<void> initializeCritical() async {
     try {
-      debugPrint('🚀 [AppInitializer] Iniciando bootstrap do app...');
+      AppLogger.info('Iniciando bootstrap do app...', tag: 'INIT');
       
       // 🔒 Configura limite global do ImageCache (evita memory leak com preload)
       // Máximo 200 imagens ou 50MB em memória
       PaintingBinding.instance.imageCache
         ..maximumSize = 200
         ..maximumSizeBytes = 50 << 20; // 50MB
-      debugPrint('🖼️ [AppInitializer] ImageCache configurado: max 200 imagens / 50MB');
+      AppLogger.info('ImageCache configurado: max 200 imagens / 50MB', tag: 'INIT');
       
-      // 0. Aguarda autenticação estar completa antes de fazer qualquer query
-      final auth = FirebaseAuth.instance;
-      if (auth.currentUser != null) {
-        try {
-          // Força renovação do token para garantir que está válido
-          await auth.currentUser!.getIdToken(true);
-          debugPrint('✅ [AppInitializer] Token de autenticação renovado');
-        } catch (e) {
-          debugPrint('⚠️ [AppInitializer] Erro ao renovar token: $e');
-          // Aguarda um pouco e tenta novamente
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-      }
-      
-      // 1. Inicializa o cache de bloqueios
+      // 0. ⚠️ NÃO forçar refresh de token no Splash.
+      // Isso pode travar por rede e não é crítico para a Home abrir.
+      // Se precisar, fazemos best-effort no warmup pós-primeiro-frame.
+
       final currentUserId = AppState.currentUserId;
-      if (currentUserId != null && currentUserId.isNotEmpty) {
-        debugPrint('🔒 [AppInitializer] Inicializando BlockService...');
-        await BlockService().initialize(currentUserId);
-        debugPrint('✅ [AppInitializer] BlockService inicializado');
-      } else {
-        debugPrint('⚠️ [AppInitializer] BlockService não inicializado (usuário não autenticado)');
-      }
       
-      // 2. Pré-inicializa ListDrawerController (stream de eventos do usuário)
-      debugPrint('📋 [AppInitializer] Inicializando ListDrawerController...');
-      final drawerController = ListDrawerController();
-      debugPrint('✅ [AppInitializer] ListDrawerController inicializado (stream ativo)');
-      
-      // 3. Pré-carrega avatar do usuário (HomeAppBar)
+      // 1. Pré-carrega avatar do usuário (HomeAppBar)
       if (currentUserId != null && currentUserId.isNotEmpty) {
-        debugPrint('👤 [AppInitializer] Pré-carregando avatar do usuário (HomeAppBar)...');
+        AppLogger.info('Pré-carregando avatar do usuário (HomeAppBar)...', tag: 'INIT');
         try {
           final userRepo = UserRepository();
           final currentUserData = await userRepo.getUserById(currentUserId);
@@ -115,172 +96,97 @@ class AppInitializerService {
             }
 
             // Avatar será carregado pelo StableAvatar usando o photoUrl
-            debugPrint('✅ [AppInitializer] Avatar do usuário pré-carregado');
-            debugPrint('   - Nome: ${currentUserData['full_name'] ?? 'N/A'}');
-            debugPrint('   - Localização: ${currentUserData['locality'] ?? 'N/A'}, ${currentUserData['state'] ?? 'N/A'}');
+            AppLogger.success('Avatar do usuário pré-carregado', tag: 'INIT');
+            AppLogger.info('Nome: ${currentUserData['full_name'] ?? 'N/A'}', tag: 'INIT');
+            AppLogger.info(
+              'Localização: ${currentUserData['locality'] ?? 'N/A'}, ${currentUserData['state'] ?? 'N/A'}',
+              tag: 'INIT',
+            );
           }
         } catch (e) {
-          debugPrint('⚠️ [AppInitializer] Erro ao pré-carregar avatar: $e');
+          AppLogger.warning('Erro ao pré-carregar avatar: $e', tag: 'INIT');
         }
       }
       
-      // 4. Pré-carrega PeopleButton (usuário recente + contagem de pessoas próximas)
-      debugPrint('🙋 [AppInitializer] Pré-carregando PeopleButton...');
-      try {
-        final peopleButtonController = NearbyButtonController();
-        await peopleButtonController.loadData();
-        debugPrint('✅ [AppInitializer] PeopleButton pré-carregado');
-        debugPrint('   - Usuário recente: ${peopleButtonController.recentUser?.fullName ?? "Nenhum"}');
-        debugPrint('   - Pessoas próximas: ${peopleButtonController.nearbyCount}');
-      } catch (e) {
-        debugPrint('⚠️ [AppInitializer] Erro ao pré-carregar PeopleButton: $e');
-      }
-      
-      // 4.5 Pré-carrega FindPeopleController (lista de pessoas + avatares)
-      debugPrint('🔍 [AppInitializer] Pré-carregando FindPeopleController...');
-      try {
-        final findPeopleController = FindPeopleController();
-        await findPeopleController.preload();
-        debugPrint('✅ [AppInitializer] FindPeopleController pré-carregado');
-        debugPrint('   - Pessoas na região: ${findPeopleController.count}');
-        debugPrint('   - Avatares pré-carregados no UserStore');
-      } catch (e) {
-        debugPrint('⚠️ [AppInitializer] Erro ao pré-carregar FindPeopleController: $e');
-      }
-      
-      // 5. Pré-carrega PeopleRankingViewModel (ranking e cidades para filtro)
-      debugPrint('👥 [AppInitializer] Pré-carregando PeopleRankingViewModel...');
-      await peopleRankingViewModel.initialize();
-      debugPrint('✅ [AppInitializer] PeopleRankingViewModel inicializado');
-      debugPrint('   - Rankings: ${peopleRankingViewModel.peopleRankings.length}');
-      debugPrint('   - Estados: ${peopleRankingViewModel.availableStates.length}');
-      debugPrint('   - Cidades: ${peopleRankingViewModel.availableCities.length}');
-      
-      // 6. Pré-carrega LocationsRankingViewModel (ranking de locais e filtros)
-      debugPrint('🏢 [AppInitializer] Pré-carregando LocationsRankingViewModel...');
-      await locationsRankingViewModel.initialize();
-      debugPrint('✅ [AppInitializer] LocationsRankingViewModel inicializado');
-      debugPrint('   - Rankings: ${locationsRankingViewModel.locationRankings.length}');
-      debugPrint('   - Estados: ${locationsRankingViewModel.availableStates.length}');
-      debugPrint('   - Cidades: ${locationsRankingViewModel.availableCities.length}');
-      
-      // 7. Pré-carrega ConversationsViewModel (conversas, nomes e fotos)
-      debugPrint('💬 [AppInitializer] Pré-carregando ConversationsViewModel...');
-      await conversationsViewModel.preloadConversations();
-      debugPrint('✅ [AppInitializer] ConversationsViewModel inicializado');
-      debugPrint('   - Conversas: ${conversationsViewModel.wsConversations.length}');
-      
-      // 8. Pré-carrega participantes dos eventos do usuário (GroupInfo)
-      if (currentUserId != null && currentUserId.isNotEmpty) {
-        debugPrint('👥 [AppInitializer] Pré-carregando participantes dos eventos...');
-        try {
-          final appRepo = EventApplicationRepository();
-          
-          // Busca eventos criados pelo usuário (limitado aos 5 mais recentes)
-          // ⚠️ Wrapped em try-catch para evitar permission-denied durante inicialização
-          QuerySnapshot<Map<String, dynamic>>? myEventsSnapshot;
-          QuerySnapshot<Map<String, dynamic>>? myApplicationsSnapshot;
-          
-          try {
-            myEventsSnapshot = await FirebaseFirestore.instance
-                .collection('events')
-                .where('createdBy', isEqualTo: currentUserId)
-                .orderBy('createdAt', descending: true)
-                .limit(5)
-                .get();
-          } catch (e) {
-            debugPrint('     ⚠️ Erro ao buscar eventos criados (auth pendente): $e');
-          }
-              
-          // Busca eventos que o usuário participa (limitado aos 5 mais recentes)
-          try {
-            myApplicationsSnapshot = await FirebaseFirestore.instance
-                .collection('EventApplications')
-                .where('userId', isEqualTo: currentUserId)
-                .where('status', whereIn: ['approved', 'autoApproved'])
-                .orderBy('appliedAt', descending: true)
-                .limit(5)
-                .get();
-          } catch (e) {
-            debugPrint('     ⚠️ Erro ao buscar applications (auth pendente): $e');
-          }
-              
-          final eventIds = <String>{};
-          
-          // Adiciona IDs dos eventos criados
-          if (myEventsSnapshot != null) {
-            for (var doc in myEventsSnapshot.docs) {
-              final data = doc.data();
-
-              final isCanceled = data['isCanceled'] as bool? ?? false;
-              if (isCanceled) {
-                continue;
-              }
-
-              final isActive = data['isActive'] as bool?;
-              if (isActive == false) {
-                continue;
-              }
-
-              final status = data['status'] as String?;
-              if (status != null && status != 'active') {
-                continue;
-              }
-
-              eventIds.add(doc.id);
-            }
-          }
-          
-          // Adiciona IDs dos eventos que participa
-          if (myApplicationsSnapshot != null) {
-            for (var doc in myApplicationsSnapshot.docs) {
-              final data = doc.data();
-              if (data['eventId'] != null) {
-                eventIds.add(data['eventId'] as String);
-              }
-            }
-          }
-          
-          debugPrint('   - Encontrados ${eventIds.length} eventos relevantes para pré-load');
-          
-          // Carrega participantes para cada evento em paralelo
-          await Future.wait(eventIds.map((eventId) async {
-            try {
-              final participants = await appRepo.getParticipantsForEvent(eventId);
-              
-              // Salva no cache global (mesma chave usada pelo GroupInfoController)
-              final cacheKey = 'event_participants_$eventId';
-              GlobalCacheService.instance.set(cacheKey, participants, ttl: const Duration(minutes: 10));
-              
-              debugPrint('     - Evento $eventId: ${participants.length} participantes cacheados');
-            } catch (e) {
-              debugPrint('     ⚠️ Erro ao pré-carregar evento $eventId: $e');
-            }
-          }));
-          
-          debugPrint('✅ [AppInitializer] Participantes pré-carregados');
-        } catch (e) {
-          debugPrint('⚠️ [AppInitializer] Erro ao pré-carregar participantes: $e');
-        }
-      }
-
-      // 9. Inicializa o ViewModel (preload de pins + carrega eventos)
-      // O initialize() do ViewModel já chama loadNearbyEvents() internamente
-      // que também gera os markers (populando o cache de imagens)
-      await mapViewModel.initialize();
-      
-      debugPrint('✅ [AppInitializer] Bootstrap completo!');
-      debugPrint('📊 [AppInitializer] Eventos carregados: ${mapViewModel.events.length}');
-      debugPrint('📍 [AppInitializer] Markers gerados (cache): ${mapViewModel.googleMarkers.length}');
-      debugPrint('🗺️ [AppInitializer] Mapa pronto: ${mapViewModel.mapReady}');
-      debugPrint('💬 [AppInitializer] Conversas pré-carregadas: ${conversationsViewModel.wsConversations.length}');
-      debugPrint('ℹ️ [AppInitializer] Markers serão regenerados com callbacks no GoogleMapView');
+      AppLogger.success('Bootstrap crítico completo!', tag: 'INIT');
+      AppLogger.info('Eventos carregados: ${mapViewModel.events.length}', tag: 'INIT');
+      AppLogger.info('Markers gerados (cache): ${mapViewModel.googleMarkers.length}', tag: 'INIT');
+      AppLogger.info('Mapa pronto: ${mapViewModel.mapReady}', tag: 'INIT');
+      AppLogger.info('Markers serão regenerados com callbacks no GoogleMapView', tag: 'INIT');
       
     } catch (e, stackTrace) {
-      debugPrint('❌ [AppInitializer] Erro durante inicialização: $e');
-      debugPrint('Stack trace: $stackTrace');
+      AppLogger.error(
+        'Erro durante inicialização crítica (não bloqueia abertura)',
+        tag: 'INIT',
+        error: e,
+        stackTrace: stackTrace,
+      );
       // Não lançar erro - deixar app abrir mesmo com falha
       // O ViewModel tentará carregar novamente quando o mapa estiver pronto
+    }
+  }
+
+  /// Warmup pesado para rodar DEPOIS do primeiro frame (Home)
+  ///
+  /// - Pré-carrega pins + eventos + markers (mapViewModel.initialize)
+  /// - Pré-carrega conversas (cache/firestore)
+  /// - Participantes do GroupInfo: on-demand (quando abrir a tela)
+  Future<void> warmupAfterFirstFrame() async {
+    try {
+      AppLogger.info('Warmup pós-primeiro-frame iniciado...', tag: 'INIT');
+
+      // 0) Token refresh (best-effort, não bloqueia)
+      // Mantém a sessão saudável, mas não deve segurar a Home.
+      final auth = FirebaseAuth.instance;
+      if (auth.currentUser != null) {
+        Future(() async {
+          try {
+            await auth.currentUser!
+                .getIdToken(true)
+                .timeout(const Duration(seconds: 2));
+            AppLogger.success('Token de autenticação renovado (warmup)', tag: 'INIT');
+          } catch (e) {
+            AppLogger.warning('Warmup token refresh falhou: $e', tag: 'INIT');
+          }
+        });
+      }
+
+      // 0.5) BlockService (reativo) — mover do Splash para o warmup
+      // Isso cria listeners do Firestore e pode ter custo variável; no Splash não vale.
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        try {
+          await BlockService()
+              .initialize(currentUserId)
+              .timeout(const Duration(seconds: 2));
+          AppLogger.success('BlockService inicializado (warmup)', tag: 'INIT');
+        } catch (e) {
+          AppLogger.warning('Warmup BlockService falhou: $e', tag: 'INIT');
+        }
+      }
+
+      // 1) MapViewModel (maior custo) — deixa mapa ir carregando em background
+      if (!mapViewModel.mapReady && !mapViewModel.isLoading) {
+        await mapViewModel.initialize();
+      } else {
+        AppLogger.info('Warmup mapa ignorado (já pronto/carregando)', tag: 'INIT');
+      }
+
+      // 2) Conversas — pode ficar para quando entrar na aba, mas aqui é warmup
+      try {
+        await conversationsViewModel.preloadConversations();
+      } catch (e) {
+        AppLogger.warning('Warmup conversas falhou: $e', tag: 'INIT');
+      }
+
+      AppLogger.success('Warmup pós-primeiro-frame concluído', tag: 'INIT');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Erro no warmup pós-primeiro-frame',
+        tag: 'INIT',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 }

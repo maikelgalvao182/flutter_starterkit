@@ -5,6 +5,7 @@ import 'package:partiu/core/models/user.dart';
 import 'package:partiu/core/router/app_router.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
+import 'package:partiu/shared/repositories/user_repository.dart';
 
 
 /// Router para navegação de perfil
@@ -25,7 +26,7 @@ class ProfileScreenRouter {
     }
 
     context.push(
-      AppRoutes.profile,
+      '${AppRoutes.profile}/${user.userId}',
       extra: {
         'user': user,
         'currentUserId': currentUserId,
@@ -73,29 +74,71 @@ class ProfileScreenRouter {
     bool forceRefresh = false,
   }) async {
     try {
-      // TODO: Implementar busca de usuário por ID via serviço
-      // Por agora, usa o usuário atual se for o mesmo ID
-      final currentUser = AppState.currentUser.value;
-      if (currentUser?.userId == userId) {
-        await navigateToProfile(context, user: currentUser!);
+      final currentUserId = AppState.currentUserId;
+      if (currentUserId == null || currentUserId.isEmpty) {
+        if (context.mounted) {
+          _showError(context, 'user_not_authenticated');
+        }
         return;
       }
-      
-      // Se for outro usuário, mostra erro por enquanto
-      if (context.mounted) {
-        _showError(context, 'other_profiles_not_implemented');
+
+      User? userToShow;
+
+      // Mesmo usuário: usa o cache em memória
+      final currentUser = AppState.currentUser.value;
+      if (currentUser != null && currentUser.userId == userId) {
+        userToShow = currentUser;
+      } else {
+        // Outro usuário: buscar dados no Firestore
+        // (mantém a assinatura forceRefresh para uso futuro)
+        final userData = await UserRepository().getUserById(userId);
+        if (userData != null) {
+          final normalized = <String, dynamic>{
+            ...userData,
+            // Alguns docs não possuem o campo userId, mas o model precisa.
+            'userId': userId,
+          };
+          userToShow = User.fromDocument(normalized);
+        }
       }
+
+      if (userToShow == null) {
+        if (context.mounted) {
+          _showError(context, 'profile_data_not_found');
+        }
+        return;
+      }
+
+      if (!context.mounted) return;
+
+      context.push(
+        '${AppRoutes.profile}/$userId',
+        extra: {
+          'user': userToShow,
+          'currentUserId': currentUserId,
+        },
+      );
     } catch (e) {
       if (context.mounted) {
         final i18n = AppLocalizations.of(context);
-        _showError(context, '${i18n.translate('error_loading_profile')}: $e');
+        _showError(
+          context,
+          '${i18n.translate('error_loading_profile')}: $e',
+          translate: false,
+        );
       }
     }
   }
 
   /// Mostra erro via Toast
-  static void _showError(BuildContext context, String messageKey) {
+  static void _showError(
+    BuildContext context,
+    String messageOrKey, {
+    bool translate = true,
+  }) {
     final i18n = AppLocalizations.of(context);
-    ToastService.showError(message: i18n.translate(messageKey));
+    ToastService.showError(
+      message: translate ? i18n.translate(messageOrKey) : messageOrKey,
+    );
   }
 }

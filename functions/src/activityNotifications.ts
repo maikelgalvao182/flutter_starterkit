@@ -58,6 +58,8 @@ async function createActivityNotification(params: {
     n_type: params.type,
     n_origin: "cloud_function",
     n_created_at: now,
+    // Campo padrão usado pelo app para ordenação/exibição
+    timestamp: now,
     n_read: false,
     n_related_id: params.activityId,
 
@@ -176,6 +178,7 @@ export const onActivityCreatedNotification = functions.firestore
           n_type: "activity_created",
           n_origin: "cloud_function",
           n_created_at: now,
+          timestamp: now,
           n_read: false,
           n_related_id: eventId,
           n_sender_id: creatorId,
@@ -353,6 +356,7 @@ export const onActivityHeatingUp = functions.firestore
           n_type: "activity_heating_up",
           n_origin: "cloud_function",
           n_created_at: now,
+          timestamp: now,
           n_read: false,
           n_related_id: eventId,
           n_sender_id: creatorId,
@@ -624,6 +628,7 @@ export const onActivityCanceledNotification = functions.firestore
           n_type: "activity_canceled",
           n_origin: "cloud_function",
           n_created_at: now,
+          timestamp: now,
           n_read: false,
           n_related_id: eventId,
           n_params: {

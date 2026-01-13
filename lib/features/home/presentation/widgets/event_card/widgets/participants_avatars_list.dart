@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
@@ -30,166 +29,62 @@ class ParticipantsAvatarsList extends StatefulWidget {
 }
 
 class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
-  /// Flag para saber se já recebemos dados do servidor
-  bool _hasReceivedServerData = false;
-  
-  /// Cache local para exibir enquanto aguarda dados do servidor
-  late List<Map<String, dynamic>>? _cachedParticipants;
-  
+  /// Cache local para exibir imediatamente (sem stream/firestore aqui)
+  List<Map<String, dynamic>> _cachedParticipants = const [];
+
   /// 🎯 IDs dos participantes que acabaram de entrar (para animar apenas eles)
-  final Set<String> _newlyAddedIds = {};
-  
+  final Set<String> _newlyAddedIds = <String>{};
+
   /// Flag para saber se é o primeiro build (nunca anima no primeiro build)
   bool _isFirstBuild = true;
   
   @override
   void initState() {
     super.initState();
-    // ✅ Usar dados pré-carregados do controller como estado inicial
-    _cachedParticipants = widget.preloadedParticipants;
-    if (_cachedParticipants != null && _cachedParticipants!.isNotEmpty) {
-      debugPrint('🚀 [ParticipantsAvatarsList] Usando ${_cachedParticipants!.length} participantes pré-carregados');
+    _updateParticipants(widget.preloadedParticipants ?? const []);
+  }
+
+  @override
+  void didUpdateWidget(covariant ParticipantsAvatarsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.preloadedParticipants != widget.preloadedParticipants) {
+      _updateParticipants(widget.preloadedParticipants ?? const []);
     }
   }
-  
-  /// Stream de participantes aprovados com dados do usuário
-  Stream<List<Map<String, dynamic>>> get _participantsStream {
-    debugPrint('🔵 [ParticipantsAvatarsList] Stream INICIADO para eventId: ${widget.eventId}');
-    
-    return FirebaseFirestore.instance
-        .collection('EventApplications')
-        .where('eventId', isEqualTo: widget.eventId)
-        .where('status', whereIn: ['approved', 'autoApproved'])
-        .snapshots()
-        .asyncMap((snapshot) async {
-          debugPrint('📥 [ParticipantsAvatarsList] Snapshot recebido');
-          debugPrint('   └─ isFromCache: ${snapshot.metadata.isFromCache}');
-          debugPrint('   └─ hasPendingWrites: ${snapshot.metadata.hasPendingWrites}');
-          debugPrint('   └─ docs.length: ${snapshot.docs.length}');
-          
-          // Se é do cache E já recebemos dados do servidor antes,
-          // ignorar para evitar avatar fantasma ao sair do evento
-          if (snapshot.metadata.isFromCache && _hasReceivedServerData) {
-            debugPrint('⚠️ [ParticipantsAvatarsList] Ignorando CACHE (já temos dados do servidor)');
-            return _cachedParticipants ?? <Map<String, dynamic>>[];
-          }
-          
-          // Marca que recebemos dados do servidor
-          if (!snapshot.metadata.isFromCache) {
-            _hasReceivedServerData = true;
-          }
-          
-          final participants = <Map<String, dynamic>>[];
-          
-          for (final doc in snapshot.docs) {
-            final userId = doc.data()['userId'] as String?;
-            debugPrint('👤 [ParticipantsAvatarsList] Processando doc: ${doc.id}');
-            debugPrint('   └─ userId: $userId');
-            if (userId == null) continue;
-            
-            // Buscar dados do usuário
-            final userDoc = await FirebaseFirestore.instance
-                .collection('Users')
-                .doc(userId)
-                .get();
-            
-            debugPrint('📄 [ParticipantsAvatarsList] UserDoc exists: ${userDoc.exists}');
-            
-            if (userDoc.exists) {
-              final userData = userDoc.data()!;
-              final fullName = userData['fullName'] ?? 'Anônimo';
-              final photoUrl = userData['photoUrl'] ?? '';
-              
-              // 🔑 Capturar timestamp de aprovação para ordenação estável
-              final approvedAt = doc.data()['approvedAt'] as Timestamp?;
-              
-              debugPrint('✅ [ParticipantsAvatarsList] Dados do usuário:');
-              debugPrint('   └─ fullName: $fullName');
-              debugPrint('   └─ photoUrl: $photoUrl');
-              debugPrint('   └─ isCreator: ${userId == widget.creatorId}');
-              debugPrint('   └─ approvedAt: $approvedAt');
-              
-              participants.add({
-                'userId': userId,
-                'fullName': fullName,
-                'photoUrl': photoUrl,
-                'isCreator': userId == widget.creatorId,
-                'approvedAt': approvedAt, // 👈 ESSENCIAL para ordem estável
-              });
-            }
-          }
-          
-          // 🎯 Ordenação estável: criador primeiro, depois por approvedAt
-          // Isso garante que novos participantes SEMPRE entram à direita
-          participants.sort((a, b) {
-            // 1️⃣ Criador sempre primeiro
-            if (a['isCreator'] == true && b['isCreator'] != true) return -1;
-            if (b['isCreator'] == true && a['isCreator'] != true) return 1;
-            
-            // 2️⃣ Ambos não são criador → ordenar por approvedAt (mais antigo primeiro)
-            final aTime = a['approvedAt'] as Timestamp?;
-            final bTime = b['approvedAt'] as Timestamp?;
-            
-            // Se algum não tem timestamp, manter posição atual
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return 1; // Sem timestamp vai pro final
-            if (bTime == null) return -1;
-            
-            return aTime.compareTo(bTime);
-          });
-          
-          debugPrint('📊 [ParticipantsAvatarsList] Total participantes: ${participants.length}');
-          for (var p in participants) {
-            debugPrint('   └─ ${p['fullName']} (${p['userId']}) - photoUrl: ${p['photoUrl']}');
-          }
-          
-          // ✅ PRELOAD: Carregar avatares antes da UI renderizar
-          for (final p in participants) {
-            final pUserId = p['userId'] as String?;
-            final pPhotoUrl = p['photoUrl'] as String?;
-            if (pUserId != null && pPhotoUrl != null && pPhotoUrl.isNotEmpty) {
-              UserStore.instance.preloadAvatar(pUserId, pPhotoUrl);
-            }
-          }
-          
-          // 🎯 DIFF: Calcular quem REALMENTE entrou (para animar apenas eles)
-          final oldIds = (_cachedParticipants ?? [])
-              .map((p) => p['userId'] as String?)
-              .whereType<String>()
-              .toSet();
-          final newIds = participants
-              .map((p) => p['userId'] as String?)
-              .whereType<String>()
-              .toSet();
-          
-          final addedIds = newIds.difference(oldIds);
-          
-          debugPrint('🔍 [ParticipantsAvatarsList] DIFF:');
-          debugPrint('   └─ _isFirstBuild: $_isFirstBuild');
-          debugPrint('   └─ oldIds: $oldIds');
-          debugPrint('   └─ newIds: $newIds');
-          debugPrint('   └─ addedIds: $addedIds');
-          
-          // Só anima se NÃO for primeiro build E tiver novos IDs
-          if (!_isFirstBuild && addedIds.isNotEmpty) {
-            _newlyAddedIds
-              ..clear()
-              ..addAll(addedIds);
-            debugPrint('✨ [ParticipantsAvatarsList] Marcando para animar: $_newlyAddedIds');
-          } else if (_isFirstBuild) {
-            // Primeiro build: não animar ninguém
-            _newlyAddedIds.clear();
-            debugPrint('🏁 [ParticipantsAvatarsList] Primeiro build - sem animação');
-            // ✅ Marcar que primeiro build já passou (para próximas emissões)
-            _isFirstBuild = false;
-          }
-          // Não limpa _newlyAddedIds se addedIds estiver vazio (mantém estado anterior)
-          
-          // Atualiza cache local
-          _cachedParticipants = participants;
-          
-          return participants;
-        });
+
+  void _updateParticipants(List<Map<String, dynamic>> next) {
+    final oldIds = _cachedParticipants
+        .map((p) => p['userId'] as String?)
+        .whereType<String>()
+        .toSet();
+    final newIds = next
+        .map((p) => p['userId'] as String?)
+        .whereType<String>()
+        .toSet();
+
+    final addedIds = newIds.difference(oldIds);
+
+    if (!_isFirstBuild && addedIds.isNotEmpty) {
+      _newlyAddedIds
+        ..clear()
+        ..addAll(addedIds);
+    } else if (_isFirstBuild) {
+      _newlyAddedIds.clear();
+      _isFirstBuild = false;
+    }
+
+    _cachedParticipants = next;
+
+    // ✅ PRELOAD: Carregar avatares antes da UI renderizar
+    for (final p in _cachedParticipants) {
+      final pUserId = p['userId'] as String?;
+      final pPhotoUrl = p['photoUrl'] as String?;
+      if (pUserId != null && pPhotoUrl != null && pPhotoUrl.isNotEmpty) {
+        UserStore.instance.preloadAvatar(pUserId, pPhotoUrl);
+      }
+    }
+
+    if (mounted) setState(() {});
   }
 
   @override
@@ -197,26 +92,14 @@ class _ParticipantsAvatarsListState extends State<ParticipantsAvatarsList> {
     // Altura fixa para evitar popping durante carregamento
     // Avatar (40) + spacing (4) + nome (17) + padding top (12) = 73
     const fixedHeight = 73.0;
-    
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _participantsStream,
-      builder: (context, snapshot) {
-        // Usa dados do snapshot ou cache local para evitar flicker
-        final participants = snapshot.data ?? _cachedParticipants ?? [];
-        
-        debugPrint('🎨 [ParticipantsAvatarsList] BUILD:');
-        debugPrint('   └─ snapshot.hasData: ${snapshot.hasData}');
-        debugPrint('   └─ participants.length: ${participants.length}');
-        debugPrint('   └─ _newlyAddedIds: $_newlyAddedIds');
-        
-        // Container com altura fixa para evitar layout shift
-        return SizedBox(
-          height: participants.isEmpty ? 0 : fixedHeight,
-          child: participants.isEmpty
-              ? const SizedBox.shrink()
-              : _buildParticipantsList(participants),
-        );
-      },
+
+    final participants = _cachedParticipants;
+
+    return SizedBox(
+      height: participants.isEmpty ? 0 : fixedHeight,
+      child: participants.isEmpty
+          ? const SizedBox.shrink()
+          : _buildParticipantsList(participants),
     );
   }
   

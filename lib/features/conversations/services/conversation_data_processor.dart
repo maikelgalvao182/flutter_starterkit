@@ -1,5 +1,4 @@
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/shared/stores/user_store.dart';
 
 /// Model for pre-processed conversation display data
 class ConversationDisplayData {
@@ -203,6 +202,13 @@ class ConversationDataProcessor {
     required Map<String, dynamic> data,
     required AppLocalizations i18n,
   }) {
+    final isDeleted = data['last_message_is_deleted'] == true ||
+        data['lastMessageIsDeleted'] == true ||
+        data['last_message_deleted'] == true;
+    if (isDeleted) {
+      return truncateMessage(i18n.translate('message_deleted_placeholder'));
+    }
+
     final messageType =
         (data['last_message_type'] ?? data['message_type'] ?? 'text')
             .toString();
@@ -248,23 +254,23 @@ class ConversationDataProcessor {
 
   /// Process all conversation data for display
   static Future<ConversationDisplayData> processConversationData({
+    required String conversationId,
     required Map<String, dynamic> data,
     required bool isVipEffective,
     required AppLocalizations i18n,
   }) async {
     final fullNameRaw = _extractFullNameRaw(data);
     final photoUrl = extractPhotoUrl(data);
-    // Para eventos, usar event_id. Para conversas normais, user_id
-    final isEventChat = data['is_event_chat'] == true || data['event_id'] != null;
-    final otherUserId = isEventChat 
-        ? 'event_${data['event_id']}'
-        : (data['user_id'] ??
-            data['other_user_id'] ??
-            data['otherUserId'] ??
-            data['uid'] ??
-            data['id'] ??
-            '')
-        .toString();
+    // Para eventos, usar event_id. Para conversas 1:1, o docId (conversationId)
+    // é a fonte de verdade e NÃO deve depender de campos mutáveis (ex: sender)
+    final isEventChat =
+      data['is_event_chat'] == true || data['event_id'] != null || conversationId.startsWith('event_');
+
+    final otherUserId = isEventChat
+      ? (conversationId.startsWith('event_')
+        ? conversationId
+        : 'event_${data['event_id']}')
+      : conversationId;
     final isVip = isVipEffective;
 
     final maskedName = processNameForDisplay(
@@ -305,10 +311,9 @@ class ConversationDataProcessor {
     // TODO: Implement async fetch from Users collection if needed
     var isVerified = isVerifiedExplicit ?? false;
     
-    // ✅ PRELOAD: Carregar avatar antes da UI renderizar (apenas para chats 1-1)
-    if (!isEventChat && otherUserId.isNotEmpty && photoUrl.isNotEmpty) {
-      UserStore.instance.preloadAvatar(otherUserId, photoUrl);
-    }
+    // ⚠️ Não fazer preload de avatar a partir do summary da conversa.
+    // Esse documento pode carregar foto/nome do sender da última mensagem,
+    // o que causa alternância/override incorreto no UserStore.
 
     return ConversationDisplayData(
       photoUrl: photoUrl,
@@ -327,23 +332,22 @@ class ConversationDataProcessor {
 
   /// Synchronous portion of processing (excluding async verification fetch)
   static ConversationDisplayData processConversationDataSync({
+    required String conversationId,
     required Map<String, dynamic> data,
     required bool isVipEffective,
     required AppLocalizations i18n,
   }) {
     final fullNameRaw = _extractFullNameRaw(data);
     final photoUrl = extractPhotoUrl(data);
-    // Para eventos, usar event_id. Para conversas normais, user_id
-    final isEventChat = data['is_event_chat'] == true || data['event_id'] != null;
-    final otherUserId = isEventChat 
-        ? 'event_${data['event_id']}'
-        : (data['user_id'] ??
-            data['other_user_id'] ??
-            data['otherUserId'] ??
-            data['uid'] ??
-            data['id'] ??
-            '')
-        .toString();
+    // Para eventos, usar event_id. Para conversas 1:1, docId (conversationId)
+    final isEventChat =
+      data['is_event_chat'] == true || data['event_id'] != null || conversationId.startsWith('event_');
+
+    final otherUserId = isEventChat
+      ? (conversationId.startsWith('event_')
+        ? conversationId
+        : 'event_${data['event_id']}')
+      : conversationId;
     final isVip = isVipEffective;
 
     final maskedName = processNameForDisplay(

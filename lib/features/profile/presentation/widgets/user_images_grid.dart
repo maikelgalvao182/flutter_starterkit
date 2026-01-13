@@ -330,10 +330,32 @@ class _UserImageCell extends StatelessWidget {
                 Positioned.fill(
                   child: url == null
                       ? Center(
-                          child: Icon(
-                            CupertinoIcons.plus_circle,
-                            color: GlimpseColors.textSubTitle,
-                            size: 35,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                Icons.image_outlined,
+                                color: GlimpseColors.textSubTitle,
+                                size: 38,
+                              ),
+                              Positioned(
+                                right: -6,
+                                bottom: -6,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  padding: const EdgeInsets.all(1.5),
+                                  child: Icon(
+                                    Icons.add_circle,
+                                    color: GlimpseColors.primary,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       : ClipRRect(

@@ -60,6 +60,18 @@ class AuthSyncService extends ChangeNotifier {
     _initializeAuth();
   }
 
+  /// Reavalia estado atual do FirebaseAuth (útil após `currentUser.reload()`)
+  /// para refletir mudanças de `emailVerified` sem depender de um novo authStateChanges.
+  Future<void> refreshCurrentUser() async {
+    await _handleAuthStateChange(fire_auth.FirebaseAuth.instance.currentUser);
+  }
+
+  bool _requiresEmailVerification(fire_auth.User user) {
+    final hasEmail = (user.email ?? '').trim().isNotEmpty;
+    final isPasswordProvider = user.providerData.any((p) => p.providerId == 'password');
+    return hasEmail && isPasswordProvider;
+  }
+
   void _initializeAuth() {
     _log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     _log('🔄 _initializeAuth() CHAMADO!');
@@ -98,6 +110,19 @@ class AuthSyncService extends ChangeNotifier {
       _userSubscription = null;
 
       if (user != null) {
+        // 🔒 Email/senha exige e-mail verificado antes de iniciar sessão do app
+        // (mantém FirebaseAuth logado, mas não inicia SessionManager/AppState)
+        if (_requiresEmailVerification(user) && user.emailVerified == false) {
+          _log('🔒 Email não verificado (provider=password). Mantendo sessão do app deslogada.');
+
+          await SessionManager.instance.logout();
+
+          // ✅ Sessão pronta (mas usuário ainda não pode acessar rotas protegidas)
+          _sessionReady = true;
+          notifyListeners();
+          return;
+        }
+
         // Usuário logado - carregar dados completos do Firestore e salvar no SessionManager
         _log('✅ Usuário logado, carregando dados do Firestore: ${user.uid}');
 

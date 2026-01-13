@@ -13,6 +13,9 @@ import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:partiu/core/constants/constants.dart';
+import 'package:partiu/core/services/cache/cache_key_utils.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -38,6 +41,7 @@ class GlimpseChatBubble extends StatelessWidget {
     this.replyTo, // 🆕 Dados de reply
     this.onLongPress, // 🆕 Callback para long press
     this.onReplyTap, // 🆕 Callback para tap no reply
+    this.onDelete, // 🆕 Callback para deletar mensagem
   });
   final String message;
   final bool isUserSender;
@@ -54,6 +58,7 @@ class GlimpseChatBubble extends StatelessWidget {
   final ReplySnapshot? replyTo; // 🆕
   final VoidCallback? onLongPress; // 🆕
   final VoidCallback? onReplyTap; // 🆕
+  final Future<void> Function()? onDelete; // 🆕
 
   /// Processa markdown simples (**texto** → negrito)
   List<TextSpan> _parseMarkdown(String text, TextStyle baseStyle) {
@@ -330,16 +335,19 @@ class GlimpseChatBubble extends StatelessWidget {
     required String messageText,
     required bool canReply,
     required VoidCallback? onReply,
+    required bool canDelete,
+    required Future<void> Function()? onDelete,
   }) async {
     final rootContext = context;
     final resolvedText = messageText.trim();
     final canCopy = resolvedText.isNotEmpty;
 
-    if (!canReply && !canCopy) return;
+    if (!canReply && !canCopy && !canDelete) return;
 
     final replyLabel = i18n.translate('reply');
     final copyLabel = i18n.translate('copy');
     final copiedLabel = i18n.translate('copied');
+    final deleteLabel = i18n.translate('delete');
 
     await showCupertinoModalPopup<void>(
       context: rootContext,
@@ -370,6 +378,16 @@ class GlimpseChatBubble extends StatelessWidget {
                   );
                 },
                 child: Text(copyLabel),
+              ),
+            if (canDelete)
+              CupertinoActionSheetAction(
+                isDestructiveAction: true,
+                onPressed: () async {
+                  final navigator = Navigator.of(sheetContext);
+                  navigator.pop();
+                  await onDelete?.call();
+                },
+                child: Text(deleteLabel),
               ),
           ],
           // Sem botão "Cancelar" (pedido do usuário). Dismiss ao tocar fora.
@@ -658,6 +676,8 @@ class GlimpseChatBubble extends StatelessWidget {
                             messageText: displayMessage,
                             canReply: onLongPress != null,
                             onReply: onLongPress,
+                            canDelete: onDelete != null,
+                            onDelete: onDelete,
                           );
                         },
                   onTap: (imageUrl != null && imageUrl!.isNotEmpty)
@@ -727,13 +747,23 @@ class GlimpseChatBubble extends StatelessWidget {
                             ),
                             child: Hero(
                               tag: messageId != null ? 'chatImage_$messageId' : 'chatImage_${imageUrl.hashCode}',
-                              child: Image.network(
-                                imageUrl!,
-                                fit: BoxFit.cover,
+                              child: Builder(
+                                builder: (context) {
+                                  final key = stableImageCacheKey(imageUrl!);
+                                  ImageCacheStats.instance.record(
+                                    category: ImageCacheCategory.chatMedia,
+                                    url: imageUrl!,
+                                    cacheKey: key,
+                                  );
+
+                                  return CachedNetworkImage(
+                                    imageUrl: imageUrl!,
+                                    cacheManager: ChatMediaImageCache.instance,
+                                    cacheKey: key,
                                 width: 200,
                                 height: 200,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
+                                fit: BoxFit.cover,
+                                placeholder: (context, _) {
                                   return Container(
                                     width: 200,
                                     height: 200,
@@ -749,7 +779,7 @@ class GlimpseChatBubble extends StatelessWidget {
                                     ),
                                   );
                                 },
-                                errorBuilder: (context, error, stackTrace) {
+                                errorWidget: (context, _, __) {
                                   return Container(
                                     width: 200,
                                     height: 200,
@@ -761,9 +791,11 @@ class GlimpseChatBubble extends StatelessWidget {
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.image_not_supported, 
-                                               color: Colors.grey[600], 
-                                               size: 40),
+                                          Icon(
+                                            Icons.image_not_supported,
+                                            color: Colors.grey[600],
+                                            size: 40,
+                                          ),
                                           const SizedBox(height: 8),
                                           Text(
                                             i18n.translate('failed_to_load_image'),
@@ -775,6 +807,8 @@ class GlimpseChatBubble extends StatelessWidget {
                                         ],
                                       ),
                                     ),
+                                  );
+                                },
                                   );
                                 },
                               ),

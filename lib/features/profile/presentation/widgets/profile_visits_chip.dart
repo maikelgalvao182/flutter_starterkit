@@ -1,8 +1,6 @@
 import 'package:partiu/common/state/app_state.dart';
-// Firestore removido da UI: usar serviço
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/features/subscription/services/vip_access_service.dart';
-import 'package:partiu/features/profile/data/services/visits_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +8,9 @@ import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:partiu/core/router/app_router.dart';
+import 'package:partiu/features/profile/data/services/visits_service.dart';
 
+/// Widget chip que exibe o contador de visitas ao perfil.
 class ProfileVisitsChip extends StatelessWidget {
   const ProfileVisitsChip({super.key});
 
@@ -19,31 +19,25 @@ class ProfileVisitsChip extends StatelessWidget {
     final i18n = AppLocalizations.of(context);
     final userId = AppState.currentUserId ?? '';
     
-    // Show skeleton if user not loaded yet
-    if (userId.isEmpty) {
-      return _buildSkeletonChip();
+    if (kDebugMode) {
+      debugPrint('🎨 [ProfileVisitsChip] build chamado com userId: $userId');
     }
     
+    // Show skeleton only if user not loaded yet
+    if (userId.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('⚠️ [ProfileVisitsChip] userId vazio, mostrando skeleton');
+      }
+      return _buildSkeletonChip();
+    }
+
     final visitsService = VisitsService.instance;
+    if (kDebugMode) {
+      debugPrint('📊 [ProfileVisitsChip] Cache atual: ${visitsService.cachedVisitsCount}');
+    }
 
     return GestureDetector(
-      onTap: () async {
-        final router = GoRouter.of(context);
-
-        // 1) Se o VIP já está ativo (Firestore) OU o RevenueCat já concedeu acesso,
-        // libera imediatamente (sem depender de sincronização).
-        if (VipAccessService.isVip || VipAccessService.hasVipAccessRealtime) {
-          router.push(AppRoutes.profileVisits);
-          return;
-        }
-
-        // 2) Caso contrário, abre o paywall. Se o usuário concluir a compra,
-        // o dialog fecha com `true` e liberamos o acesso sem esperar Firestore.
-        final hasAccessAfterDialog = await VipAccessService.checkOrShowDialog(context);
-        if (hasAccessAfterDialog) {
-          router.push(AppRoutes.profileVisits);
-        }
-      },
+      onTap: () => GoRouter.of(context).push(AppRoutes.profileVisits),
       child: Container(
         height: 31,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -73,10 +67,26 @@ class ProfileVisitsChip extends StatelessWidget {
               stream: visitsService.watchUserVisitsCount(userId),
               initialData: visitsService.cachedVisitsCount,
               builder: (context, snapshot) {
+                if (kDebugMode) {
+                  debugPrint('🔄 [ProfileVisitsChip] StreamBuilder update:');
+                  debugPrint('   - connectionState: ${snapshot.connectionState}');
+                  debugPrint('   - hasData: ${snapshot.hasData}');
+                  debugPrint('   - data: ${snapshot.data}');
+                  debugPrint('   - hasError: ${snapshot.hasError}');
+                  if (snapshot.hasError) {
+                    debugPrint('   - error: ${snapshot.error}');
+                  }
+                }
+                
                 final visits = snapshot.data ?? 0;
+                if (kDebugMode) {
+                  debugPrint('   - visits (final): $visits');
+                }
+                
                 return Text(
                   visits.toString(),
-                  style: GoogleFonts.getFont(FONT_PLUS_JAKARTA_SANS, 
+                  style: GoogleFonts.getFont(
+                    FONT_PLUS_JAKARTA_SANS,
                     color: Colors.black,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,

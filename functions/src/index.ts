@@ -11,6 +11,8 @@ import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import {sendPush} from "./services/pushDispatcher";
 
+export {deleteChatMessage} from "./chatMessageDeletion";
+
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -102,6 +104,7 @@ export const onEventCreated = functions.firestore
         .doc();
 
       batch.set(initialMessageRef, {
+        is_deleted: false,
         sender_id: "system",
         sender_name: "Sistema",
         sender_photo_url: "",
@@ -417,6 +420,10 @@ export * from "./ranking/updateRanking";
 // Importa e exporta as Cloud Functions de notificações agregadas
 export * from "./profileViewNotifications";
 
+// Limpeza automática de notificações antigas (retenção)
+export * from "./notifications/cleanupOldNotifications";
+export * from "./notifications/backfillMissingNotificationTimestamps";
+
 // ===== EVENT CHAT NOTIFICATIONS =====
 // Importa e exporta as Cloud Functions de notificações de EventChat
 // Inclui notificações in-app + push notifications para mensagens de grupo
@@ -449,6 +456,10 @@ export * from "./debug";
 // Importa e exporta as Cloud Functions de gerenciamento de usuários
 export * from "./users/deleteUserAccount";
 export * from "./get_people";
+
+// ===== PROFILE VISITS =====
+// Retorna apenas o contador agregado de visitas (sem expor quem visitou)
+export * from "./profileVisitsCount";
 
 // ===== WEBHOOKS =====
 // Importa e exporta webhooks de integração

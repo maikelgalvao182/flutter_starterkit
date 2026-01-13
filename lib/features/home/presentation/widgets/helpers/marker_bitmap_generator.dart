@@ -1,15 +1,29 @@
 import 'dart:ui' as ui;
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as google;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_cache_manager/flutter_cache_manager.dart' as fcm;
 import 'package:partiu/features/home/presentation/widgets/helpers/marker_color_helper.dart';
 
 /// Helper para gerar BitmapDescriptors para markers do Google Maps
 class MarkerBitmapGenerator {
   /// Cache de bitmaps de clusters
   static final Map<String, google.BitmapDescriptor> _clusterCache = {};
+
+  static double get _currentDevicePixelRatio {
+    final view = ui.PlatformDispatcher.instance.implicitView;
+    if (view != null) return view.devicePixelRatio;
+    final views = ui.PlatformDispatcher.instance.views;
+    return views.isNotEmpty ? views.first.devicePixelRatio : 1.0;
+  }
+
+  static google.BitmapDescriptor _descriptorFromPngBytes(Uint8List bytes) {
+    return google.BitmapDescriptor.bytes(
+      bytes,
+      imagePixelRatio: _currentDevicePixelRatio,
+    );
+  }
 
   /// Gera bitmap de um cluster com emoji e badge de contagem
   /// 
@@ -27,17 +41,18 @@ class MarkerBitmapGenerator {
     String emoji,
     int count, {
     String? clusterId,
-    int size = 230,
+    int size = 160,
   }) async {
     // Chave de cache baseada no emoji e contagem
-    final cacheKey = 'cluster_${emoji}_$count';
+    final dprKey = _currentDevicePixelRatio.toStringAsFixed(2);
+    final cacheKey = 'cluster_${emoji}_${count}_${clusterId ?? ""}_$size@$dprKey';
     if (_clusterCache.containsKey(cacheKey)) {
       return _clusterCache[cacheKey]!;
     }
 
     try {
       // Padding extra para acomodar badge e sombra
-      final padding = 40;
+      final padding = (size * 0.18).round();
       final canvasSize = size + (padding * 2);
       final center = canvasSize / 2;
       
@@ -51,7 +66,7 @@ class MarkerBitmapGenerator {
       
       // 1. Sombra
       final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.35)
+        ..color = Colors.black.withAlpha(89)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
       canvas.drawCircle(
         Offset(center, center + 5),
@@ -101,7 +116,7 @@ class MarkerBitmapGenerator {
       
       // Sombra do badge
       final badgeShadow = Paint()
-        ..color = Colors.black.withOpacity(0.3)
+        ..color = Colors.black.withAlpha(77)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
       canvas.drawCircle(
         Offset(badgeCenterX, badgeCenterY + 2),
@@ -144,7 +159,7 @@ class MarkerBitmapGenerator {
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       final uint8list = byteData!.buffer.asUint8List();
 
-      final descriptor = google.BitmapDescriptor.fromBytes(uint8list);
+      final descriptor = _descriptorFromPngBytes(uint8list);
       
       // Cachear
       _clusterCache[cacheKey] = descriptor;
@@ -172,11 +187,11 @@ class MarkerBitmapGenerator {
   static Future<google.BitmapDescriptor> generateEmojiPinForGoogleMaps(
     String emoji, {
     String? eventId,
-    int size = 230,
+    int size = 150,
   }) async {
     try {
       // Adicionar padding extra para acomodar a sombra
-      final padding = 30;
+      final padding = (size * 0.16).round();
       final canvasSize = size + (padding * 2);
       final center = canvasSize / 2;
       
@@ -189,7 +204,7 @@ class MarkerBitmapGenerator {
       
       // Sombra
       final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.3)
+        ..color = Colors.black.withAlpha(77)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
       canvas.drawCircle(
         Offset(center, center + 4),
@@ -238,7 +253,7 @@ class MarkerBitmapGenerator {
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       final uint8list = byteData!.buffer.asUint8List();
 
-      return google.BitmapDescriptor.fromBytes(uint8list);
+      return _descriptorFromPngBytes(uint8list);
     } catch (e) {
       debugPrint('❌ Erro ao gerar emoji pin: $e');
       return await _generateDefaultAvatarPinForGoogleMaps(size);
@@ -249,18 +264,24 @@ class MarkerBitmapGenerator {
   static Future<google.BitmapDescriptor> generateAvatarPinForGoogleMaps(
     String url, {
     int size = 100,
+    fcm.BaseCacheManager? cacheManager,
+    String? cacheKey,
   }) async {
     try {
       if (url.contains('placeholder.com') || url.isEmpty) {
         return _generateDefaultAvatarPinForGoogleMaps(size);
       }
 
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode != 200) {
+      final fcm.BaseCacheManager manager = cacheManager ?? fcm.DefaultCacheManager();
+      final File file = cacheKey == null
+          ? await manager.getSingleFile(url)
+          : await manager.getSingleFile(url, key: cacheKey);
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
         return _generateDefaultAvatarPinForGoogleMaps(size);
       }
 
-      final codec = await ui.instantiateImageCodec(response.bodyBytes);
+      final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
       final image = frame.image;
 
@@ -328,7 +349,7 @@ class MarkerBitmapGenerator {
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       final uint8list = byteData!.buffer.asUint8List();
 
-      return google.BitmapDescriptor.fromBytes(uint8list);
+      return _descriptorFromPngBytes(uint8list);
     } catch (e) {
       return _generateDefaultAvatarPinForGoogleMaps(size);
     }
@@ -367,6 +388,6 @@ class MarkerBitmapGenerator {
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     final uint8list = byteData!.buffer.asUint8List();
 
-    return google.BitmapDescriptor.fromBytes(uint8list);
+    return _descriptorFromPngBytes(uint8list);
   }
 }

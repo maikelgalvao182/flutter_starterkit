@@ -216,11 +216,14 @@ class PlacePickerState extends State<PlacePicker> {
                         children:
                             nearbyPlaces
                                 .map(
-                                  (it) => NearbyPlaceItem(it, () {
+                                  (it) => NearbyPlaceItem(
+                                    it,
+                                    () {
                                     if (it.latLng != null) {
                                       moveToLocation(it.latLng!);
                                     }
-                                  }),
+                                    },
+                                  ),
                                 )
                                 .toList(),
                       ),

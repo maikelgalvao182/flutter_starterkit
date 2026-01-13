@@ -1,5 +1,12 @@
+import 'dart:async';
+import 'dart:collection';
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:partiu/core/services/cache/cache_key_utils.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
 import 'package:partiu/features/home/data/models/event_model.dart';
 import 'package:partiu/features/home/data/services/avatar_service.dart';
 import 'package:partiu/features/home/presentation/services/marker_cluster_service.dart';
@@ -19,6 +26,28 @@ import 'package:partiu/features/home/presentation/widgets/helpers/marker_bitmap_
 /// - Gerenciar cache de bitmaps (compartilhado via singleton)
 /// - Clusterizar eventos baseado no zoom
 class GoogleEventMarkerService {
+  // Tamanhos em pixels do bitmap (Google Maps usa pixels; escolhemos valores moderados)
+  static const int _emojiPinSizePx = 230;
+  static const int _clusterPinSizePx = 250;
+  static const int _avatarPinSizePx = 120;
+
+  static double get _devicePixelRatio {
+    final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+    if (view != null) return view.devicePixelRatio;
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    return views.isNotEmpty ? views.first.devicePixelRatio : 1.0;
+  }
+
+  static String get _dprKey => _devicePixelRatio.toStringAsFixed(2);
+
+  static String _emojiCacheKey(String emoji, String eventId) {
+    return '$emoji-$eventId-$_emojiPinSizePx@$_dprKey';
+  }
+
+  static String _avatarCacheKey(String userId) {
+    return '$userId-$_avatarPinSizePx@$_dprKey';
+  }
+
   /// Instância singleton
   static final GoogleEventMarkerService _instance = GoogleEventMarkerService._internal();
   
@@ -42,6 +71,17 @@ class GoogleEventMarkerService {
   /// Bitmap padrão para avatares
   BitmapDescriptor? _defaultAvatarPin;
 
+  /// Notifier para avisar quando novos bitmaps de avatar entram no cache.
+  /// A UI pode debounciar e regenerar markers para trocar placeholder -> avatar real.
+  final ValueNotifier<int> _avatarBitmapsVersion = ValueNotifier<int>(0);
+
+  ValueListenable<int> get avatarBitmapsVersion => _avatarBitmapsVersion;
+
+  static const int _maxAvatarPrefetchConcurrent = 4;
+  final Queue<String> _avatarPrefetchQueue = Queue<String>();
+  final Set<String> _avatarPrefetchScheduled = <String>{};
+  int _avatarPrefetchActive = 0;
+
   /// Pré-carrega bitmaps padrão
   /// 
   /// Deve ser chamado antes de gerar markers
@@ -49,12 +89,60 @@ class GoogleEventMarkerService {
     if (_defaultAvatarPin != null) return; // já carregado
 
     try {
+      // AvatarService.defaultAvatarUrl é vazio por design (fallback local).
+      // Gerar placeholder via canvas evita qualquer I/O e elimina o “pisca” do defaultMarker.
       _defaultAvatarPin = await MarkerBitmapGenerator.generateAvatarPinForGoogleMaps(
-        AvatarService.defaultAvatarUrl,
+        '',
+        size: _avatarPinSizePx,
       );
     } catch (e) {
       // Fallback será tratado no momento de usar
     }
+  }
+
+  void _scheduleAvatarPrefetch(String userId) {
+    final avatarBitmapKey = _avatarCacheKey(userId);
+    if (_avatarCache.containsKey(avatarBitmapKey)) return;
+    if (_avatarPrefetchScheduled.contains(userId)) return;
+
+    _avatarPrefetchScheduled.add(userId);
+    _avatarPrefetchQueue.addLast(userId);
+    _pumpAvatarPrefetchQueue();
+  }
+
+  void _pumpAvatarPrefetchQueue() {
+    while (_avatarPrefetchActive < _maxAvatarPrefetchConcurrent && _avatarPrefetchQueue.isNotEmpty) {
+      final userId = _avatarPrefetchQueue.removeFirst();
+      _avatarPrefetchActive++;
+
+      unawaited(() async {
+        try {
+          await _getAvatarPin(userId);
+        } catch (_) {
+          // Best-effort.
+        } finally {
+          _avatarPrefetchActive = (_avatarPrefetchActive - 1).clamp(0, 1 << 30);
+          _avatarPrefetchScheduled.remove(userId);
+          _pumpAvatarPrefetchQueue();
+        }
+      }());
+    }
+  }
+
+  Future<BitmapDescriptor> _getAvatarPinBestEffort(String userId) async {
+    final avatarBitmapKey = _avatarCacheKey(userId);
+    final cached = _avatarCache[avatarBitmapKey];
+    if (cached != null) return cached;
+
+    // Garantir que o placeholder é consistente (sem cair em BitmapDescriptor.defaultMarker).
+    if (_defaultAvatarPin == null) {
+      await preloadDefaultPins();
+    }
+
+    // Não bloquear o primeiro paint do mapa para baixar/decodificar o avatar real.
+    _scheduleAvatarPrefetch(userId);
+
+    return _defaultAvatarPin ?? BitmapDescriptor.defaultMarker;
   }
 
   /// Pré-carrega bitmaps de emojis e avatares para uma lista de eventos
@@ -74,21 +162,34 @@ class GoogleEventMarkerService {
     await Future.wait(events.map((event) async {
       try {
         // Pré-carregar emoji (se não estiver no cache)
-        final emojiKey = '${event.emoji}-${event.id}';
+        final emojiKey = _emojiCacheKey(event.emoji, event.id);
         if (!_emojiCache.containsKey(emojiKey)) {
           final bitmap = await MarkerBitmapGenerator.generateEmojiPinForGoogleMaps(
             event.emoji,
             eventId: event.id,
+            size: _emojiPinSizePx,
           );
           _emojiCache[emojiKey] = bitmap;
           loaded++;
         }
         
         // Pré-carregar avatar (se não estiver no cache)
-        if (!_avatarCache.containsKey(event.createdBy)) {
+        final avatarKey = _avatarCacheKey(event.createdBy);
+        if (!_avatarCache.containsKey(avatarKey)) {
           final avatarUrl = await _avatarService.getAvatarUrl(event.createdBy);
-          final bitmap = await MarkerBitmapGenerator.generateAvatarPinForGoogleMaps(avatarUrl);
-          _avatarCache[event.createdBy] = bitmap;
+          final cacheKey = stableImageCacheKey(avatarUrl);
+          ImageCacheStats.instance.record(
+            category: ImageCacheCategory.avatar,
+            url: avatarUrl,
+            cacheKey: cacheKey,
+          );
+          final bitmap = await MarkerBitmapGenerator.generateAvatarPinForGoogleMaps(
+            avatarUrl,
+            size: _avatarPinSizePx,
+            cacheManager: AvatarImageCache.instance,
+            cacheKey: cacheKey,
+          );
+          _avatarCache[avatarKey] = bitmap;
           loaded++;
         }
       } catch (e) {
@@ -105,7 +206,7 @@ class GoogleEventMarkerService {
 
   /// Gera ou retorna bitmap de emoji do cache
   Future<BitmapDescriptor> _getEmojiPin(String emoji, String eventId) async {
-    final cacheKey = '$emoji-$eventId';
+    final cacheKey = _emojiCacheKey(emoji, eventId);
     if (_emojiCache.containsKey(cacheKey)) {
       return _emojiCache[cacheKey]!;
     }
@@ -113,6 +214,7 @@ class GoogleEventMarkerService {
     final bitmap = await MarkerBitmapGenerator.generateEmojiPinForGoogleMaps(
       emoji,
       eventId: eventId,
+      size: _emojiPinSizePx,
     );
     _emojiCache[cacheKey] = bitmap;
     return bitmap;
@@ -120,16 +222,34 @@ class GoogleEventMarkerService {
 
   /// Gera ou retorna bitmap de avatar do cache
   Future<BitmapDescriptor> _getAvatarPin(String userId) async {
-    if (_avatarCache.containsKey(userId)) {
-      return _avatarCache[userId]!;
+    final avatarBitmapKey = _avatarCacheKey(userId);
+    if (_avatarCache.containsKey(avatarBitmapKey)) {
+      return _avatarCache[avatarBitmapKey]!;
     }
 
     // Buscar URL do avatar
     final avatarUrl = await _avatarService.getAvatarUrl(userId);
 
+    final imageCacheKey = stableImageCacheKey(avatarUrl);
+    ImageCacheStats.instance.record(
+      category: ImageCacheCategory.avatar,
+      url: avatarUrl,
+      cacheKey: imageCacheKey,
+    );
+
     // Gerar bitmap
-    final bitmap = await MarkerBitmapGenerator.generateAvatarPinForGoogleMaps(avatarUrl);
-    _avatarCache[userId] = bitmap;
+    final bitmap = await MarkerBitmapGenerator.generateAvatarPinForGoogleMaps(
+      avatarUrl,
+      size: _avatarPinSizePx,
+      cacheManager: AvatarImageCache.instance,
+      cacheKey: imageCacheKey,
+    );
+
+    final existed = _avatarCache.containsKey(avatarBitmapKey);
+    _avatarCache[avatarBitmapKey] = bitmap;
+    if (!existed) {
+      _avatarBitmapsVersion.value = _avatarBitmapsVersion.value + 1;
+    }
     return bitmap;
   }
 
@@ -154,14 +274,8 @@ class GoogleEventMarkerService {
     
     if (events.isEmpty) return markers;
     
-    // ⚡ OTIMIZAÇÃO: Pré-carregar todos os bitmaps em PARALELO primeiro
-    // Isso é muito mais rápido que carregar sequencialmente
-    await Future.wait(events.map((event) async {
-      await _getEmojiPin(event.emoji, event.id);
-      await _getAvatarPin(event.createdBy);
-    }));
-    
-    debugPrint('⚡ [MarkerService] Bitmaps pré-carregados em ${stopwatch.elapsedMilliseconds}ms');
+    // Não bloquear a UI aguardando download/render de avatares.
+    // O emoji pin é gerado na hora; avatar usa fallback e é pré-carregado em background.
 
     // Contador para z-index único por evento
     // Usando valores NEGATIVOS para ficar ABAIXO do pin do usuário do Google
@@ -184,10 +298,9 @@ class GoogleEventMarkerService {
             position: LatLng(event.lat, event.lng),
             icon: emojiPin,
             anchor: const Offset(0.5, 1.0), // Ancorado no fundo
-            zIndex: baseZIndex.toDouble(), // Negativo - abaixo do pin do usuário
+            zIndexInt: baseZIndex, // Negativo - abaixo do pin do usuário
             onTap: onTap != null ? () {
               debugPrint('🟢 [MarkerService] Emoji marker tapped: ${event.id}');
-              debugPrint('🟢 [MarkerService] Callback exists: ${onTap != null}');
               onTap(event.id);
               debugPrint('🟢 [MarkerService] Callback executed');
             } : null,
@@ -195,7 +308,7 @@ class GoogleEventMarkerService {
         );
 
         // 2. Avatar pin DEPOIS (renderiza em cima do seu emoji, mas abaixo do pin do usuário)
-        final avatarPin = await _getAvatarPin(event.createdBy);
+        final avatarPin = await _getAvatarPinBestEffort(event.createdBy);
 
         markers.add(
           Marker(
@@ -203,10 +316,9 @@ class GoogleEventMarkerService {
             position: LatLng(event.lat, event.lng),
             icon: avatarPin,
             anchor: const Offset(0.5, 0.80), // 8px abaixo do centro (0.08 = 8/100) para subir visualmente
-            zIndex: (baseZIndex + 1).toDouble(), // Negativo - abaixo do pin do usuário
+            zIndexInt: baseZIndex + 1, // Negativo - abaixo do pin do usuário
             onTap: onTap != null ? () {
               debugPrint('🔵 [MarkerService] Avatar marker tapped: ${event.id}');
-              debugPrint('🔵 [MarkerService] Callback exists: ${onTap != null}');
               onTap(event.id);
               debugPrint('🔵 [MarkerService] Callback executed');
             } : null,
@@ -259,17 +371,7 @@ class GoogleEventMarkerService {
 
     debugPrint('🔲 [MarkerService] Gerando markers para ${clusters.length} clusters (zoom: ${zoom.toStringAsFixed(1)})');
     
-    // ⚡ OTIMIZAÇÃO: Pré-carregar todos os bitmaps em PARALELO primeiro
-    // Isso usa o cache singleton - se já foi carregado no AppInitializer, será instantâneo
-    final singleEvents = clusters.where((c) => c.isSingleEvent).map((c) => c.firstEvent).toList();
-    if (singleEvents.isNotEmpty) {
-      await Future.wait(singleEvents.map((event) async {
-        await _getEmojiPin(event.emoji, event.id);
-        await _getAvatarPin(event.createdBy);
-      }));
-    }
-    
-    debugPrint('⚡ [MarkerService] Bitmaps verificados/carregados em ${stopwatch.elapsedMilliseconds}ms');
+    // Não bloquear aguardando avatar/emoji. O cache vai sendo preenchido conforme necessário.
 
     // Contador para z-index único por evento
     // Usando valores NEGATIVOS para ficar ABAIXO do pin do usuário do Google
@@ -299,7 +401,7 @@ class GoogleEventMarkerService {
               position: position,
               icon: emojiPin,
               anchor: const Offset(0.5, 1.0),
-              zIndex: baseZIndex.toDouble(), // Negativo - abaixo do pin do usuário
+              zIndexInt: baseZIndex, // Negativo - abaixo do pin do usuário
               onTap: onSingleTap != null
                   ? () {
                       debugPrint('🟢 [MarkerService] Single marker tapped: ${event.id}');
@@ -309,15 +411,15 @@ class GoogleEventMarkerService {
             ),
           );
 
-          // 2. Avatar pin (camada de cima do par, mas abaixo do pin do usuário) - já está em cache
-          final avatarPin = await _getAvatarPin(event.createdBy);
+          // 2. Avatar pin (camada de cima do par, mas abaixo do pin do usuário) - best-effort
+          final avatarPin = await _getAvatarPinBestEffort(event.createdBy);
           markers.add(
             Marker(
               markerId: MarkerId('event_avatar_${event.id}'),
               position: position,
               icon: avatarPin,
               anchor: const Offset(0.5, 0.80),
-              zIndex: (baseZIndex + 1).toDouble(), // Negativo - abaixo do pin do usuário
+              zIndexInt: baseZIndex + 1, // Negativo - abaixo do pin do usuário
               onTap: onSingleTap != null
                   ? () {
                       debugPrint('🔵 [MarkerService] Single avatar tapped: ${event.id}');
@@ -336,6 +438,7 @@ class GoogleEventMarkerService {
           final clusterPin = await MarkerBitmapGenerator.generateClusterPinForGoogleMaps(
             cluster.representativeEmoji,
             cluster.count,
+            size: _clusterPinSizePx,
           );
 
           markers.add(
@@ -344,7 +447,7 @@ class GoogleEventMarkerService {
               position: cluster.center,
               icon: clusterPin,
               anchor: const Offset(0.5, 0.5),
-              zIndex: clusterZIndex.toDouble(), // Negativo - abaixo do pin do usuário
+              zIndexInt: clusterZIndex, // Negativo - abaixo do pin do usuário
               onTap: onClusterTap != null
                   ? () {
                       debugPrint('🔴 [MarkerService] Cluster tapped: ${cluster.count} eventos');
@@ -386,7 +489,18 @@ class GoogleEventMarkerService {
   }
 
   /// Remove um avatar específico do cache
-  void removeCachedAvatar(String userId) {
-    _avatarCache.remove(userId);
+  Future<void> removeCachedAvatar(String userId) async {
+    _avatarCache.remove(_avatarCacheKey(userId));
+    _avatarService.removeCachedAvatar(userId);
+
+    try {
+      final avatarUrl = await _avatarService.getAvatarUrl(userId, useCache: false);
+      final cacheKey = stableImageCacheKey(avatarUrl);
+      if (cacheKey.trim().isNotEmpty) {
+        await AvatarImageCache.instance.removeFile(cacheKey);
+      }
+    } catch (_) {
+      // Best-effort: se falhar, ao menos limpamos o cache em memória.
+    }
   }
 }

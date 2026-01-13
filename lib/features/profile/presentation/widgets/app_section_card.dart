@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/app/services/localization_service.dart';
 import 'package:partiu/core/services/toast_service.dart';
-import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/features/profile/presentation/viewmodels/app_section_view_model.dart';
 import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 import 'package:partiu/core/helpers/app_helper.dart';
@@ -22,8 +21,11 @@ import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/constants/push_types.dart';
 import 'package:partiu/core/services/push_preferences_service.dart';
 import 'package:partiu/core/managers/session_manager.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:partiu/shared/stores/user_store.dart';
 
 class AppSectionCard extends StatefulWidget {
   const AppSectionCard({super.key});
@@ -96,6 +98,8 @@ class _AppSectionCardState extends State<AppSectionCard> {
           color: Colors.white,
           child: Column(
             children: [
+              _buildMessageButtonSwitch(context, i18n),
+              Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.10)),
               _buildListItem(
                 context,
                 icon: Iconsax.user_remove,
@@ -402,9 +406,8 @@ class _AppSectionCardState extends State<AppSectionCard> {
       
       // Mostra erro ao usuário se o contexto ainda estiver montado
       if (context.mounted) {
-        final i18nToast = AppLocalizations.of(context);
         ToastService.showError(
-          message: i18nToast.translate('error_deleting_account'),
+          message: i18n.translate('error_deleting_account') ?? 'Erro ao excluir conta',
         );
       }
     }
@@ -438,6 +441,54 @@ class _AppSectionCardState extends State<AppSectionCard> {
       await SessionManager.instance.saveUser(newUser);
       
       if (mounted) setState(() {}); // Rebuild UI
+    }
+  }
+
+  Widget _buildMessageButtonSwitch(BuildContext context, LocalizationService i18n) {
+    final userId = AppState.currentUserId;
+    if (userId == null || userId.isEmpty) return const SizedBox.shrink();
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: UserStore.instance.getMessageButtonNotifier(userId),
+      builder: (context, enabled, _) {
+        return _buildSwitchItem(
+          context,
+          icon: Iconsax.message,
+          title: i18n.translate('message_button') ?? 'Botão de mensagem no meu perfil',
+          value: enabled,
+          onChanged: (v) => _updateMessageButtonPreference(userId, v, i18n),
+        );
+      },
+    );
+  }
+
+  Future<void> _updateMessageButtonPreference(
+    String userId,
+    bool enabled,
+    LocalizationService i18n,
+  ) async {
+    // 1. Atualiza UI imediatamente (optimistic update)
+    final notifier = UserStore.instance.getMessageButtonNotifier(userId);
+    final previousValue = notifier.value;
+    notifier.value = enabled;
+    
+    try {
+      // 2. Persiste no Firestore
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .set({'message_button': enabled}, SetOptions(merge: true));
+
+      // Compatibilidade: alguns pontos do app usam a coleção `users` (minúsculo)
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .set({'message_button': enabled}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('❌ [MESSAGE_BUTTON] Erro ao atualizar preferência: $e');
+      // Reverte para valor anterior em caso de erro
+      notifier.value = previousValue;
+      ToastService.showError(message: i18n.translate('error') ?? 'Erro');
     }
   }
   

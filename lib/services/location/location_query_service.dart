@@ -53,6 +53,9 @@ class LocationQueryService {
   /// Filtros atuais
   UserFilterOptions _currentFilters = UserFilterOptions();
 
+  /// Getter para outros componentes usarem os filtros atuais.
+  UserFilterOptions get currentFilters => _currentFilters;
+
   /// Stream controller para usuários
   final _usersStreamController =
       StreamController<List<UserWithDistance>>.broadcast();
@@ -247,12 +250,16 @@ class LocationQueryService {
     // 1. Carregar localização do usuário (para distância no card)
     final userLocation = await _getUserLocation();
 
-    // 2. Calcular um raio suficiente para cobrir o bounds a partir da localização do usuário
-    final radiusKm = _radiusKmToCoverBoundingBox(
-      centerLat: userLocation.latitude,
-      centerLng: userLocation.longitude,
-      boundingBox: boundingBox,
-    );
+    // 2. Definir raio: se o usuário selecionou um raio nos filtros, ele deve
+    // realmente restringir os resultados. Caso contrário, usar um raio grande
+    // o suficiente para cobrir o bounds (bounds como fonte de verdade).
+    final radiusKm = (activeFilters.radiusKm != null)
+        ? _normalizeRadiusKm(activeFilters.radiusKm!)
+        : _radiusKmToCoverBoundingBox(
+            centerLat: userLocation.latitude,
+            centerLng: userLocation.longitude,
+            boundingBox: boundingBox,
+          );
 
     // 3. Chamar Cloud Function com o bounding box fornecido
     final result = await _cloudService.getPeopleNearby(

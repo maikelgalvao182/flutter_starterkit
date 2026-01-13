@@ -3,7 +3,6 @@ import 'package:partiu/common/state/app_state.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/features/subscription/domain/subscription_plan.dart';
 import 'package:partiu/features/subscription/presentation/controllers/subscription_purchase_controller.dart';
-import 'package:partiu/features/subscription/presentation/widgets/subscription_active_badge.dart';
 import 'package:partiu/features/subscription/presentation/widgets/subscription_benefits_list.dart';
 import 'package:partiu/features/subscription/presentation/widgets/subscription_footer.dart';
 import 'package:partiu/features/subscription/presentation/widgets/subscription_header.dart';
@@ -186,9 +185,6 @@ class _VipBottomSheetState extends State<VipBottomSheet> {
 
   /// Constrói conteúdo principal do dialog
   Widget _buildDialogContent(AppLocalizations i18n) {
-    final customerInfo = SimpleRevenueCatService.lastCustomerInfo;
-    final hasVipAccess = customerInfo != null && SimpleRevenueCatService.hasAccess(customerInfo);
-    
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
@@ -217,10 +213,6 @@ class _VipBottomSheetState extends State<VipBottomSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                        if (hasVipAccess)
-                          SubscriptionActiveBadge(
-                            expirationDate: customerInfo.latestExpirationDate,
-                          ),
                         if (!_isInitialized || _controller.isLoading)
                           const SubscriptionLoadingState()
                         else if (_controller.error != null)

@@ -7,6 +7,7 @@ import 'package:partiu/core/models/user.dart' as app_user;
 import 'package:partiu/core/services/location_service.dart';
 import 'package:partiu/core/utils/interests_helper.dart';
 import 'package:partiu/features/home/data/models/map_bounds.dart';
+import 'package:partiu/services/location/location_query_service.dart';
 import 'package:partiu/services/location/people_cloud_service.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/shared/stores/user_store.dart';
@@ -25,6 +26,7 @@ class PeopleMapDiscoveryService {
 
   final PeopleCloudService _cloudService = PeopleCloudService();
   final LocationService _locationService = LocationService();
+  final LocationQueryService _locationQueryService = LocationQueryService();
   final UserRepository _userRepository = UserRepository();
 
   /// Lista de pessoas próximas (similar a MapDiscoveryService.nearbyEvents)
@@ -32,6 +34,17 @@ class PeopleMapDiscoveryService {
   
   final ValueNotifier<int> nearbyPeopleCount = ValueNotifier<int>(0);
   final ValueNotifier<MapBounds?> currentBounds = ValueNotifier<MapBounds?>(null);
+
+  /// Indica se o viewport está em um zoom "válido" para descoberta de pessoas.
+  ///
+  /// Regras:
+  /// - true: zoom próximo (bbox faz sentido → podemos buscar/mostrar pessoas)
+  /// - false: zoom muito afastado (custo alto + UX ruim → UI deve ficar inativa)
+  final ValueNotifier<bool> isViewportActive = ValueNotifier<bool>(false);
+
+  /// Estados para a UI (FindPeopleScreen/PeopleButton)
+  final ValueNotifier<bool> isLoading = ValueNotifier<bool>(false);
+  final ValueNotifier<Object?> lastError = ValueNotifier<Object?>(null);
 
   static const Duration cacheTTL = Duration(seconds: 10);
   static const Duration debounceTime = Duration(milliseconds: 500);
@@ -43,11 +56,34 @@ class PeopleMapDiscoveryService {
   int _cachedCount = 0;
   DateTime _lastFetchTime = DateTime.fromMillisecondsSinceEpoch(0);
   String? _lastQuadkey;
+  String? _lastFiltersSignature;
 
-  bool _shouldUseCache(String quadkey) {
+  String _buildFiltersSignature(UserFilterOptions filters) {
+    final interests = (filters.interests ?? const <String>[]).toList()..sort();
+    return '${filters.gender ?? ''}|${filters.minAge ?? ''}|${filters.maxAge ?? ''}|${filters.isVerified ?? ''}|${filters.sexualOrientation ?? ''}|${filters.radiusKm ?? ''}|${interests.join(',')}';
+  }
+
+  bool _shouldUseCache(String quadkey, String filtersSignature) {
     if (_lastQuadkey != quadkey) return false;
+    if (_lastFiltersSignature != filtersSignature) return false;
     final elapsed = DateTime.now().difference(_lastFetchTime);
     return elapsed < cacheTTL;
+  }
+
+  void setViewportActive(bool active) {
+    if (isViewportActive.value == active) return;
+    isViewportActive.value = active;
+
+    if (!active) {
+      // Limpa para evitar valores stale quando o usuário dá zoom out.
+      _debounceTimer?.cancel();
+      _pendingBounds = null;
+      currentBounds.value = null;
+      nearbyPeopleCount.value = 0;
+      nearbyPeople.value = const [];
+      isLoading.value = false;
+      lastError.value = null;
+    }
   }
 
   Future<void> loadPeopleCountInBounds(MapBounds bounds) async {
@@ -88,12 +124,18 @@ class PeopleMapDiscoveryService {
 
   Future<void> _executeQuery(MapBounds bounds) async {
     debugPrint('🔍 [PeopleMapDiscovery] _executeQuery iniciado...');
+    isLoading.value = true;
+    lastError.value = null;
     final quadkey = bounds.toQuadkey();
 
-    if (_shouldUseCache(quadkey)) {
+    final activeFilters = _locationQueryService.currentFilters;
+    final filtersSignature = _buildFiltersSignature(activeFilters);
+
+    if (_shouldUseCache(quadkey, filtersSignature)) {
       debugPrint('📦 [PeopleMapDiscovery] Usando cache: ${_cachedPeople.length} pessoas');
       nearbyPeople.value = _cachedPeople;
       nearbyPeopleCount.value = _cachedCount;
+      isLoading.value = false;
       return;
     }
 
@@ -102,12 +144,14 @@ class PeopleMapDiscoveryService {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         debugPrint('⚠️ [PeopleMapDiscovery] Usuário não autenticado');
+        isLoading.value = false;
         return;
       }
 
       final userLocation = await _locationService.getCurrentLocation();
       if (userLocation == null) {
         debugPrint('⚠️ [PeopleMapDiscovery] Localização do usuário não disponível');
+        isLoading.value = false;
         return;
       }
 
@@ -115,11 +159,13 @@ class PeopleMapDiscoveryService {
       // não por um raio fixo (ex.: 30km). Como o PeopleCloudService ainda
       // filtra por radiusKm ao calcular distâncias, aqui calculamos um raio
       // grande o suficiente para cobrir todo o bounding box a partir do usuário.
-      final radiusKm = _radiusKmToCoverBoundsFromUser(
-        bounds: bounds,
-        userLat: userLocation.latitude,
-        userLng: userLocation.longitude,
-      );
+      final radiusKm = (activeFilters.radiusKm != null)
+          ? (activeFilters.radiusKm!).clamp(1.0, 20000.0)
+          : _radiusKmToCoverBoundsFromUser(
+              bounds: bounds,
+              userLat: userLocation.latitude,
+              userLng: userLocation.longitude,
+            );
 
       debugPrint('🔍 [PeopleMapDiscovery] Chamando Cloud Function...');
       debugPrint('   📍 User: (${userLocation.latitude}, ${userLocation.longitude})');
@@ -136,6 +182,14 @@ class PeopleMapDiscoveryService {
           'minLng': bounds.minLng,
           'maxLng': bounds.maxLng,
         },
+        filters: UserCloudFilters(
+          gender: activeFilters.gender,
+          minAge: activeFilters.minAge,
+          maxAge: activeFilters.maxAge,
+          isVerified: activeFilters.isVerified,
+          interests: activeFilters.interests,
+          sexualOrientation: activeFilters.sexualOrientation,
+        ),
       );
 
       debugPrint('☁️ [PeopleMapDiscovery] Cloud Function retornou ${result.users.length} usuários');
@@ -189,14 +243,25 @@ class PeopleMapDiscoveryService {
       }
 
       // ✅ Pré-carregar avatares no UserStore para o StableAvatar renderizar sem delay.
-      // Mantém o impacto controlado: apenas os primeiros 20 (itens mais prováveis de aparecer).
+      // Estratégia viewport-first:
+      // - Só tenta aquecer cache quando a lista atual do viewport chega
+      // - Limita concorrência global via fila no UserStore
+      // - Prioriza usuários mais próximos
       final userStore = UserStore.instance;
-      final preloadLimit = people.length > 20 ? 20 : people.length;
-      for (final user in people.take(preloadLimit)) {
-        final photoUrl = user.photoUrl;
-        if (photoUrl.isNotEmpty) {
-          userStore.preloadAvatar(user.userId, photoUrl);
-        }
+      final usersWithPhoto = people.where((u) => u.photoUrl.isNotEmpty).toList()
+        ..sort((a, b) {
+          final distanceA = a.distance ?? double.infinity;
+          final distanceB = b.distance ?? double.infinity;
+          return distanceA.compareTo(distanceB);
+        });
+
+      const maxViewportPreload = 60;
+      final preloadLimit = usersWithPhoto.length > maxViewportPreload
+          ? maxViewportPreload
+          : usersWithPhoto.length;
+
+      for (final user in usersWithPhoto.take(preloadLimit)) {
+        userStore.preloadAvatar(user.userId, user.photoUrl);
       }
 
       final adjustedTotalCandidates = selfIncludedInPage
@@ -207,15 +272,20 @@ class PeopleMapDiscoveryService {
       _cachedCount = adjustedTotalCandidates;
       _lastFetchTime = DateTime.now();
       _lastQuadkey = quadkey;
+      _lastFiltersSignature = filtersSignature;
 
       debugPrint('📋 [PeopleMapDiscovery] Atualizando nearbyPeople com ${people.length} pessoas');
       nearbyPeople.value = people;
       nearbyPeopleCount.value = adjustedTotalCandidates;
 
+      isLoading.value = false;
+
       debugPrint('✅ [PeopleMapDiscovery] ${people.length} pessoas encontradas (total: $adjustedTotalCandidates)');
     } catch (e, stack) {
       debugPrint('⚠️ [PeopleMapDiscovery] Falha ao buscar pessoas em bounds: $e');
       debugPrint('   Stack: $stack');
+      lastError.value = e;
+      isLoading.value = false;
     }
   }
 
@@ -281,6 +351,7 @@ class PeopleMapDiscoveryService {
     _cachedCount = 0;
     _lastFetchTime = DateTime.fromMillisecondsSinceEpoch(0);
     _lastQuadkey = null;
+    _lastFiltersSignature = null;
   }
 
   void dispose() {

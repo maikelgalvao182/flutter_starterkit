@@ -39,7 +39,23 @@ class _GlimpseDropdownState extends State<GlimpseDropdown> {
   @override
   void initState() {
     super.initState();
-    _selectedValue = widget.selectedValue;
+    final selected = widget.selectedValue;
+    _selectedValue = (selected != null && widget.items.contains(selected)) ? selected : null;
+  }
+
+  @override
+  void didUpdateWidget(covariant GlimpseDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Se o valor selecionado ou a lista mudou, revalida para evitar
+    // assert do CustomDropdown (initialItem precisa existir em items).
+    if (oldWidget.selectedValue != widget.selectedValue || oldWidget.items != widget.items) {
+      final selected = widget.selectedValue;
+      final nextValue = (selected != null && widget.items.contains(selected)) ? selected : null;
+      if (_selectedValue != nextValue) {
+        _selectedValue = nextValue;
+      }
+    }
   }
 
   @override
@@ -127,7 +143,9 @@ class _GlimpseDropdownState extends State<GlimpseDropdown> {
                 ),
                 hintText: widget.hintText,
                 items: widget.items,
-                initialItem: _selectedValue,
+                initialItem: (_selectedValue != null && widget.items.contains(_selectedValue))
+                    ? _selectedValue
+                    : null,
                 listItemBuilder: widget.itemBuilder != null
                     ? (context, item, isSelected, onItemSelect) {
                         return Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:partiu/features/home/data/repositories/event_repository.dart';
 import 'package:partiu/features/home/data/repositories/event_application_repository.dart';
 
@@ -69,7 +70,10 @@ class PlaceCardController extends ChangeNotifier {
         _loaded = true;
         _error = null;
         notifyListeners();
-        debugPrint('✅ PlaceCardController: Dados totalmente pré-carregados');
+        AppLogger.controller(
+          'PlaceCardController: dados totalmente pré-carregados',
+          tag: 'PLACE_CARD',
+        );
         return;
       }
       
@@ -83,8 +87,11 @@ class PlaceCardController extends ChangeNotifier {
 
         _visitors = results[0] as List<Map<String, dynamic>>;
         _totalVisitorsCount = results[1] as int;
-        
-        debugPrint('👥 PlaceCardController: ${_visitors.length} visitantes carregados, total: $_totalVisitorsCount');
+
+        AppLogger.controller(
+          'PlaceCardController: ${_visitors.length} visitantes carregados, total: $_totalVisitorsCount',
+          tag: 'PLACE_CARD',
+        );
       } else {
         // Carregar tudo se não tiver dados pré-carregados
         final results = await Future.wait([
@@ -107,25 +114,46 @@ class PlaceCardController extends ChangeNotifier {
         
         // Converter photoReferences para List<String>
         final photoRefs = locationData['photoReferences'] as List<dynamic>?;
-        debugPrint('📸 PlaceCardController: photoReferences = $photoRefs');
+        if (AppLogger.verbose) {
+          AppLogger.controller(
+            'PlaceCardController: photoReferences = $photoRefs',
+            tag: 'PLACE_CARD',
+          );
+        }
         
         if (photoRefs != null) {
           _photoUrls = photoRefs.map((e) => e.toString()).toList();
-          debugPrint('📸 PlaceCardController: _photoUrls convertidas = $_photoUrls');
+          if (AppLogger.verbose) {
+            AppLogger.controller(
+              'PlaceCardController: _photoUrls convertidas = $_photoUrls',
+              tag: 'PLACE_CARD',
+            );
+          }
         } else {
-          debugPrint('⚠️ PlaceCardController: photoReferences é null');
+          AppLogger.warning(
+            'PlaceCardController: photoReferences é null',
+            tag: 'PLACE_CARD',
+          );
         }
 
-        debugPrint('👥 PlaceCardController: ${_visitors.length} visitantes carregados, total: $_totalVisitorsCount');
+        AppLogger.controller(
+          'PlaceCardController: ${_visitors.length} visitantes carregados, total: $_totalVisitorsCount',
+          tag: 'PLACE_CARD',
+        );
       }
 
       _loaded = true;
       _error = null;
       notifyListeners();
-    } catch (e) {
+    } catch (e, stackTrace) {
       _error = 'Erro ao carregar localização: $e';
       _loaded = true;
-      debugPrint('❌ PlaceCardController: $_error');
+      AppLogger.error(
+        'PlaceCardController: $_error',
+        tag: 'PLACE_CARD',
+        error: e,
+        stackTrace: stackTrace,
+      );
       notifyListeners();
     }
   }

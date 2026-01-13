@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:partiu/features/home/create_flow/create_flow_coordinator.dart';
 import 'package:partiu/features/home/presentation/screens/discover_screen.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/location_picker_page_refactored.dart';
+import 'package:partiu/features/home/presentation/services/onboarding_service.dart';
 import 'package:partiu/features/home/presentation/widgets/category_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/create_button.dart';
 import 'package:partiu/features/home/presentation/widgets/create_drawer.dart';
 import 'package:partiu/features/home/presentation/widgets/list_button.dart';
 import 'package:partiu/features/home/presentation/widgets/list_drawer.dart';
+import 'package:partiu/features/home/presentation/widgets/liquid_swipe_onboarding.dart';
 import 'package:partiu/features/home/presentation/widgets/navigate_to_user_button.dart';
 import 'package:partiu/features/home/presentation/widgets/people_button.dart';
 import 'package:partiu/features/home/presentation/screens/find_people_screen.dart';
@@ -153,6 +155,48 @@ class _DiscoverTabState extends State<DiscoverTab> {
     );
   }
 
+  /// Chamado quando o primeiro scroll no mapa ocorre
+  void _onFirstMapScroll() async {
+    debugPrint('🚀 [DiscoverTab] _onFirstMapScroll chamado');
+    debugPrint('   mounted: $mounted');
+    
+    // Verificar se deve mostrar o onboarding
+    debugPrint('   🔍 Verificando shouldShowOnboarding...');
+    final shouldShow = await OnboardingService.instance.shouldShowOnboarding();
+    debugPrint('   📊 shouldShow: $shouldShow');
+    debugPrint('   mounted após await: $mounted');
+    
+    if (shouldShow && mounted) {
+      debugPrint('   ✅ Iniciando navegação para LiquidSwipeOnboarding...');
+      
+      try {
+        // Navegar para o onboarding em fullscreen ao invés de trocar o widget tree
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (context) {
+              debugPrint('   🎨 [DiscoverTab] MaterialPageRoute.builder chamado');
+              return LiquidSwipeOnboarding(
+                onComplete: () {
+                  debugPrint('   ✅ [DiscoverTab] Onboarding completado, fechando...');
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            },
+          ),
+        );
+        debugPrint('   ✅ [DiscoverTab] Navegação para onboarding concluída');
+      } catch (e, stackTrace) {
+        debugPrint('   ❌ [DiscoverTab] Erro ao mostrar onboarding: $e');
+        debugPrint('   Stack: $stackTrace');
+      }
+    } else {
+      debugPrint('   ⏭️ Não mostrando onboarding (shouldShow: $shouldShow, mounted: $mounted)');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
@@ -163,6 +207,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
         DiscoverScreen(
           key: _discoverKey,
           mapViewModel: widget.mapViewModel,
+          onFirstMapScroll: _onFirstMapScroll,
         ),
         
         // Botão "Perto de você" (canto superior direito)

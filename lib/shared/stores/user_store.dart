@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:partiu/core/services/cache/cache_key_utils.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
 import 'package:partiu/core/debug/debug_flags.dart';
 import 'package:flutter/foundation.dart';
 // Uint8List também é exportado por foundation
@@ -97,6 +101,14 @@ class UserStore {
   UserStore._();
   static final instance = UserStore._();
 
+  // ✅ Fila global para evitar tempestade de downloads de avatar
+  // (conexões simultâneas demais -> "connection closed" + risco de OOM/jank)
+  final _AvatarPreloadQueue _avatarPreloadQueue = _AvatarPreloadQueue(
+    maxConcurrent: 4,
+    perItemTimeout: const Duration(seconds: 10),
+    maxAttempts: 3,
+  );
+
   // Cache de entries completas
   final Map<String, UserEntry> _users = {};
   
@@ -115,6 +127,7 @@ class UserStore {
   final Map<String, ValueNotifier<List<String>?>> _interestsNotifiers = {};
   final Map<String, ValueNotifier<String?>> _languagesNotifiers = {};
   final Map<String, ValueNotifier<String?>> _instagramNotifiers = {};
+  final Map<String, ValueNotifier<bool>> _messageButtonNotifiers = {};
   // Notifiers para campos do wizard foram removidos pois não são utilizados atualmente
   // Podem ser adicionados de volta quando necessário
   
@@ -245,6 +258,18 @@ class UserStore {
     _ensureListening(userId);
     return _bioNotifiers.putIfAbsent(userId, () {
       return ValueNotifier<String?>(_users[userId]?.bio);
+    });
+  }
+
+  /// ✅ Preferência: exibir botão de mensagem no perfil
+  ///
+  /// Campo do Firestore: `message_button` (bool)
+  /// Default: true (usuários legados sem o campo)
+  ValueNotifier<bool> getMessageButtonNotifier(String userId) {
+    if (userId.isEmpty) return ValueNotifier<bool>(true);
+    _ensureListening(userId);
+    return _messageButtonNotifiers.putIfAbsent(userId, () {
+      return ValueNotifier<bool>(true);
     });
   }
 
@@ -384,7 +409,18 @@ class UserStore {
       return;
     }
     
-    final provider = CachedNetworkImageProvider(avatarUrl);
+    final cacheKey = stableImageCacheKey(avatarUrl);
+    ImageCacheStats.instance.record(
+      category: ImageCacheCategory.avatar,
+      url: avatarUrl,
+      cacheKey: cacheKey,
+    );
+
+    final provider = CachedNetworkImageProvider(
+      avatarUrl,
+      cacheManager: AvatarImageCache.instance,
+      cacheKey: cacheKey,
+    );
 
     if (!_users.containsKey(userId)) {
       _users[userId] = UserEntry(
@@ -413,26 +449,54 @@ class UserStore {
       _avatarNotifiers[userId] = ValueNotifier<ImageProvider>(provider);
     }
 
-    // ✅ Warm-up do ImageCache (sem precisar de BuildContext)
-    // Isso dispara o download/resolução agora, para o StableAvatar renderizar rápido.
-    try {
-      final stream = provider.resolve(ImageConfiguration.empty);
-      late final ImageStreamListener listener;
-      listener = ImageStreamListener(
-        (imageInfo, synchronousCall) {
-          stream.removeListener(listener);
-        },
-        onError: (error, stackTrace) {
-          stream.removeListener(listener);
-          debugPrint('⚠️ [UserStore] Falha ao preload avatar ($userId): $error');
-        },
-      );
-      stream.addListener(listener);
-    } catch (e) {
-      debugPrint('⚠️ [UserStore] Erro ao iniciar preload do avatar ($userId): $e');
-    }
-    
-    _avatarInvalidationNotifier.value = userId;
+    // ✅ Warm-up controlado via fila (concorrência limitada + retry/backoff + timeout)
+    // Evita disparar dezenas/centenas de downloads simultâneos.
+    _avatarPreloadQueue.enqueue(
+      key: '$userId::$avatarUrl',
+      task: () async {
+        await _warmUpAvatarProvider(
+          userId: userId,
+          provider: provider,
+        );
+
+        // Só invalida (mapa) quando o avatar realmente ficou disponível no cache.
+        _avatarInvalidationNotifier.value = userId;
+      },
+    );
+  }
+
+  /// Cancela (best-effort) preloads pendentes/retentativas de avatar.
+  /// Útil quando o usuário está interagindo com o mapa (pan/zoom).
+  void cancelAvatarPreloads() {
+    _avatarPreloadQueue.cancelAll();
+  }
+
+  Future<void> _warmUpAvatarProvider({
+    required String userId,
+    required CachedNetworkImageProvider provider,
+  }) async {
+    // Dispara resolução/bytes no cache sem depender de BuildContext.
+    final stream = provider.resolve(ImageConfiguration.empty);
+    final completer = Completer<void>();
+
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (imageInfo, synchronousCall) {
+        stream.removeListener(listener);
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      },
+      onError: (error, stackTrace) {
+        stream.removeListener(listener);
+        if (!completer.isCompleted) {
+          completer.completeError(error, stackTrace);
+        }
+      },
+    );
+
+    stream.addListener(listener);
+    await completer.future;
   }
 
   /// Preload nome do usuário (útil para otimização)
@@ -617,6 +681,15 @@ class UserStore {
     // Idiomas (string comma-separated)
     final languages = userData['languages'] as String?;
 
+    // Botão de mensagem no perfil (default true)
+    dynamic rawMessageButton = userData['message_button'];
+    bool messageButtonEnabled = true;
+    if (rawMessageButton is bool) {
+      messageButtonEnabled = rawMessageButton;
+    } else if (rawMessageButton is String) {
+      messageButtonEnabled = rawMessageButton.toLowerCase() == 'true';
+    }
+
     // Birthdate e idade
     int? age;
     final birthDay = userData['birthDay'] as int?;
@@ -778,6 +851,11 @@ class UserStore {
       if (oldEntry == null || oldEntry.instagram != newEntry.instagram) {
         _instagramNotifiers[userId]?.value = newEntry.instagram;
       }
+
+      final messageButtonNotifier = _messageButtonNotifiers[userId];
+      if (messageButtonNotifier != null && messageButtonNotifier.value != messageButtonEnabled) {
+        messageButtonNotifier.value = messageButtonEnabled;
+      }
     }
     
     // 🛡️ PROTEÇÃO: Se estamos durante build phase, adia para próximo frame
@@ -860,6 +938,9 @@ class UserStore {
     
     _instagramNotifiers[userId]?.dispose();
     _instagramNotifiers.remove(userId);
+
+    _messageButtonNotifiers[userId]?.dispose();
+    _messageButtonNotifiers.remove(userId);
     
     _users.remove(userId);
   }
@@ -927,7 +1008,108 @@ class UserStore {
       notifier.dispose();
     }
     _countryNotifiers.clear();
+
+    for (final notifier in _messageButtonNotifiers.values) {
+      notifier.dispose();
+    }
+    _messageButtonNotifiers.clear();
   }
+}
+
+class _AvatarPreloadQueue {
+  _AvatarPreloadQueue({
+    required int maxConcurrent,
+    required Duration perItemTimeout,
+    required int maxAttempts,
+  })  : _maxConcurrent = maxConcurrent.clamp(1, 6),
+        _perItemTimeout = perItemTimeout,
+        _maxAttempts = maxAttempts.clamp(1, 3);
+
+  final int _maxConcurrent;
+  final Duration _perItemTimeout;
+  final int _maxAttempts;
+
+  final Queue<_AvatarPreloadTask> _queue = Queue<_AvatarPreloadTask>();
+  final Set<String> _enqueuedKeys = <String>{};
+
+  int _inFlight = 0;
+  int _generation = 0;
+
+  void enqueue({required String key, required Future<void> Function() task}) {
+    if (_enqueuedKeys.contains(key)) return;
+    _enqueuedKeys.add(key);
+    _queue.add(_AvatarPreloadTask(key: key, run: task, generation: _generation));
+    _pump();
+  }
+
+  void cancelAll() {
+    _generation++;
+    _queue.clear();
+    _enqueuedKeys.clear();
+  }
+
+  void _pump() {
+    while (_inFlight < _maxConcurrent && _queue.isNotEmpty) {
+      final next = _queue.removeFirst();
+      _inFlight++;
+      _runTask(next);
+    }
+  }
+
+  Future<void> _runTask(_AvatarPreloadTask task) async {
+    try {
+      // Se foi cancelado depois de enfileirar, nem tenta.
+      if (task.generation != _generation) {
+        return;
+      }
+
+      final backoff = <Duration>[
+        const Duration(milliseconds: 500),
+        const Duration(seconds: 1),
+        const Duration(seconds: 2),
+      ];
+
+      Object? lastError;
+      for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
+        if (task.generation != _generation) {
+          return;
+        }
+
+        try {
+          await task.run().timeout(_perItemTimeout);
+          return;
+        } catch (e) {
+          lastError = e;
+          if (attempt >= _maxAttempts) {
+            break;
+          }
+
+          final delay = backoff[(attempt - 1).clamp(0, backoff.length - 1)];
+          await Future.delayed(delay);
+        }
+      }
+
+      if (kDebugMode && lastError != null) {
+        debugPrint('⚠️ [UserStore] Preload avatar falhou (${task.key}): $lastError');
+      }
+    } finally {
+      _enqueuedKeys.remove(task.key);
+      _inFlight = (_inFlight - 1).clamp(0, 1 << 30);
+      _pump();
+    }
+  }
+}
+
+class _AvatarPreloadTask {
+  const _AvatarPreloadTask({
+    required this.key,
+    required this.run,
+    required this.generation,
+  });
+
+  final String key;
+  final Future<void> Function() run;
+  final int generation;
 }
 
 // ========== COMPATIBILITY ALIAS ==========

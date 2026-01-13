@@ -7,6 +7,7 @@ import 'package:partiu/features/profile/presentation/controllers/profile_visits_
 import 'package:partiu/features/home/presentation/widgets/user_card.dart';
 import 'package:partiu/features/home/presentation/widgets/user_card_shimmer.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/features/subscription/services/vip_access_service.dart';
 
 /// Tela para exibir as visitas ao perfil do usuário
 /// 
@@ -30,8 +31,22 @@ class _ProfileVisitsScreenState extends State<ProfileVisitsScreen> {
   @override
   void initState() {
     super.initState();
-    final userId = AppState.currentUserId ?? '';
-    ProfileVisitsController.instance.watchUser(userId);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final hasAccess = await VipAccessService.checkAccessOrShowDialog(
+        context,
+        source: 'profile_visits',
+      );
+
+      if (!hasAccess) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        return;
+      }
+
+      final userId = AppState.currentUserId ?? '';
+      ProfileVisitsController.instance.watchUser(userId);
+    });
   }
   
   @override

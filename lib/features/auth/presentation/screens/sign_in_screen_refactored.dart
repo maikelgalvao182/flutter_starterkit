@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:partiu/core/constants/constants.dart';
-import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/text_styles.dart';
 import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
@@ -116,6 +115,15 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                   // Buttons fixed at bottom
                   Column(
                     children: [
+                    // Logo
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Image.asset(
+                        'assets/images/logo_branca.png',
+                        height: 32,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                     // Title and subtitle
                     Padding(
                       padding: const EdgeInsets.only(left: 25, right: 25, bottom: 12),
@@ -198,7 +206,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                   error.message?.contains('cancelled') == true ||
                                   error.code == 'sign_in_canceled') {
                                 // User canceled sign-in
-                                final i18n = AppLocalizations.of(context)!;
+                                final i18n = AppLocalizations.of(context);
                                 ToastService.showError(
                                   message: i18n.translate('sign_in_canceled_message'),
                                 );
@@ -295,7 +303,7 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                                   error.code == 'sign_in_canceled' ||
                                   error.code == 'network_error') {
                                 // User canceled sign-in or network issues
-                                final i18n = AppLocalizations.of(context)!;
+                                final i18n = AppLocalizations.of(context);
                                 ToastService.showError(
                                   message: i18n.translate('sign_in_canceled_message'),
                                 );
@@ -359,7 +367,47 @@ class SignInScreenRefactoredState extends State<SignInScreenRefactored> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 60),
+                    /// Sign in with Email (outline)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 8, 15, 5),
+                      child: SizedBox(
+                        width: double.maxFinite,
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: _viewModel.isLoading
+                              ? null
+                              : () {
+                                  context.push(AppRoutes.emailAuth);
+                                },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.email_outlined, size: 18, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                _i18n.translate('sign_in_with_email').isNotEmpty
+                                    ? _i18n.translate('sign_in_with_email')
+                                    : 'Continue with Email',
+                                style: const TextStyle(
+                                  fontFamily: FONT_PLUS_JAKARTA_SANS,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
 
                       ],
                     ),

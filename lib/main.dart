@@ -229,6 +229,7 @@ class AppRoot extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
+        fontFamily: FONT_PLUS_JAKARTA_SANS,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           elevation: 0,

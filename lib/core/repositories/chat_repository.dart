@@ -111,6 +111,7 @@ class ChatRepository implements IChatRepository {
       print('🔍 [CHAT DEBUG] Message Path: EventChats/$eventId/Messages/${messageRef.id}');
       
       await messageRef.set({
+        'is_deleted': false,
         'sender_id': senderId,
         'receiver_id': null, // ✅ Event Chat: receiver_id must be null
         'user_id': senderId, // Compatibilidade com modelo Message
@@ -136,12 +137,21 @@ class ChatRepository implements IChatRepository {
     
     final batch = _firestore.batch();
 
+    // ✅ Gerar um ID único e reutilizar no sender + receiver.
+    // Isso permite reply consistente e deleção "para todos" via Cloud Function.
+    final sharedMessageId = _firestore
+      .collection(C_MESSAGES)
+      .doc(senderId)
+      .collection(receiverId)
+      .doc()
+      .id;
+
     // Mensagem no documento do sender
     final senderMsgRef = _firestore
-        .collection(C_MESSAGES)
-        .doc(senderId)
-        .collection(receiverId)
-        .doc();
+      .collection(C_MESSAGES)
+      .doc(senderId)
+      .collection(receiverId)
+      .doc(sharedMessageId);
     
     print('🔍 [CHAT DEBUG] Sender Message Path: Messages/$senderId/$receiverId/${senderMsgRef.id}');
 
@@ -149,6 +159,7 @@ class ChatRepository implements IChatRepository {
     final displayText = textMsg.isEmpty && type == 'image' ? '📷 Imagem' : textMsg;
 
     batch.set(senderMsgRef, {
+      'is_deleted': false,
       'sender_id': senderId,
       'receiver_id': receiverId,
       'user_id': senderId, // ID do dono da subcoleção
@@ -156,6 +167,7 @@ class ChatRepository implements IChatRepository {
       'message': displayText, // ✅ Campo principal
       'message_text': displayText, // Compatibilidade
       'message_img_link': imgLink,
+      'global_id': sharedMessageId,
       'timestamp': timestamp,
       'message_read': true, // Sender marca como lido
       // 🆕 Dados de reply (se houver)
@@ -164,14 +176,15 @@ class ChatRepository implements IChatRepository {
 
     // Mensagem no documento do receiver
     final receiverMsgRef = _firestore
-        .collection(C_MESSAGES)
-        .doc(receiverId)
-        .collection(senderId)
-        .doc();
+      .collection(C_MESSAGES)
+      .doc(receiverId)
+      .collection(senderId)
+      .doc(sharedMessageId);
     
     print('🔍 [CHAT DEBUG] Receiver Message Path: Messages/$receiverId/$senderId/${receiverMsgRef.id}');
 
     batch.set(receiverMsgRef, {
+      'is_deleted': false,
       'sender_id': senderId,
       'receiver_id': receiverId,
       'user_id': receiverId, // ID do dono da subcoleção
@@ -179,6 +192,7 @@ class ChatRepository implements IChatRepository {
       'message': displayText, // ✅ Campo principal (usa displayText definido acima)
       'message_text': displayText, // Compatibilidade
       'message_img_link': imgLink,
+      'global_id': sharedMessageId,
       'timestamp': timestamp,
       'message_read': isRead, // Receiver usa o parâmetro isRead
       // 🆕 Dados de reply (se houver)
@@ -200,6 +214,9 @@ class ChatRepository implements IChatRepository {
       'fullName': userFullName,
       MESSAGE_TYPE: type,
       LAST_MESSAGE: displayText, // ✅ Usa displayText para mostrar "📷 Imagem" se for imagem
+      'lastMessageId': sharedMessageId,
+      'lastMessageAt': timestamp,
+      'last_message_timestamp': timestamp,
       MESSAGE_READ: true,
       TIMESTAMP: timestamp,
     }, SetOptions(merge: true));
@@ -220,6 +237,9 @@ class ChatRepository implements IChatRepository {
       'fullName': currentUser?.userFullname ?? '',
       MESSAGE_TYPE: type,
       LAST_MESSAGE: displayText, // ✅ Usa displayText para mostrar "📷 Imagem" se for imagem
+      'lastMessageId': sharedMessageId,
+      'lastMessageAt': timestamp,
+      'last_message_timestamp': timestamp,
       MESSAGE_READ: isRead,
       'unread_count': FieldValue.increment(1),
       TIMESTAMP: timestamp,
@@ -335,7 +355,11 @@ class ChatRepository implements IChatRepository {
       final ref = _storage.ref().child('chat_images').child(fileName);
       
       print('🖼️ [CHAT DEBUG] Starting upload to Storage: $fileName');
-      await ref.putFile(compressed);
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        cacheControl: 'private,max-age=31536000,immutable',
+      );
+      await ref.putFile(compressed, metadata);
       print('🖼️ [CHAT DEBUG] Upload complete, getting download URL...');
       
       final imageUrl = await ref.getDownloadURL();

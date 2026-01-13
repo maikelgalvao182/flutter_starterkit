@@ -1,24 +1,18 @@
 import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/constants/text_styles.dart';
-import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/config/dependency_provider.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
-import 'package:partiu/features/auth/presentation/screens/blocked_account_screen_router.dart';
 import 'package:partiu/features/auth/presentation/controllers/email_auth_view_model.dart';
 import 'package:partiu/features/auth/presentation/controllers/sign_in_view_model.dart';
-import 'package:partiu/features/auth/presentation/screens/signup_wizard_screen.dart';
 import 'package:partiu/shared/widgets/glimpse_signup_layout.dart';
-import 'package:partiu/features/home/presentation/screens/home_screen_refactored.dart';
-import 'package:partiu/features/profile/presentation/screens/update_location_screen_router.dart';
 import 'package:partiu/core/services/toast_service.dart';
 import 'package:partiu/core/validators/auth_validators.dart';
 import 'package:partiu/core/router/app_router.dart';
-import 'package:partiu/shared/widgets/glimpse_back_button.dart';
+import 'package:partiu/shared/widgets/auth_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
@@ -83,21 +77,6 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     );
   }
 
-  // Navigate to next page and clear navigation stack
-  void _nextScreenAndClearStack(Widget screen) {
-    // Usar go_router para navegação
-    // Esta função agora é obsoleta, a navegação é feita diretamente no _checkUserAccount
-  }
-
-  // Navigate to next page keeping the navigation stack
-  Future<void> _nextScreenKeepStack(Widget screen) async {
-    // Navega usando go_router
-    await context.push(AppRoutes.signupWizard);
-    
-    // Reset loading state when user comes back
-    _emailAuthViewModel.setLoading(false);
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -159,6 +138,41 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   /// Centraliza tratamento de erros de autenticação
   void _showAuthError(BuildContext context, dynamic error, {required bool isLogin}) {
     var message = '';
+
+    // Fluxos especiais: verificação de e-mail (não é erro técnico)
+    if (error != null && error.code == 'email_verification_sent') {
+      message = _i18n.translate('email_verification_sent');
+      ToastService.showInfo(message: message);
+
+      // Após cadastro, direciona para tela dedicada de verificação
+      // (e deixa o modo em Login para quando voltar)
+      if (!_emailAuthViewModel.isLogin) {
+        _emailAuthViewModel.toggleMode();
+      }
+      _passwordController.clear();
+
+      context.push(
+        AppRoutes.emailVerification,
+        extra: {
+          'email': _emailController.text.trim(),
+        },
+      );
+      return;
+    }
+
+    if (error != null && error.code == 'email_not_verified') {
+      message = _i18n.translate('email_not_verified');
+      ToastService.showWarning(message: message);
+
+      _passwordController.clear();
+      context.push(
+        AppRoutes.emailVerification,
+        extra: {
+          'email': _emailController.text.trim(),
+        },
+      );
+      return;
+    }
     
     if (isLogin) {
       // Erros de Login
@@ -205,7 +219,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
               const SizedBox(height: 8),
               Text(
                 viewModel.isLogin 
-                    ? _i18n.translate('sign_in_with_email')
+                    ? _i18n.translate('sign_in_title')
                     : _i18n.translate('create_account'),
                 style: TextStyles.headerTitle,
               ),
@@ -225,7 +239,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 15),
+                const SizedBox(height: 16),
 
                 // Campo de Email
                 GlimpseTextField(
@@ -234,7 +248,10 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   hintText: _i18n.translate('please_enter_your_email'),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  validator: AuthValidators.validateEmail,
+                  validator: (value) => AuthValidators.validateEmail(
+                    value,
+                    translate: _i18n.translate,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -248,6 +265,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   validator: (value) => AuthValidators.validatePassword(
                     value, 
                     isSignUp: !viewModel.isLogin,
+                    translate: _i18n.translate,
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -257,37 +275,30 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                     onPressed: viewModel.togglePasswordVisibility,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // Links na mesma linha: "Não tem conta?" e "Esqueceu senha?" (apenas no modo login)
+                // Links na mesma linha: "Criar conta" e "Esqueceu senha?" (apenas no modo login)
                 if (viewModel.isLogin)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Link "Não tem uma conta?"
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _i18n.translate('dont_have_account'),
-                            style: TextStyles.navigationText,
+                      // Link "Criar conta"
+                      TextButton(
+                        onPressed: () {
+                          viewModel.toggleMode();
+                          _formKey.currentState?.reset();
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          _i18n.translate('sign_up'),
+                          style: TextStyles.navigationLink.copyWith(
+                            color: GlimpseColors.primary,
                           ),
-                          TextButton(
-                            onPressed: () {
-                              viewModel.toggleMode();
-                              _formKey.currentState?.reset();
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              _i18n.translate('sign_up'),
-                              style: TextStyles.navigationLink,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       // Link "Esqueceu a senha?"
                       TextButton(
@@ -323,7 +334,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                         },
                         child: Text(
                           _i18n.translate('sign_in'),
-                          style: TextStyles.navigationLink,
+                          style: TextStyles.navigationLink.copyWith(
+                            color: GlimpseColors.primary,
+                          ),
                         ),
                       ),
                     ],
@@ -340,7 +353,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                 ? _i18n.translate('sign_in')
                 : _i18n.translate('create_account'),
             onTap: viewModel.isLoading ? null : _submit,
-            backgroundColor: GlimpseColors.primaryColorLight,
+            backgroundColor: GlimpseColors.primary,
             isProcessing: viewModel.isLoading,
           );
 
@@ -354,20 +367,8 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
               systemNavigationBarIconBrightness: Brightness.dark,
             ),
             child: Scaffold(
-              backgroundColor: GlimpseColors.textSubTitle,
-              appBar: AppBar(
-                backgroundColor: GlimpseColors.textSubTitle,
-                elevation: 0,
-                leading: GlimpseBackButton.iconButton(
-                  onPressed: () => context.pop(),
-                  color: Colors.black,
-                ),
-                centerTitle: true,
-                title: SvgPicture.asset(
-                  'assets/svg/logo_preta.svg',
-                  height: 18,
-                ),
-              ),
+              backgroundColor: Colors.white,
+              appBar: const AuthAppBar(),
               body: GlimpseSignupLayout(
                 header: header,
                 content: content,

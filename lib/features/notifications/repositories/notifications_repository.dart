@@ -10,7 +10,10 @@ class NotificationsRepository implements INotificationsRepository {
 
   // Constantes de coleções e campos do Firestore
   static const String _collectionNotifications = 'Notifications';
-  static const String _fieldReceiverId = 'n_receiver_id'; // Campo padrão do sistema
+  // ⚠️ IMPORTANTE: Nas rules, `userId` é o campo principal de receiver.
+  // `n_receiver_id` existe apenas para compatibilidade/legado.
+  static const String _fieldUserId = 'userId';
+  static const String _fieldReceiverIdLegacy = 'n_receiver_id';
   static const String _fieldSenderId = 'n_sender_id';
   static const String _fieldSenderFullname = 'n_sender_fullname';
   static const String _fieldSenderPhotoLink = 'n_sender_photo_link';
@@ -37,7 +40,7 @@ class NotificationsRepository implements INotificationsRepository {
 
       // Query na coleção raiz filtrando por userId
       Query<Map<String, dynamic>> query = _notificationsCollection
-          .where(_fieldReceiverId, isEqualTo: userId);
+          .where(_fieldUserId, isEqualTo: userId);
 
       // Apply filter if provided
       if (filterKey != null && filterKey.isNotEmpty) {
@@ -67,15 +70,25 @@ class NotificationsRepository implements INotificationsRepository {
       return query.orderBy(_fieldTimestamp, descending: true).snapshots().handleError((error) {
         if (error is FirebaseException &&
             (error.code == 'failed-precondition' || (error.message?.contains('index') == true))) {
-          print('[NOTIFICATIONS] Fallback sem orderBy (índice em construção): ${error.message}');
+          AppLogger.warning(
+            'Fallback sem orderBy (índice em construção): ${error.message}',
+            tag: 'NOTIFICATIONS',
+          );
           return query.snapshots();
         } else {
-          print('[NOTIFICATIONS] Fallback genérico: $error');
+          AppLogger.warning(
+            'Fallback genérico no stream: $error',
+            tag: 'NOTIFICATIONS',
+          );
           return query.snapshots();
         }
       });
     } catch (e) {
-      print('[NOTIFICATIONS] Error in getNotifications: $e');
+      AppLogger.error(
+        'Error in getNotifications',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
       return const Stream.empty();
     }
   }
@@ -94,7 +107,7 @@ class NotificationsRepository implements INotificationsRepository {
 
       // Query na coleção raiz filtrando por userId
       Query<Map<String, dynamic>> query = _notificationsCollection
-          .where(_fieldReceiverId, isEqualTo: userId);
+          .where(_fieldUserId, isEqualTo: userId);
 
       // Apply filter if provided
       if (filterKey != null && filterKey.isNotEmpty) {
@@ -134,17 +147,77 @@ class NotificationsRepository implements INotificationsRepository {
         result = await queryWithOrder.get();
       } on FirebaseException catch (e) {
         if (e.code == 'failed-precondition' || (e.message?.contains('index') == true)) {
-          print('[NOTIFICATIONS] Fallback sem orderBy na paginação: ${e.message}');
+          AppLogger.warning(
+            'Fallback sem orderBy na paginação: ${e.message}',
+            tag: 'NOTIFICATIONS',
+          );
           result = await query.get();
         } else {
-          print('[NOTIFICATIONS] Fallback genérico na paginação: ${e.message}');
+          AppLogger.warning(
+            'Fallback genérico na paginação: ${e.message}',
+            tag: 'NOTIFICATIONS',
+          );
           result = await query.get();
+        }
+      }
+
+      // 🔁 Compatibilidade: alguns documentos antigos podem ter apenas `n_receiver_id`.
+      // Se estamos na primeira página e veio vazio, tentar o campo legado.
+      if ((lastDocument == null) && result.docs.isEmpty) {
+        Query<Map<String, dynamic>> legacyQuery = _notificationsCollection
+            .where(_fieldReceiverIdLegacy, isEqualTo: userId);
+
+        // Reaplicar filtros
+        if (filterKey != null && filterKey.isNotEmpty) {
+          if (filterKey == 'activity') {
+            legacyQuery = legacyQuery.where(_fieldType, whereIn: [
+              'activity_created',
+              'activity_join_request',
+              'activity_join_approved',
+              'activity_join_rejected',
+              'activity_new_participant',
+              'activity_heating_up',
+              'activity_expiring_soon',
+              'activity_canceled',
+            ]);
+          } else if (filterKey == 'reviews') {
+            legacyQuery = legacyQuery.where(_fieldType, whereIn: [
+              'review_pending',
+              'new_review_received',
+            ]);
+          } else {
+            legacyQuery = legacyQuery.where(_fieldType, isEqualTo: filterKey);
+          }
+        }
+
+        legacyQuery = legacyQuery.limit(limit);
+
+        try {
+          result = await legacyQuery.orderBy(_fieldTimestamp, descending: true).get();
+        } on FirebaseException catch (e) {
+          if (e.code == 'failed-precondition' || (e.message?.contains('index') == true)) {
+            AppLogger.warning(
+              'Fallback legacy sem orderBy (índice): ${e.message}',
+              tag: 'NOTIFICATIONS',
+            );
+            result = await legacyQuery.get();
+          } else {
+            AppLogger.warning(
+              'Fallback legacy genérico: ${e.message}',
+              tag: 'NOTIFICATIONS',
+            );
+            result = await legacyQuery.get();
+          }
         }
       }
 
       return result;
     } catch (e) {
-      print('[NOTIFICATIONS] Error in getNotificationsPaginated: $e');
+      AppLogger.error(
+        'Error in getNotificationsPaginated',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
       rethrow;
     }
   }
@@ -161,7 +234,7 @@ class NotificationsRepository implements INotificationsRepository {
       }
 
       Query<Map<String, dynamic>> query = _notificationsCollection
-          .where(_fieldReceiverId, isEqualTo: userId)
+          .where(_fieldUserId, isEqualTo: userId)
           .limit(limit);
 
       // Apply filter if provided
@@ -173,15 +246,25 @@ class NotificationsRepository implements INotificationsRepository {
       return query.orderBy(_fieldTimestamp, descending: true).snapshots().handleError((error) {
         if (error is FirebaseException &&
             (error.code == 'failed-precondition' || (error.message?.contains('index') == true))) {
-          print('[NOTIFICATIONS] Stream fallback sem orderBy: ${error.message}');
+          AppLogger.warning(
+            'Stream fallback sem orderBy: ${error.message}',
+            tag: 'NOTIFICATIONS',
+          );
           return query.snapshots();
         } else {
-          print('[NOTIFICATIONS] Stream fallback genérico: $error');
+          AppLogger.warning(
+            'Stream fallback genérico: $error',
+            tag: 'NOTIFICATIONS',
+          );
           return query.snapshots();
         }
       });
     } catch (e) {
-      print('[NOTIFICATIONS] Error in getNotificationsPaginatedStream: $e');
+      AppLogger.error(
+        'Error in getNotificationsPaginatedStream',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
       return const Stream.empty();
     }
   }
@@ -195,13 +278,16 @@ class NotificationsRepository implements INotificationsRepository {
     try {
       final currentUser = _auth.currentUser;
       if (currentUser == null) {
-        print('[NOTIFICATIONS] Tentativa de salvar notificação sem usuário logado');
+        AppLogger.warning(
+          'Tentativa de salvar notificação sem usuário logado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
       final notificationData = <String, dynamic>{
-        _fieldReceiverId: nReceiverId, // Campo padrão
-        'userId': nReceiverId,          // Campo duplicado para compatibilidade
+        _fieldUserId: nReceiverId, // Campo principal (rules)
+        _fieldReceiverIdLegacy: nReceiverId, // Campo legado para compatibilidade
         _fieldSenderId: currentUser.uid,
         _fieldSenderFullname: currentUser.displayName ?? 'Unknown',
         // ✅ NUNCA usar FirebaseAuth.photoURL (avatar do Google)
@@ -216,7 +302,11 @@ class NotificationsRepository implements INotificationsRepository {
       // Save to root collection
       await _notificationsCollection.add(notificationData);
     } catch (e) {
-      print('[NOTIFICATIONS] Error saving notification: $e');
+      AppLogger.error(
+        'Error saving notification',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
     }
   }
 
@@ -227,7 +317,10 @@ class NotificationsRepository implements INotificationsRepository {
     try {
       final userId = _currentUserId;
       if (userId == null || userId.isEmpty) {
-        print('[NOTIFICATIONS] Tentativa de notificação de compra sem usuário logado');
+        AppLogger.warning(
+          'Tentativa de notificação de compra sem usuário logado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
@@ -237,7 +330,11 @@ class NotificationsRepository implements INotificationsRepository {
         nMessage: nMessage,
       );
     } catch (e) {
-      print('[NOTIFICATIONS] Error in onPurchaseNotification: $e');
+      AppLogger.error(
+        'Error in onPurchaseNotification',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
     }
   }
 
@@ -246,12 +343,15 @@ class NotificationsRepository implements INotificationsRepository {
     try {
       final userId = _currentUserId;
       if (userId == null || userId.isEmpty) {
-        print('[NOTIFICATIONS] Tentativa de deletar notificações sem usuário logado');
+        AppLogger.warning(
+          'Tentativa de deletar notificações sem usuário logado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
       final snapshot = await _notificationsCollection
-          .where(_fieldReceiverId, isEqualTo: userId)
+          .where(_fieldUserId, isEqualTo: userId)
           .get();
 
       if (snapshot.docs.isEmpty) return;
@@ -265,7 +365,11 @@ class NotificationsRepository implements INotificationsRepository {
 
       await batch.commit();
     } catch (e) {
-      print('[NOTIFICATIONS] Error deleting user notifications: $e');
+      AppLogger.error(
+        'Error deleting user notifications',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
     }
   }
 
@@ -274,7 +378,10 @@ class NotificationsRepository implements INotificationsRepository {
     try {
       final userId = _currentUserId;
       if (userId == null || userId.isEmpty) {
-        print('[NOTIFICATIONS] Tentativa de deletar notificações enviadas sem usuário logado');
+        AppLogger.warning(
+          'Tentativa de deletar notificações enviadas sem usuário logado',
+          tag: 'NOTIFICATIONS',
+        );
         return;
       }
 
@@ -292,7 +399,11 @@ class NotificationsRepository implements INotificationsRepository {
 
       await batch.commit();
     } catch (e) {
-      print('[NOTIFICATIONS] Error deleting sent notifications: $e');
+      AppLogger.error(
+        'Error deleting sent notifications',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
     }
   }
 
@@ -301,7 +412,11 @@ class NotificationsRepository implements INotificationsRepository {
     try {
       await _notificationsCollection.doc(notificationId).delete();
     } catch (e) {
-      print('[NOTIFICATIONS] Error deleting notification: $e');
+      AppLogger.error(
+        'Error deleting notification',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
       rethrow;
     }
   }
@@ -314,7 +429,10 @@ class NotificationsRepository implements INotificationsRepository {
           .update({_fieldRead: true});
     } catch (e) {
       // Silencioso - não é crítico
-      print('[NOTIFICATIONS] Error marking as read: $e');
+      AppLogger.warning(
+        'Error marking as read: $e',
+        tag: 'NOTIFICATIONS',
+      );
     }
   }
 
@@ -347,16 +465,16 @@ class NotificationsRepository implements INotificationsRepository {
         );
       }
       
-      final actualSenderId = senderId ?? currentUser?.uid;
-      final actualSenderName = senderName ?? currentUser?.displayName ?? 'Sistema';
+      final actualSenderId = senderId ?? currentUser.uid;
+      final actualSenderName = senderName ?? currentUser.displayName ?? 'Sistema';
       // ✅ NUNCA usar FirebaseAuth.photoURL (avatar do Google)
       // Se não foi passado senderPhotoUrl, deixar vazio
       final actualSenderPhoto = senderPhotoUrl ?? '';
 
       final notificationData = <String, dynamic>{
-        _fieldReceiverId: receiverId, // Campo padrão
-        'userId': receiverId,          // Campo duplicado para compatibilidade
-        _fieldSenderId: actualSenderId ?? '',
+        _fieldUserId: receiverId, // Campo principal (rules)
+        _fieldReceiverIdLegacy: receiverId, // Campo legado
+        _fieldSenderId: actualSenderId,
         _fieldSenderFullname: actualSenderName,
         _fieldSenderPhotoLink: actualSenderPhoto,
         _fieldType: type,
@@ -408,7 +526,7 @@ class NotificationsRepository implements INotificationsRepository {
       }
 
       final snapshot = await _notificationsCollection
-          .where(_fieldReceiverId, isEqualTo: userId)
+          .where(_fieldUserId, isEqualTo: userId)
           .where('n_related_id', isEqualTo: activityId)
           .orderBy(_fieldTimestamp, descending: true)
           .limit(limit)
@@ -416,7 +534,11 @@ class NotificationsRepository implements INotificationsRepository {
 
       return snapshot.docs;
     } catch (e) {
-      print('[NOTIFICATIONS] Error fetching activity notifications: $e');
+      AppLogger.error(
+        'Error fetching activity notifications',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
       return [];
     }
   }
@@ -432,7 +554,7 @@ class NotificationsRepository implements INotificationsRepository {
       }
 
       final snapshot = await _notificationsCollection
-          .where(_fieldReceiverId, isEqualTo: userId)
+          .where(_fieldUserId, isEqualTo: userId)
           .where('n_related_id', isEqualTo: activityId)
           .where(_fieldRead, isEqualTo: false)
           .get();
@@ -446,9 +568,16 @@ class NotificationsRepository implements INotificationsRepository {
       }
 
       await batch.commit();
-      print('[NOTIFICATIONS] Marked ${snapshot.docs.length} activity notifications as read');
+      AppLogger.success(
+        'Marked ${snapshot.docs.length} activity notifications as read',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e) {
-      print('[NOTIFICATIONS] Error marking activity notifications as read: $e');
+      AppLogger.error(
+        'Error marking activity notifications as read',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
     }
   }
 
@@ -470,9 +599,16 @@ class NotificationsRepository implements INotificationsRepository {
       }
 
       await batch.commit();
-      print('[NOTIFICATIONS] Deleted ${snapshot.docs.length} activity notifications');
+      AppLogger.success(
+        'Deleted ${snapshot.docs.length} activity notifications',
+        tag: 'NOTIFICATIONS',
+      );
     } catch (e) {
-      print('[NOTIFICATIONS] Error deleting activity notifications: $e');
+      AppLogger.error(
+        'Error deleting activity notifications',
+        tag: 'NOTIFICATIONS',
+        error: e,
+      );
     }
   }
 }

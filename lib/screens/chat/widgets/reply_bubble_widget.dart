@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:partiu/core/services/cache/cache_key_utils.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
@@ -186,12 +190,41 @@ class ReplyBubbleWidget extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: Image.network(
-          replySnapshot.imageUrl!,
+        child: Builder(
+          builder: (context) {
+            final url = replySnapshot.imageUrl!;
+            final key = stableImageCacheKey(url);
+            ImageCacheStats.instance.record(
+              category: ImageCacheCategory.chatMedia,
+              url: url,
+              cacheKey: key,
+            );
+
+            return CachedNetworkImage(
+              imageUrl: url,
+              cacheManager: ChatMediaImageCache.instance,
+              cacheKey: key,
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
+          placeholder: (context, _) {
+            return Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          },
+          errorWidget: (context, _, __) {
             return Container(
               width: 40,
               height: 40,
@@ -206,24 +239,6 @@ class ReplyBubbleWidget extends StatelessWidget {
               ),
             );
           },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
-                ),
-              ),
             );
           },
         ),

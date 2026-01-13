@@ -2,7 +2,7 @@ name: partiu
 description: Boora - Não vá sozinho!
 publish_to: 'none'
 
-version: 1.0.9+11
+version: 1.0.11+13
 
 environment:
   sdk: ">=3.7.0 <4.0.0"
@@ -17,6 +17,7 @@ dependencies:
   # Firebase
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2
+  firebase_auth_platform_interface: ^8.1.4
   cloud_firestore: ^6.1.0
   firebase_messaging: ^16.0.4
   firebase_storage: ^13.0.4
@@ -26,7 +27,9 @@ dependencies:
   # Social Login
   google_sign_in: ^7.1.1
   sign_in_with_apple: ^7.0.1
-  flutter_facebook_auth: ^7.1.2
+
+  # Meta App Events (analytics/attribution only)
+  facebook_app_events: ^0.24.0
   
   # UI Components
   flutter_svg: ^2.2.0
@@ -100,11 +103,17 @@ dependencies:
   # Router
   go_router: ^17.0.0
   circle_flags: ^5.0.1
+  
+  # Onboarding
+ 
+ 
+ 
   # brazilian_locations: ^3.4.1
   webview_flutter: ^4.13.0
   webview_flutter_android: ^4.10.11
   webview_flutter_wkwebview: ^3.23.5
   confetti: ^0.8.0
+  liquid_swipe: ^3.1.0
 
 dev_dependencies:
   freezed: ^2.5.7
@@ -113,6 +122,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.2
+
+dependency_overrides:
+  image_cropper:
+    path: packages/image_cropper
 
 # Configuração de ícones
 flutter_launcher_icons:
@@ -141,6 +154,7 @@ flutter:
     - assets/images/
     - assets/lang/
     - assets/images/avatar/
+    - assets/images/onboarding/
     - assets/images/background_image.jpg
     - assets/map_styles/
 

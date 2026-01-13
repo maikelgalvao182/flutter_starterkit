@@ -4,9 +4,8 @@ import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:partiu/core/models/user.dart';
 import 'package:partiu/common/state/app_state.dart';
-import 'package:partiu/core/services/app_cache_service.dart';
 import 'package:partiu/shared/stores/user_store.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:partiu/core/services/cache/cache_manager.dart' as app_cache;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Gerenciador centralizado de sessão do usuário
@@ -135,7 +134,7 @@ class SessionManager {
       if (user.userInstagram != null) 'instagram': user.userInstagram,
       if (user.interests != null) 'interests': user.interests,
       if (user.languages != null) 'languages': user.languages,
-      if (user.photoUrl != null) 'photoUrl': user.photoUrl,
+      // photoUrl já está no bloco principal (campo unificado)
       
       // GeoPoint serializado como latitude/longitude
       'latitude': user.userGeoPoint.latitude,
@@ -318,8 +317,8 @@ class SessionManager {
     AppState.isVerified.value = user.userIsVerified == true;
     
     // ✅ PRELOAD: Carregar avatar do usuário atual antes da UI renderizar
-    if (user.photoUrl != null && user.photoUrl!.isNotEmpty) {
-      UserStore.instance.preloadAvatar(user.userId, user.photoUrl!);
+    if (user.photoUrl.isNotEmpty) {
+      UserStore.instance.preloadAvatar(user.userId, user.photoUrl);
     }
     
     // Salva metadados opcionais
@@ -379,7 +378,8 @@ class SessionManager {
     _log('✅ Configurações restauradas');
     
     // Delegado para limpeza de caches externos
-    await _clearExternalCaches();
+    // Em produção, manter `clearDiskImages=true` por privacidade.
+    await _clearExternalCaches(clearDiskImages: true);
     
     _log('✅ SessionManager logout completo');
 
@@ -399,7 +399,7 @@ class SessionManager {
       await _prefsOrThrow.reload();
     });
     
-    await _clearExternalCaches();
+    await _clearExternalCaches(clearDiskImages: true);
     
     _log('All session data cleared');
 
@@ -410,21 +410,15 @@ class SessionManager {
   /// Limpa caches externos (imagens, dados, etc)
   /// 
   /// Separação de responsabilidades - idealmente seria um CacheCleanupManager
-  Future<void> _clearExternalCaches() async {
+  Future<void> _clearExternalCaches({bool clearDiskImages = true}) async {
     try {
-      _log('🗑️  Limpando cache de imagens (DefaultCacheManager)');
-      // Limpa cache de imagens
-      await DefaultCacheManager().emptyCache();
-      _log('✅ Cache de imagens limpo');
-      
-      // Limpa AppCacheService (se existir)
-      try {
-        _log('🗑️  Limpando AppCacheService');
-        await AppCacheService.clearCache();
-        _log('✅ AppCacheService limpo');
-      } catch (e) {
-        _log('⚠️  AppCacheService não disponível ou já limpo');
+      _log('🗑️  Limpando caches externos (clearDiskImages=$clearDiskImages)');
+      if (clearDiskImages) {
+        await app_cache.CacheManager.instance.clearAll();
+      } else {
+        await app_cache.CacheManager.instance.clearSessionCaches(clearDiskImages: false);
       }
+      _log('✅ Caches externos limpos');
     } catch (e, stack) {
       _logError('❌ Erro ao limpar caches externos', e, stack);
     }

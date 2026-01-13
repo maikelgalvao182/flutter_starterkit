@@ -9,6 +9,7 @@ import 'package:partiu/screens/chat/services/chat_service.dart';
 import 'package:partiu/screens/chat/services/event_application_removal_service.dart';
 import 'package:partiu/features/conversations/widgets/conversation_tile.dart';
 import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// Widget que adiciona funcionalidade de swipe-to-delete nas conversas
 /// 
@@ -21,7 +22,7 @@ import 'package:partiu/shared/widgets/dialogs/cupertino_dialog.dart';
 /// - ✅ Dismiss animado ao deslizar completamente
 /// - ✅ Feedback háptico ao abrir/fechar
 /// - ✅ Dialog de confirmação antes da ação
-class SwipeableConversationTile extends StatelessWidget {
+class SwipeableConversationTile extends StatefulWidget {
   const SwipeableConversationTile({
     required this.conversationId,
     required this.rawData,
@@ -54,20 +55,27 @@ class SwipeableConversationTile extends StatelessWidget {
   }
 
   @override
+  State<SwipeableConversationTile> createState() => _SwipeableConversationTileState();
+}
+
+class _SwipeableConversationTileState extends State<SwipeableConversationTile> {
+  bool _isDeletingConversation = false;
+
+  @override
   Widget build(BuildContext context) {
     final i18n = AppLocalizations.of(context);
     
     // Label e ícone dependem do tipo de conversa
-    final actionLabel = isEventChat 
+    final actionLabel = widget.isEventChat 
         ? i18n.translate('leave') 
         : i18n.translate('delete');
     
-    final actionIcon = isEventChat 
+    final actionIcon = widget.isEventChat 
         ? IconsaxPlusLinear.logout 
         : IconsaxPlusLinear.trash;
 
     return Slidable(
-          key: ValueKey(conversationId),
+          key: ValueKey(widget.conversationId),
           
           // Ação ao deslizar para esquerda
           endActionPane: ActionPane(
@@ -114,19 +122,20 @@ class SwipeableConversationTile extends StatelessWidget {
           ),
           
       child: ConversationTile(
-        conversationId: conversationId,
-        rawData: rawData,
-        isVipEffective: isVipEffective,
-        isLast: isLast,
-        onTap: onTap,
-        chatService: chatService,
+        conversationId: widget.conversationId,
+        rawData: widget.rawData,
+        isVipEffective: widget.isVipEffective,
+        isLast: widget.isLast,
+        onTap: widget.onTap,
+        chatService: widget.chatService,
+        showAvatarLoadingOverlay: _isDeletingConversation,
       ),
     );
   }
 
   /// Executa a ação apropriada baseado no tipo de conversa
   void _handleAction(BuildContext context) {
-    if (isEventChat && eventId != null) {
+    if (widget.isEventChat && widget.eventId != null) {
       _handleLeaveEvent(context);
     } else {
       _handleDeleteConversation(context);
@@ -141,17 +150,18 @@ class SwipeableConversationTile extends StatelessWidget {
 
     removalService.handleLeaveEvent(
       context: context,
-      eventId: eventId!,
+      eventId: widget.eventId!,
       i18n: i18n,
       progressDialog: progressDialog,
-      onSuccess: onDeleted,
+      onSuccess: widget.onDeleted,
     );
   }
 
   /// Deleta a conversa (para chats 1x1)
   Future<void> _handleDeleteConversation(BuildContext context) async {
     final i18n = AppLocalizations.of(context);
-    final progressDialog = ProgressDialog(context);
+
+    if (_isDeletingConversation) return;
 
     // Mostrar dialog de confirmação
     final confirmed = await GlimpseCupertinoDialog.showDestructive(
@@ -164,21 +174,39 @@ class SwipeableConversationTile extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    // Mostrar loading
-    progressDialog.show(i18n.translate('processing'));
+    setState(() {
+      _isDeletingConversation = true;
+    });
 
-    // Deletar conversa
-    await chatService.deleteChat(conversationId);
+    try {
+      // Deletar conversa
+      await widget.chatService.deleteChat(widget.conversationId);
 
-    // Esconder loading
-    await progressDialog.hide();
+      if (!context.mounted) return;
 
-    // Callback de sucesso
-    onDeleted();
+      // Callback de sucesso
+      widget.onDeleted();
 
-    // Toast de sucesso
-    ToastService.showSuccess(
-      message: i18n.translate('conversation_deleted_successfully'),
-    );
+      // Toast de sucesso
+      ToastService.showSuccess(
+        message: i18n.translate('conversation_deleted_successfully'),
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Erro ao deletar conversa',
+        tag: 'CHAT',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      ToastService.showError(
+        message: i18n.translate('error_try_again'),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeletingConversation = false;
+        });
+      }
+    }
   }
 }

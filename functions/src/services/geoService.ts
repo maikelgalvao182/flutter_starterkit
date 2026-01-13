@@ -20,6 +20,53 @@ interface BoundingBox {
   maxLng: number;
 }
 
+/** Coordenadas geográficas normalizadas (latitude/longitude). */
+type UserCoordinates = {latitude: number; longitude: number};
+
+/**
+ * Converte um valor desconhecido para número finito (ou null).
+ * @param {unknown} value - Valor de entrada
+ * @return {number|null} Número finito ou null
+ */
+function asFiniteNumber(value: unknown): number | null {
+  const num = typeof value === "number" ? value : null;
+  return num != null && Number.isFinite(num) ? num : null;
+}
+
+/**
+ * Extrai coordenadas do documento de usuário suportando schemas atual
+ * e legado.
+ * @param {FirebaseFirestore.DocumentData} data - Dados do documento
+ * Users/{userId}
+ * @return {UserCoordinates|null} Coordenadas ou null se ausentes
+ */
+function extractUserCoordinates(
+  data: FirebaseFirestore.DocumentData
+): UserCoordinates | null {
+  // Schema atual do app (top-level)
+  const topLat = asFiniteNumber(data.latitude);
+  const topLng = asFiniteNumber(data.longitude);
+  if (topLat != null && topLng != null) {
+    return {latitude: topLat, longitude: topLng};
+  }
+
+  // Schema legado (lastLocation.{latitude,longitude})
+  const legacyLat = asFiniteNumber(data.lastLocation?.latitude);
+  const legacyLng = asFiniteNumber(data.lastLocation?.longitude);
+  if (legacyLat != null && legacyLng != null) {
+    return {latitude: legacyLat, longitude: legacyLng};
+  }
+
+  // Fallback: alguns documentos podem ter GeoPoint em `location`
+  const geoPointLat = asFiniteNumber(data.location?.latitude);
+  const geoPointLng = asFiniteNumber(data.location?.longitude);
+  if (geoPointLat != null && geoPointLng != null) {
+    return {latitude: geoPointLat, longitude: geoPointLng};
+  }
+
+  return null;
+}
+
 /**
  * Calcula bounding box para query inicial
  * @param {number} latitude - Latitude do centro
@@ -99,38 +146,76 @@ export async function findUsersInRadius(options: {
   const excludeSet = new Set(excludeUserIds);
   const bounds = calculateBoundingBox(latitude, longitude, radiusKm);
 
-  // Query bounding box no Firestore
-  const snapshot = await admin
-    .firestore()
-    .collection("Users")
-    .where("lastLocation.latitude", ">=", bounds.minLat)
-    .where("lastLocation.latitude", "<=", bounds.maxLat)
-    .limit(limit)
-    .get();
+  const firestore = admin.firestore();
 
-  if (snapshot.empty) {
+  // A app grava coordenadas no topo (Users.latitude/longitude).
+  // Mantemos fallback pro legado (Users.lastLocation.latitude/longitude)
+  // durante migração.
+  // Observação: o projeto tem regras para /Users e /users; suportamos ambos.
+  const queryDefs = [
+    {collection: "Users", fieldPath: "latitude", label: "Users.latitude"},
+    {
+      collection: "Users",
+      fieldPath: "lastLocation.latitude",
+      label: "Users.lastLocation.latitude",
+    },
+    {collection: "users", fieldPath: "latitude", label: "users.latitude"},
+    {
+      collection: "users",
+      fieldPath: "lastLocation.latitude",
+      label: "users.lastLocation.latitude",
+    },
+  ];
+
+  const snapshots = await Promise.all(
+    queryDefs.map((q) =>
+      firestore
+        .collection(q.collection)
+        .where(q.fieldPath, ">=", bounds.minLat)
+        .where(q.fieldPath, "<=", bounds.maxLat)
+        .limit(limit)
+        .get()
+    )
+  );
+
+  const docsById = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+  snapshots.forEach((snapshot) => {
+    snapshot.docs.forEach((doc) => {
+      if (!docsById.has(doc.id)) {
+        docsById.set(doc.id, doc);
+      }
+    });
+  });
+  const counts = queryDefs
+    .map((q, index) => `${q.label}:${snapshots[index].size}`)
+    .join(", ");
+  console.log(
+    `📍 [GeoService] ${docsById.size} usuários no bounding box ` +
+      `(${counts})`
+  );
+
+  if (docsById.size === 0) {
     console.log("⚠️ [GeoService] Nenhum usuário no bounding box");
     return [];
   }
 
-  console.log(`📍 [GeoService] ${snapshot.size} usuários no bounding box`);
-
   // Filtrar por distância real e longitude
   const usersInRadius: string[] = [];
 
-  for (const doc of snapshot.docs) {
+  for (const doc of docsById.values()) {
     // Excluir IDs especificados
     if (excludeSet.has(doc.id)) {
       continue;
     }
 
     const data = doc.data();
-    const userLat = data.lastLocation?.latitude;
-    const userLng = data.lastLocation?.longitude;
-
-    if (userLat == null || userLng == null) {
+    const coords = extractUserCoordinates(data);
+    if (coords == null) {
       continue;
     }
+
+    const userLat = coords.latitude;
+    const userLng = coords.longitude;
 
     // Filtrar longitude (bounding box só filtra latitude)
     if (userLng < bounds.minLng || userLng > bounds.maxLng) {
@@ -142,6 +227,10 @@ export async function findUsersInRadius(options: {
 
     if (distance <= radiusKm) {
       usersInRadius.push(doc.id);
+
+      if (usersInRadius.length >= limit) {
+        break;
+      }
     }
   }
 

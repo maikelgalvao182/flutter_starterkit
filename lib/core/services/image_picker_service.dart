@@ -22,6 +22,11 @@ import 'package:partiu/core/utils/app_localizations.dart';
 /// - Encapsula dependências externas (ImagePicker, ImageCropper)
 class ImagePickerService {
   static const String _tag = 'ImagePickerService';
+
+  // Proteção global contra múltiplas execuções concorrentes do crop.
+  // Em alguns devices/versões (ex.: Android 15), chamadas concorrentes podem
+  // levar o plugin a responder duas vezes no mesmo MethodChannel (crash nativo).
+  static bool _cropInProgress = false;
   
   ImagePickerService({ImagePicker? picker}) 
       : _picker = picker ?? ImagePicker();
@@ -101,6 +106,16 @@ class ImagePickerService {
     required CropAspectRatio aspectRatio,
   }) async {
     AppLogger.info('Starting image crop...', tag: _tag);
+
+    if (_cropInProgress) {
+      AppLogger.warning(
+        'Crop já está em andamento; ignorando nova solicitação',
+        tag: _tag,
+      );
+      return null;
+    }
+
+    _cropInProgress = true;
     
     try {
       final i18n = await AppLocalizations.loadForLanguageCode(
@@ -148,6 +163,8 @@ class ImagePickerService {
         stackTrace: stackTrace,
       );
       return null;
+    } finally {
+      _cropInProgress = false;
     }
   }
   

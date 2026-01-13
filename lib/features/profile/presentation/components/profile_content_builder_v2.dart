@@ -12,6 +12,7 @@ import 'package:partiu/features/profile/presentation/widgets/languages_profile_s
 import 'package:partiu/features/profile/presentation/widgets/gallery_profile_section.dart';
 import 'package:partiu/shared/stores/user_store.dart';
 import 'package:partiu/screens/chat/chat_screen_refactored.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Novo sistema de reviews
 import 'package:partiu/features/reviews/data/repositories/review_repository.dart';
@@ -173,31 +174,59 @@ class _ProfileContentBuilderV2State extends State<ProfileContentBuilderV2> {
   }
 
   Widget _buildActions() {
-    return RepaintBoundary(
-      child: ProfileActionsSection(
-        onAddFriend: () {
-          debugPrint('👥 Adicionar amigo clicado');
-        },
-        onMessage: () {
-          // Verificar se usuário está bloqueado
-          if (BlockService().isBlockedCached(widget.currentUserId, widget.displayUser.userId)) {
-            ToastService.showWarning(
-              message: widget.i18n.translate('user_blocked_cannot_message'),
-            );
-            return;
+    // Renderização condicional via stream do documento do usuário
+    // Campo Firestore: message_button (bool). Default: true.
+    final userDocStream = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(widget.displayUser.userId)
+        .snapshots();
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: userDocStream,
+      builder: (context, snapshot) {
+        bool showMessageButton = true;
+
+        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+          final data = snapshot.data!.data();
+          final raw = data?['message_button'];
+          if (raw is bool) {
+            showMessageButton = raw;
+          } else if (raw is String) {
+            showMessageButton = raw.toLowerCase() == 'true';
           }
-          
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatScreenRefactored(
-                user: widget.displayUser,
-                isEvent: false,
-              ),
-            ),
-          );
-        },
-      ),
+        }
+
+        if (!showMessageButton) {
+          return const SizedBox.shrink();
+        }
+
+        return RepaintBoundary(
+          child: ProfileActionsSection(
+            onAddFriend: () {
+              debugPrint('👥 Adicionar amigo clicado');
+            },
+            onMessage: () {
+              // Verificar se usuário está bloqueado
+              if (BlockService().isBlockedCached(widget.currentUserId, widget.displayUser.userId)) {
+                ToastService.showWarning(
+                  message: widget.i18n.translate('user_blocked_cannot_message'),
+                );
+                return;
+              }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatScreenRefactored(
+                    user: widget.displayUser,
+                    isEvent: false,
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

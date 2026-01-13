@@ -25,6 +25,7 @@ class GlimpseProgressHeader extends StatelessWidget {
   final bool isContinueEnabled;
   final bool isProcessing;
   final bool showBackButton;
+  final bool showLogo;
 
   const GlimpseProgressHeader({
     super.key,
@@ -39,6 +40,7 @@ class GlimpseProgressHeader extends StatelessWidget {
     this.isContinueEnabled = true,
     this.isProcessing = false,
     this.showBackButton = true,
+    this.showLogo = false,
   });
 
   @override
@@ -65,9 +67,19 @@ class GlimpseProgressHeader extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Lado esquerdo: Botão Voltar
+            // Lado esquerdo: Logo e Botão Voltar
             Row(
               children: [
+                // Logo (condicional)
+                if (showLogo) ...[
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 65,
+                    height: 65,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 // Botão Voltar (condicional)
                 if (showBackButton)
                   GlimpseBackButton(

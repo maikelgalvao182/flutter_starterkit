@@ -85,6 +85,14 @@ class _CreateDrawerState extends State<CreateDrawer> {
     } else if (text.isEmpty && _controller.currentEmoji != '🎉') {
       _controller.setEmoji('🎉');
     }
+
+    // Rebuild imediato para refletir:
+    // - enable/disable do botão (canContinue)
+    // - exibição do ícone X (limpar)
+    // - emoji atualizado
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _toggleSuggestionMode() {
@@ -269,6 +277,22 @@ class _CreateDrawerState extends State<CreateDrawer> {
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                           color: GlimpseColors.textHint,
+                        ),
+                        suffixIcon: _controller.textController.text.trim().isNotEmpty
+                            ? IconButton(
+                                onPressed: () {
+                                  _controller.clear();
+                                },
+                                icon: Icon(
+                                  Icons.close,
+                                  color: Colors.black,
+                                  size: 20,
+                                ),
+                              )
+                            : null,
+                        suffixIconConstraints: const BoxConstraints(
+                          minHeight: 40,
+                          minWidth: 40,
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 16),

@@ -61,6 +61,15 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+
+            // O Flutter (release) está gerando mapping.txt => R8 está ativo.
+            // Precisamos incluir regras para manter a UCropActivity (image_cropper),
+            // senão ela pode ser renomeada/reempacotada e o Manifest não encontra.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

@@ -9,11 +9,6 @@ abstract class IAuthRepository {
     required VoidCallback blockedScreen,
   });
 
-  Future<void> signInWithFacebook({
-    required VoidCallback checkUserAccount,
-    required Function(dynamic) onError,
-  });
-
   Future<void> signInWithGoogle({
     required VoidCallback checkUserAccount,
     required Function(dynamic) onError,

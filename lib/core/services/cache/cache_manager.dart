@@ -2,6 +2,8 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:partiu/core/services/cache/user_cache_service.dart';
 import 'package:partiu/core/services/cache/avatar_cache_service.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// Gerenciador central de todos os caches da aplicação
@@ -145,6 +147,52 @@ class CacheManager {
     _log('Memory cache cleared');
   }
 
+  /// Limpa caches da sessão (memória/estado) e opcionalmente o disco.
+  ///
+  /// Boa prática:
+  /// - Produção: `clearAll()` no logout real (privacidade).
+  /// - Dev: pode usar `clearSessionCaches(clearDiskImages: false)` para manter o disco
+  ///   e validar taxa de hit do cache.
+  Future<void> clearSessionCaches({bool clearDiskImages = false}) async {
+    _log('Clearing session caches (clearDiskImages=$clearDiskImages)...');
+
+    // Memória/estado
+    clearMemoryCache();
+
+    // Flutter ImageCache (RAM)
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      _log('✓ Flutter ImageCache cleared');
+    } catch (e, stack) {
+      _logError('Failed to clear Flutter ImageCache', e, stack);
+    }
+
+    if (!clearDiskImages) {
+      _log('Session caches cleared (memory only)');
+      return;
+    }
+
+    // Disco (flutter_cache_manager)
+    try {
+      await DefaultCacheManager().emptyCache();
+      _log('✓ Disk image cache cleared (DefaultCacheManager)');
+    } catch (e, stack) {
+      _logError('Failed to clear disk cache', e, stack);
+    }
+
+    // Disco (caches custom)
+    try {
+      await AvatarImageCache.instance.emptyCache();
+      await ChatMediaImageCache.instance.emptyCache();
+      _log('✓ Disk image cache cleared (custom caches)');
+    } catch (e, stack) {
+      _logError('Failed to clear custom disk caches', e, stack);
+    }
+
+    _log('Session caches cleared (memory + disk)');
+  }
+
   /// Limpa TODO o cache (memória + disco)
   /// 
   /// Use ao fazer LOGOUT ou DELETAR CONTA.
@@ -157,26 +205,8 @@ class CacheManager {
   /// - Cache de imagens do Flutter (imageCache)
   Future<void> clearAll() async {
     _log('Clearing ALL cache (memory + disk)...');
-    
-    // Limpa cache em memória
-    clearMemoryCache();
-    
-    // Limpa cache de imagens em disco (flutter_cache_manager)
-    try {
-      await DefaultCacheManager().emptyCache();
-      _log('✓ Disk image cache cleared (flutter_cache_manager)');
-    } catch (e, stack) {
-      _logError('Failed to clear disk cache', e, stack);
-    }
-    
-    // Limpa cache de imagens do Flutter (ImageCache)
-    try {
-      PaintingBinding.instance.imageCache.clear();
-      PaintingBinding.instance.imageCache.clearLiveImages();
-      _log('✓ Flutter ImageCache cleared');
-    } catch (e, stack) {
-      _logError('Failed to clear Flutter ImageCache', e, stack);
-    }
+
+    await clearSessionCaches(clearDiskImages: true);
     
     _log('All cache cleared');
   }
@@ -191,6 +221,7 @@ class CacheManager {
       'invalidateListeners': _onInvalidateCallbacks.length,
       'users': UserCacheService.instance.getStats(),
       'avatars': AvatarCacheService.instance.getStats(),
+      'imageCaches': ImageCacheStats.instance.getStats(),
     };
   }
 

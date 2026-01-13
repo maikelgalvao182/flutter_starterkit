@@ -18,6 +18,7 @@ analyzer:
     - "test/.test_coverage.dart"
     - "bin/cache/**"
     - "lib/generated_plugin_registrant.dart"
+    - "packages/image_cropper/example/**"
   errors:
     invalid_annotation_target: ignore
 

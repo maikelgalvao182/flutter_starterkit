@@ -466,6 +466,7 @@ class _EditProfileScreenState extends State<_EditProfileScreenContent> {
               // Command será processado automaticamente via listener
             },
             cropToSquare: true,
+            requireCrop: true,
             minWidth: 800,
             minHeight: 800,
             quality: 85,

@@ -5,13 +5,14 @@ import 'package:partiu/core/constants/toast_messages.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
 import 'package:partiu/shared/widgets/glimpse_signup_layout.dart';
 import 'package:partiu/core/services/toast_service.dart';
-import 'package:partiu/shared/widgets/glimpse_back_button.dart';
+import 'package:partiu/shared/widgets/auth_app_bar.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
 import 'package:partiu/shared/widgets/glimpse_text_field.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart'
+  as firebase_auth_platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 /// Tela de recuperação de senha
@@ -43,16 +44,56 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  String _maskEmailForLogs(String email) {
+    final trimmed = email.trim();
+    final atIndex = trimmed.indexOf('@');
+    if (atIndex <= 1) return '***';
+
+    final local = trimmed.substring(0, atIndex);
+    final domain = trimmed.substring(atIndex + 1);
+    final localMasked = '${local[0]}***';
+    return '$localMasked@$domain';
+  }
+
   Future<void> _sendPasswordResetEmail() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      AppLogger.info('Enviando email de recuperação de senha para: ${_emailController.text.trim()}', tag: 'FORGOT_PASSWORD');
+      final email = _emailController.text.trim();
+      AppLogger.info(
+        'Solicitando recuperação de senha para: ${_maskEmailForLogs(email)}',
+        tag: 'FORGOT_PASSWORD',
+      );
+
+      // ✅ Diagnóstico: se a conta existe mas NÃO tem provider password,
+      // não há senha para resetar (ex.: login via Google/Apple).
+        final methods = await firebase_auth_platform.FirebaseAuthPlatform.instance
+          .fetchSignInMethodsForEmail(email);
+      final hasPasswordProvider = methods.contains('password');
+
+      if (methods.isNotEmpty && !hasPasswordProvider) {
+        final providers = methods.join(', ');
+        AppLogger.warning(
+          'E-mail não tem provider password. Métodos: $providers',
+          tag: 'FORGOT_PASSWORD',
+        );
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          ToastService.showWarning(
+            message: _i18n.translate('account_uses_social_login') != ''
+                ? _i18n.translate('account_uses_social_login')
+                : 'Esse e-mail está vinculado a login com Google/Apple. Entre por esse método (não existe senha para redefinir).',
+          );
+        }
+        return;
+      }
       
       await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: _emailController.text.trim(),
+        email: email,
       );
       
       AppLogger.success('Email de recuperação enviado com sucesso', tag: 'FORGOT_PASSWORD');
@@ -159,7 +200,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 15),
+          const SizedBox(height: 16),
 
           // Campo de Email
           GlimpseTextField(
@@ -170,7 +211,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             textInputAction: TextInputAction.done,
             validator: _validateEmail,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // Link para voltar ao login
           Row(
@@ -188,7 +229,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   _i18n.translate('back_to_sign_in') != '' 
                       ? _i18n.translate('back_to_sign_in')
                       : 'Back to Sign In',
-                  style: TextStyles.navigationLink,
+                  style: TextStyles.navigationLink.copyWith(
+                    color: GlimpseColors.primary,
+                  ),
                 ),
               ),
             ],
@@ -203,7 +246,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ? _i18n.translate('send_reset_link')
           : 'Send Reset Link',
       onTap: _isLoading ? null : _sendPasswordResetEmail,
-      backgroundColor: GlimpseColors.primaryColorLight,
+      backgroundColor: GlimpseColors.primary,
       isProcessing: _isLoading,
     );
 
@@ -217,20 +260,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: GlimpseColors.textSubTitle,
-        appBar: AppBar(
-          backgroundColor: GlimpseColors.textSubTitle,
-          elevation: 0,
-          leading: GlimpseBackButton.iconButton(
-            onPressed: () => context.pop(),
-            color: Colors.black,
-          ),
-          centerTitle: true,
-          title: SvgPicture.asset(
-            'assets/svg/logo_preta.svg',
-            height: 24,
-          ),
-        ),
+        backgroundColor: Colors.white,
+        appBar: const AuthAppBar(),
         body: GlimpseSignupLayout(
           header: header,
           content: content,

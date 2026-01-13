@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
@@ -280,7 +281,9 @@ class FindPeopleController {
     if (_downloading.contains(url)) return;
     _downloading.add(url);
     
-    final imageProvider = NetworkImage(url);
+    // ✅ CachedNetworkImageProvider usa cache em disco (flutter_cache_manager)
+    // e reduz redownload em novas sessões/rebuilds.
+    final imageProvider = CachedNetworkImageProvider(url);
     final stream = imageProvider.resolve(ImageConfiguration.empty);
     late ImageStreamListener listener;
     final completer = Completer<void>();

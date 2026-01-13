@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:partiu/core/constants/constants.dart';
 import 'package:partiu/core/constants/glimpse_colors.dart';
-import 'package:partiu/features/home/presentation/screens/location_picker/widgets/nearby_places_carousel.dart';
 import 'package:partiu/features/home/presentation/widgets/place_card/place_card_controller.dart';
 import 'package:partiu/shared/widgets/stable_avatar.dart';
 import 'package:partiu/core/utils/app_localizations.dart';
@@ -139,18 +138,6 @@ class _PlaceCardState extends State<PlaceCard> {
                 ),
               ),
               const SizedBox(height: 12),
-            ],
-            
-            // Photos Carousel (clicável)
-            if (_controller.photoUrls.isNotEmpty) ...[
-              GestureDetector(
-                onTap: () => _openGoogleMaps(_controller.placeId),
-                child: SelectedPlacePhotosCarousel(
-                  photoUrls: _controller.photoUrls,
-                  placeName: _controller.locationName ?? '',
-                ),
-              ),
-              const SizedBox(height: 16),
             ],
             
             // Visitors Section

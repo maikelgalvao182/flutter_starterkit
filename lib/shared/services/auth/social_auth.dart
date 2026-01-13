@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:partiu/features/subscription/services/simple_revenue_cat_service.dart';
@@ -165,36 +164,6 @@ class SocialAuth {
           code: 'unknown',
         ));
       }
-    }
-  }
-
-  //
-  // LOGIN WITH FACEBOOK
-  //
-  static Future<void> signInWithFacebook({
-    // Callback functions
-    required Function() checkUserAccount,
-    required Function(FirebaseAuthException error) onError,
-  }) async {
-    try {
-      // Trigger the sign-in flow
-      final loginResult = await FacebookAuth.instance.login();
-
-      // Continues if not null
-      if (loginResult.accessToken == null) return;
-
-      // Create a credential from the access token
-      final facebookAuthCredential =
-          FacebookAuthProvider.credential(loginResult.accessToken!.tokenString);
-
-      // Once signed in, return the Firebase UserCredential
-      await auth.signInWithCredential(facebookAuthCredential);
-
-      /// Check User Account in Database to take action
-      checkUserAccount();
-    } on FirebaseAuthException catch (error) {
-      // Error callback
-      onError(error);
     }
   }
 
@@ -397,6 +366,20 @@ class SocialAuth {
         password: password,
       );
 
+      // 🔒 Requer verificação de e-mail antes de prosseguir
+      // (válido apenas para fluxo Email/Senha; provedores OAuth já validam)
+      final user = userCredential.user;
+      if (user != null && user.emailVerified == false) {
+        try {
+          await user.sendEmailVerification();
+        } catch (_) {
+          // Não bloquear por falha ao reenviar e-mail
+        }
+
+        onError(FirebaseAuthException(code: 'email_not_verified'));
+        return;
+      }
+
       // 🔐 INTEGRAÇÃO REVENUECAT: Vincula user ID Firebase ao RevenueCat (Email)
       try {
         await SimpleRevenueCatService.login(userCredential.user!.uid);
@@ -430,15 +413,20 @@ class SocialAuth {
         password: password,
       );
 
-      // 🔐 INTEGRAÇÃO REVENUECAT: Vincula user ID Firebase ao RevenueCat (Email)
-      try {
-        await SimpleRevenueCatService.login(userCredential.user!.uid);
-      } catch (e) {
-        // Ignora erros do RevenueCat para não bloquear o login
+      // ✅ Envia verificação e impede prosseguir até o e-mail estar verificado
+      final user = userCredential.user;
+      if (user != null) {
+        try {
+          await user.sendEmailVerification();
+        } catch (_) {
+          // Não bloquear por falha ao enviar e-mail de verificação
+        }
       }
 
-      /// Check User Account in Database to take action
-      checkUserAccount();
+      // Desloga para forçar login somente após verificação
+      // Sinaliza para UI mostrar mensagem amigável (não é erro técnico)
+      onError(FirebaseAuthException(code: 'email_verification_sent'));
+      return;
     } on FirebaseAuthException catch (error) {
       // Error callback
       onError(error);

@@ -14,6 +14,7 @@ import 'package:partiu/services/location/location_stream_controller.dart';
 import 'package:partiu/shared/repositories/user_repository.dart';
 import 'package:partiu/core/services/block_service.dart';
 import 'package:partiu/common/state/app_state.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 
 /// ViewModel responsável por gerenciar o estado e lógica do mapa Google Maps
 /// 
@@ -235,50 +236,53 @@ class MapViewModel extends ChangeNotifier {
   
   /// Inicializa stream de eventos em tempo real (reage a create/update/delete)
   void _initializeEventsStream() {
-    debugPrint('🔄 MapViewModel: Iniciando stream de eventos em tempo real...');
+    AppLogger.stream('Iniciando stream de eventos em tempo real...', tag: 'MAP');
     
     _eventsSubscription = _eventRepository.getEventsStream().listen(
       (events) async {
-        debugPrint('🔄 MapViewModel: Stream recebeu ${events.length} eventos');
-        debugPrint('📋 IDs dos eventos: ${events.map((e) => e.id).join(", ")}');
-        
-        // Obter localização atual
-        if (_lastLocation == null) {
-          final locationResult = await _locationService.getUserLocation();
-          _lastLocation = locationResult.location;
-        }
-        
-        // Filtrar eventos de usuários bloqueados
-        final currentUserId = AppState.currentUserId;
-        if (currentUserId != null && currentUserId.isNotEmpty) {
-          _events = BlockService().filterBlocked<EventModel>(
-            currentUserId,
-            events,
-            (event) => event.createdBy,
-          );
-          
-          final filteredCount = events.length - _events.length;
-          if (filteredCount > 0) {
-            debugPrint('🚫 MapViewModel: $filteredCount eventos filtrados (bloqueados)');
+        try {
+          // Garantir que temos localização para enriquecer (usa cache local; só busca 1x)
+          if (_lastLocation == null) {
+            final locationResult = await _locationService.getUserLocation();
+            _lastLocation = locationResult.location;
           }
-        } else {
-          _events = events;
+
+          // Filtrar eventos de usuários bloqueados
+          final currentUserId = AppState.currentUserId;
+          if (currentUserId != null && currentUserId.isNotEmpty) {
+            _events = BlockService().filterBlocked<EventModel>(
+              currentUserId,
+              events,
+              (event) => event.createdBy,
+            );
+          } else {
+            _events = events;
+          }
+
+          // Enriquecer com distância/disponibilidade (lógica centralizada)
+          await _enrichEvents();
+
+          // Não gerar markers aqui: isso bloqueia UI e duplica trabalho com GoogleMapView.
+          _googleMarkers = {};
+
+          AppLogger.stream('Stream processado: ${_events.length} eventos', tag: 'MAP');
+          notifyListeners();
+        } catch (e, stack) {
+          AppLogger.error(
+            'Erro ao processar stream de eventos do mapa',
+            tag: 'MAP',
+            error: e,
+            stackTrace: stack,
+          );
         }
-        
-        debugPrint('📊 MapViewModel: ${_events.length} eventos após filtros');
-        
-        // Enriquecer com distância e disponibilidade
-        await _enrichEvents();
-        
-        // Gerar markers
-        await _generateGoogleMarkers();
-        
-        debugPrint('✅ MapViewModel: Stream processado - ${_events.length} eventos, ${_googleMarkers.length} markers');
-        debugPrint('🔔 Chamando notifyListeners() para atualizar UI...');
-        notifyListeners();
       },
-      onError: (error) {
-        debugPrint('❌ MapViewModel: Erro no stream de eventos: $error');
+      onError: (Object error, StackTrace stackTrace) {
+        AppLogger.error(
+          'Erro no stream de eventos do mapa',
+          tag: 'MAP',
+          error: error,
+          stackTrace: stackTrace,
+        );
       },
     );
   }
@@ -304,7 +308,7 @@ class MapViewModel extends ChangeNotifier {
     // Pré-carregar pins (imagens) para Google Maps
     await _googleMarkerService.preloadDefaultPins();
     
-    // Carregar eventos iniciais (popula cache de bitmaps durante _generateGoogleMarkers)
+    // Carregar eventos iniciais (markers serão gerados pelo GoogleMapView conforme viewport/zoom)
     await loadNearbyEvents();
     
     debugPrint('🖼️ MapViewModel: ${_events.length} eventos com bitmaps em cache (singleton)');
@@ -350,20 +354,18 @@ class MapViewModel extends ChangeNotifier {
 
       // 4. Enriquecer com distância e disponibilidade (lógica centralizada)
       await _enrichEvents();
+      
+      // 4. Não gerar markers aqui (evitar bloquear a tela e duplicar cálculo)
+      _googleMarkers = {};
 
-      // 4. Gerar markers do Google Maps
-      await _generateGoogleMarkers();
-
-      debugPrint('🗺️ MapViewModel: ${_events.length} eventos carregados');
-      debugPrint('🗺️ Google Maps markers: ${_googleMarkers.length}');
-      debugPrint('🗺️ onMarkerTap callback configurado: ${onMarkerTap != null}');
+      AppLogger.info('Eventos carregados: ${_events.length}', tag: 'MAP');
       
       // SOMENTE AQUI o mapa está realmente pronto
       _setMapReady(true);
       
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ MapViewModel: Erro ao carregar eventos: $e');
+      AppLogger.error('Erro ao carregar eventos do mapa', tag: 'MAP', error: e);
       // Erro será silencioso - markers continuam vazios
       _googleMarkers = {};
       notifyListeners();

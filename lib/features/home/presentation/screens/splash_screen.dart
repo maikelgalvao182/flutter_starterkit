@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:partiu/core/constants/glimpse_colors.dart';
 import 'package:partiu/core/services/app_initializer_service.dart';
 import 'package:partiu/core/services/auth_sync_service.dart';
 import 'package:partiu/features/home/presentation/viewmodels/map_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/people_ranking_viewmodel.dart';
 import 'package:partiu/features/home/presentation/viewmodels/ranking_viewmodel.dart';
 import 'package:partiu/features/conversations/state/conversations_viewmodel.dart';
+import 'package:partiu/core/utils/app_logger.dart';
 import 'package:provider/provider.dart';
 
-/// Tela de Splash que carrega todos os dados do mapa antes de entrar no app
-/// 
-/// IMPORTANTE: Esta tela executa o AppInitializerService ANTES de navegar para o Home.
-/// Isso garante que:
-/// - Todos os dados do mapa estejam pré-carregados
-/// - Bitmaps dos markers estejam em cache
-/// - Rankings, conversas e outros dados estejam prontos
-/// - Usuário não veja tela vazia após o splash
+/// Tela de Splash que roda apenas o bootstrap CRÍTICO antes de entrar no app.
+///
+/// IMPORTANTE:
+/// - Esta tela executa apenas [AppInitializerService.initializeCritical] antes de navegar.
+/// - Warmups pesados (mapa completo, conversas, rankings, etc.) rodam após o primeiro frame
+///   na Home (background) ou on-demand ao abrir as telas.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
       precacheImage(const AssetImage('assets/images/capa.jpg'), context);
       precacheImage(const AssetImage('assets/images/logo.png'), context);
     } catch (e) {
-      debugPrint('Erro no precache: $e');
+      AppLogger.warning('Erro no precache de imagens: $e', tag: 'SPLASH');
     }
   }
   
@@ -49,9 +49,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeAndNavigate() async {
     if (_isInitializing) return;
     _isInitializing = true;
-    
-    debugPrint('🚀 [SplashScreen] Iniciando inicialização...');
-    
+
+    AppLogger.info('Iniciando inicialização...', tag: 'SPLASH');
+
     try {
       // 1. Aguardar autenticação estar pronta
       final authSync = Provider.of<AuthSyncService>(context, listen: false);
@@ -64,17 +64,17 @@ class _SplashScreenState extends State<SplashScreen> {
       }
       
       if (!authSync.initialized) {
-        debugPrint('⚠️ [SplashScreen] Timeout aguardando AuthSyncService');
+        AppLogger.warning('Timeout aguardando AuthSyncService', tag: 'SPLASH');
       }
       
       // Se não está logado, ir direto para login
       if (!authSync.isLoggedIn) {
-        debugPrint('ℹ️ [SplashScreen] Usuário não autenticado, indo para login');
+        AppLogger.info('Usuário não autenticado, indo para login', tag: 'SPLASH');
         _navigateToSignIn();
         return;
       }
       
-      debugPrint('✅ [SplashScreen] Usuário autenticado, iniciando AppInitializer...');
+      AppLogger.success('Usuário autenticado, iniciando AppInitializer...', tag: 'SPLASH');
       
       // 2. Obter ViewModels do Provider
       final mapViewModel = Provider.of<MapViewModel>(context, listen: false);
@@ -92,17 +92,21 @@ class _SplashScreenState extends State<SplashScreen> {
         locationsRankingViewModel,
         conversationsViewModel,
       );
-      
-      await initializer.initialize();
-      
-      debugPrint('✅ [SplashScreen] Inicialização completa!');
-      debugPrint('   - Eventos: ${mapViewModel.events.length}');
-      debugPrint('   - Markers: ${mapViewModel.googleMarkers.length}');
-      debugPrint('   - Mapa pronto: ${mapViewModel.mapReady}');
-      
+
+      // 3. Executar apenas a parte CRÍTICA (sem travar com warmups pesados)
+      await initializer.initializeCritical();
+
+      AppLogger.success('Inicialização crítica concluída', tag: 'SPLASH');
+      AppLogger.info('Eventos (até aqui): ${mapViewModel.events.length}', tag: 'SPLASH');
+      AppLogger.info('Markers (até aqui): ${mapViewModel.googleMarkers.length}', tag: 'SPLASH');
+      AppLogger.info('MapReady (até aqui): ${mapViewModel.mapReady}', tag: 'SPLASH');
     } catch (e, stackTrace) {
-      debugPrint('❌ [SplashScreen] Erro na inicialização: $e');
-      debugPrint('Stack: $stackTrace');
+      AppLogger.error(
+        'Erro na inicialização do Splash (não bloqueia navegação)',
+        tag: 'SPLASH',
+        error: e,
+        stackTrace: stackTrace,
+      );
       // Não bloquear navegação - deixar app abrir mesmo com erro
     }
     
@@ -112,25 +116,25 @@ class _SplashScreenState extends State<SplashScreen> {
   
   void _navigateToSignIn() {
     if (!mounted) return;
-    
-    debugPrint('🔐 [SplashScreen] Navegando para SignIn...');
+
+    AppLogger.info('Navegando para SignIn...', tag: 'SPLASH');
     context.go('/sign-in');
   }
   
   void _navigateToHome() {
     if (!mounted) return;
-    
-    debugPrint('🏠 [SplashScreen] Navegando para Home...');
+
+    AppLogger.info('Navegando para Home...', tag: 'SPLASH');
     context.go('/home');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: GlimpseColors.primary,
       body: Center(
         child: Image.asset(
-          'assets/images/logo.png',
+          'assets/images/logo_branca.png',
           width: 120,
           height: 120,
           gaplessPlayback: true,

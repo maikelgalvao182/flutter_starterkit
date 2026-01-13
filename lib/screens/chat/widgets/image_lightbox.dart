@@ -1,5 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:partiu/core/services/cache/cache_key_utils.dart';
+import 'package:partiu/core/services/cache/image_caches.dart';
+import 'package:partiu/core/services/cache/image_cache_stats.dart';
 
 class ImageLightbox extends StatelessWidget {
 
@@ -19,21 +23,33 @@ class ImageLightbox extends StatelessWidget {
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 4,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const SizedBox(
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: Center(
-                        child: CupertinoActivityIndicator(color: Colors.white),
-                      ),
+                child: Builder(
+                  builder: (context) {
+                    final key = stableImageCacheKey(imageUrl);
+                    ImageCacheStats.instance.record(
+                      category: ImageCacheCategory.chatMedia,
+                      url: imageUrl,
+                      cacheKey: key,
                     );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.broken_image, color: Colors.white54, size: 96);
+
+                    return CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      cacheManager: ChatMediaImageCache.instance,
+                      cacheKey: key,
+                  fit: BoxFit.contain,
+                  placeholder: (context, _) => const SizedBox(
+                    width: double.infinity,
+                    height: double.infinity,
+                    child: Center(
+                      child: CupertinoActivityIndicator(color: Colors.white),
+                    ),
+                  ),
+                  errorWidget: (context, _, __) => const Icon(
+                    Icons.broken_image,
+                    color: Colors.white54,
+                    size: 96,
+                  ),
+                    );
                   },
                 ),
               ),

@@ -16,6 +16,9 @@ class Message {
     this.isRead,
     this.params,
     this.replyTo, // 🆕 Dados de reply
+    this.isDeleted = false, // 🆕 Soft delete
+    this.deletedAt,
+    this.deletedBy,
   });
 
   /// Criar Message a partir de documento Firestore
@@ -40,6 +43,19 @@ class Message {
     // Some legacy or system messages use camelCase (senderId, receiverId, etc.)
     final senderId = (data['sender_id'] ?? data['senderId']) as String?;
     final userId = (data['user_id'] ?? data['userId']) as String?; 
+
+    // 🆕 Soft delete fields (support snake_case and camelCase)
+    final bool isDeleted = (data['is_deleted'] ?? data['isDeleted']) == true;
+    DateTime? deletedAt;
+    try {
+      final deletedAtField = data['deleted_at'] ?? data['deletedAt'];
+      if (deletedAtField is Timestamp) {
+        deletedAt = deletedAtField.toDate();
+      }
+    } catch (_) {
+      deletedAt = null;
+    }
+    final String? deletedBy = (data['deleted_by'] ?? data['deletedBy']) as String?;
     
     // 🛡️ VALIDATION: Filter out broken messages
     if (senderId == null && (userId == null || userId.isEmpty)) {
@@ -81,6 +97,9 @@ class Message {
       isRead: data['message_read'] as bool?,
       params: data['message_params'] as Map<String, dynamic>?,
       replyTo: replyTo, // 🆕
+      isDeleted: isDeleted,
+      deletedAt: deletedAt,
+      deletedBy: deletedBy,
     );
   }
   final String id;
@@ -94,6 +113,9 @@ class Message {
   final bool? isRead;
   final Map<String, dynamic>? params;
   final ReplySnapshot? replyTo; // 🆕 Dados de reply
+  final bool isDeleted; // 🆕 Soft delete
+  final DateTime? deletedAt;
+  final String? deletedBy;
 
   /// Converter para Map para salvar no Firestore
   Map<String, dynamic> toMap() {
@@ -109,6 +131,9 @@ class Message {
       'message_read': isRead,
       'message_params': params,
       if (replyTo != null) ...replyTo!.toMap(), // 🆕 Spread dos campos de reply
+      if (isDeleted) 'is_deleted': true,
+      if (deletedAt != null) 'deleted_at': Timestamp.fromDate(deletedAt!),
+      if (deletedBy != null) 'deleted_by': deletedBy,
     };
   }
 
@@ -124,6 +149,9 @@ class Message {
     bool? isRead,
     Map<String, dynamic>? params,
     ReplySnapshot? replyTo, // 🆕
+    bool? isDeleted,
+    DateTime? deletedAt,
+    String? deletedBy,
   }) {
     return Message(
       id: id ?? this.id,
@@ -137,6 +165,9 @@ class Message {
       isRead: isRead ?? this.isRead,
       params: params ?? this.params,
       replyTo: replyTo ?? this.replyTo, // 🆕
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deletedBy: deletedBy ?? this.deletedBy,
     );
   }
 
@@ -155,7 +186,10 @@ class Message {
       timestamp == other.timestamp &&
       isRead == other.isRead &&
       params == other.params &&
-      replyTo == other.replyTo; // 🆕
+      replyTo == other.replyTo &&
+      isDeleted == other.isDeleted &&
+      deletedAt == other.deletedAt &&
+      deletedBy == other.deletedBy;
 
   @override
   int get hashCode =>
@@ -169,5 +203,8 @@ class Message {
       timestamp.hashCode ^
       isRead.hashCode ^
       params.hashCode ^
-      replyTo.hashCode; // 🆕
+      replyTo.hashCode ^
+      isDeleted.hashCode ^
+      deletedAt.hashCode ^
+      deletedBy.hashCode;
 }

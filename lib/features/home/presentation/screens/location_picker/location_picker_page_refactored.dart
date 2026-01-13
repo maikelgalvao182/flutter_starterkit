@@ -13,7 +13,6 @@ import 'package:partiu/features/home/presentation/screens/location_picker/widget
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/location_suggestions_overlay.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/map_center_pin.dart';
 import 'package:partiu/features/home/presentation/screens/location_picker/widgets/meeting_point_info_card.dart';
-import 'package:partiu/features/home/presentation/screens/location_picker/widgets/nearby_places_carousel.dart';
 import 'package:partiu/features/home/presentation/widgets/participants_drawer.dart';
 import 'package:partiu/plugins/locationpicker/entities/localization_item.dart';
 import 'package:partiu/shared/widgets/glimpse_button.dart';
@@ -46,7 +45,6 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  bool _isLoadingMap = true;
   bool _isInitializing = true;
   OverlayEntry? _overlayEntry;
   bool _isProgrammaticMove = false; // Flag para indicar movimento programático do mapa
@@ -75,7 +73,6 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
       if (mounted) {
         setState(() {
           _isInitializing = false;
-          _isLoadingMap = false;
         });
         
         // Carregar localização após mapa estar visível
@@ -85,7 +82,7 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
           }
         });
       }
-    } catch (e, stack) {
+    } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -291,8 +288,8 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
     final searchBarBox = _searchBarKey.currentContext?.findRenderObject() as RenderBox?;
     if (searchBarBox == null) return;
-    final searchBarPosition = searchBarBox?.localToGlobal(Offset.zero);
-    final top = (searchBarPosition?.dy ?? 0) + (searchBarBox?.size.height ?? 0) + 8;
+    final searchBarPosition = searchBarBox.localToGlobal(Offset.zero);
+    final top = searchBarPosition.dy + searchBarBox.size.height + 8;
 
     _overlayEntry = OverlayEntry(
       builder: (context) => LocationSearchLoadingOverlay(
@@ -310,8 +307,8 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
     final searchBarBox = _searchBarKey.currentContext?.findRenderObject() as RenderBox?;
     if (searchBarBox == null) return;
-    final searchBarPosition = searchBarBox?.localToGlobal(Offset.zero);
-    final top = (searchBarPosition?.dy ?? 0) + (searchBarBox?.size.height ?? 0) + 8;
+    final searchBarPosition = searchBarBox.localToGlobal(Offset.zero);
+    final top = searchBarPosition.dy + searchBarBox.size.height + 8;
 
     final suggestions = _controller.suggestions
         .map((s) => s.autoCompleteItem)
@@ -410,13 +407,6 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
 
                 // Card informativo
                 const MeetingPointInfoCard(),
-
-                // Carousel de fotos do lugar selecionado
-                if (_controller.selectedPlacePhotos.isNotEmpty)
-                  SelectedPlacePhotosCarousel(
-                    photoUrls: _controller.selectedPlacePhotos, // Já são URLs reais
-                    placeName: _controller.getLocationName(),
-                  ),
               ],
             ),
           ),
@@ -434,9 +424,10 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
                       if (widget.coordinator != null && _controller.locationResult != null) {
                         widget.coordinator!.setLocation(
                           _controller.locationResult!,
-                          photoReferences: _controller.selectedPlacePhotos,
                         );
                       }
+
+                      final navigator = Navigator.of(context);
 
                       // Abrir drawer de participantes (último passo)
                       final participantsResult = await showModalBottomSheet<Map<String, dynamic>>(
@@ -448,13 +439,15 @@ class _LocationPickerPageRefactoredState extends State<LocationPickerPageRefacto
                         ),
                       );
 
-                      if (participantsResult != null && mounted) {
+                      if (!context.mounted) return;
+
+                      if (participantsResult != null) {
                         // Retornar resultado completo com location + participants
                         final result = {
                           'location': _controller.locationResult,
                           'participants': participantsResult,
                         };
-                        Navigator.of(context).pop(result);
+                        navigator.pop(result);
                       }
                     }
                   : null,

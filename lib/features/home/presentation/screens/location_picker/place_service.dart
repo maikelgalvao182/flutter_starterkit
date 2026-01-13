@@ -2,10 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:partiu/core/utils/app_logger.dart';
-import 'package:partiu/plugins/locationpicker/entities/address_component.dart';
-import 'package:partiu/plugins/locationpicker/entities/location_result.dart';
 import 'package:partiu/plugins/locationpicker/entities/localization_item.dart';
 import 'package:partiu/plugins/locationpicker/place_picker.dart';
 
@@ -19,14 +16,6 @@ class PlaceService {
   final String apiKey;
   final http.Client _httpClient;
 
-  /// Converte photo_reference em URL real do Google Places
-  String getGooglePhotoUrl(String photoReference, {int maxWidth = 800}) {
-    return 'https://maps.googleapis.com/maps/api/place/photo'
-        '?maxwidth=$maxWidth'
-        '&photoreference=$photoReference'
-        '&key=$apiKey';
-  }
-
   /// Autocomplete de lugares
   Future<List<RichSuggestion>> autocomplete({
     required String query,
@@ -36,25 +25,27 @@ class PlaceService {
     String? countryCode,
   }) async {
     try {
-      final sanitizedQuery = query.replaceAll(' ', '+');
-
       final normalizedCountryCode = (countryCode ?? '').trim().toLowerCase();
 
-      var endpoint = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?'
-          'key=$apiKey&'
-          'language=${localization.languageCode}&'
-          'input=$sanitizedQuery&'
-          'sessiontoken=$sessionToken';
+      final uri = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/place/autocomplete/json',
+        <String, String>{
+          'key': apiKey,
+          'language': localization.languageCode,
+          'input': query,
+          'sessiontoken': sessionToken,
+          if (normalizedCountryCode.isNotEmpty)
+            'components': 'country:$normalizedCountryCode',
+          if (bias != null) ...{
+            'location': '${bias.latitude},${bias.longitude}',
+            // Bias suave para não “matar” resultados; também evita comportamento estranho sem radius.
+            'radius': '50000',
+          },
+        },
+      );
 
-      if (normalizedCountryCode.isNotEmpty) {
-        endpoint += '&components=country:$normalizedCountryCode';
-      }
-
-      if (bias != null) {
-        endpoint += '&location=${bias.latitude},${bias.longitude}';
-      }
-
-      final response = await _httpClient.get(Uri.parse(endpoint)).timeout(
+      final response = await _httpClient.get(uri).timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw TimeoutException('Autocomplete timeout'),
           );
@@ -99,11 +90,14 @@ class PlaceService {
       }
 
       return predictions.map((t) {
+        final matchedSubstrings = (t['matched_substrings'] as List<dynamic>?) ?? const [];
+        final firstMatch = matchedSubstrings.isNotEmpty ? matchedSubstrings.first as Map<String, dynamic>? : null;
+
         final aci = AutoCompleteItem()
           ..id = t['place_id'] as String?
           ..text = t['description'] as String?
-          ..offset = (t['matched_substrings'][0]['offset'] as num?)?.toInt() ?? 0
-          ..length = (t['matched_substrings'][0]['length'] as num?)?.toInt() ?? 0;
+          ..offset = (firstMatch?['offset'] as num?)?.toInt() ?? 0
+          ..length = (firstMatch?['length'] as num?)?.toInt() ?? 0;
         return RichSuggestion(aci, () {});
       }).toList();
     } catch (e) {
@@ -233,43 +227,9 @@ class PlaceService {
     required String placeId,
     required String languageCode,
   }) async {
-    try {
-      final url = Uri.parse(
-        'https://maps.googleapis.com/maps/api/place/details/json?'
-        'key=$apiKey&'
-        'language=$languageCode&'
-        'fields=photos&'
-        'placeid=$placeId',
-      );
-
-      final response = await _httpClient.get(url).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw TimeoutException('Place photos timeout'),
-          );
-
-      if (response.statusCode != 200) {
-        throw Exception('Place photos failed: ${response.statusCode}');
-      }
-
-      final responseJson = json.decode(response.body) as Map<String, dynamic>;
-
-      if (responseJson['status'] != 'OK') {
-        return [];
-      }
-
-      final photos = responseJson['result']?['photos'] as List<dynamic>?;
-      if (photos == null || photos.isEmpty) {
-        return [];
-      }
-
-      // Retornar URLs reais ao invés de photo_references
-      return photos.map((photo) {
-        final photoReference = photo['photo_reference'] as String;
-        return getGooglePhotoUrl(photoReference);
-      }).toList();
-    } catch (e) {
-      return [];
-    }
+    // Importante: fotos do Google Places (Photos API) desativadas no app.
+    // Retornar sempre vazio evita chamadas extras e qualquer download indireto.
+    return [];
   }
 
   /// Busca lugares próximos a uma localização
@@ -308,33 +268,12 @@ class PlaceService {
       }
 
       return results.map((item) {
-        String? photoReference;
-        int? photoWidth;
-        int? photoHeight;
-
-        // Extrair foto se disponível
-        if (item['photos'] != null && (item['photos'] as List).isNotEmpty) {
-          try {
-            final photo = (item['photos'] as List)[0] as Map<String, dynamic>;
-            final rawPhotoReference = photo['photo_reference'] as String?;
-            photoWidth = photo['width'] as int?;
-            photoHeight = photo['height'] as int?;
-
-            if (rawPhotoReference != null && rawPhotoReference.isNotEmpty) {
-              // Converter para URL real
-              photoReference = getGooglePhotoUrl(rawPhotoReference);
-            }
-          } catch (e) {
-            // Ignorar erro de extração de foto
-          }
-        }
-
         return NearbyPlace()
           ..name = item['name'] as String?
           ..icon = item['icon'] as String?
-          ..photoReference = photoReference
-          ..photoWidth = photoWidth
-          ..photoHeight = photoHeight
+          ..photoReference = null
+          ..photoWidth = null
+          ..photoHeight = null
           ..latLng = LatLng(
             (item['geometry']['location']['lat'] as num).toDouble(),
             (item['geometry']['location']['lng'] as num).toDouble(),
